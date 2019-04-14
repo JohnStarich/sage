@@ -1,0 +1,2 @@
+ofxclient==2.0.4
+ofxparse==0.20
