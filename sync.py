@@ -48,6 +48,11 @@ if __name__ == '__main__':
     if args.open is False:
         all_transactions = chain.from_iterable(statement_transactions)
     else:
+        open_id = 'Opening-Balance'
+        if ledger is not None and open_id in ledger:
+            print('Error: Requested opening balance, but ledger already '
+                  'contains an opening balance entry.', file=sys.stderr)
+            sys.exit(2)
         all_transactions = []
         first_acct_txns = []
 
@@ -71,7 +76,6 @@ if __name__ == '__main__':
                 amount=p.balance - p.amount,
             )),
         ))
-        open_id = 'Opening-Balance'
         opening_postings.append(LedgerPosting(
             id=open_id,
             account='equity:Opening Balances',
@@ -83,10 +87,6 @@ if __name__ == '__main__':
             date=min(map(lambda t: t.date, first_acct_txns)),
             description='* Opening Balance',
         )
-        if ledger is not None and open_id in ledger:
-            print('Error: Requested opening balance, but ledger already '
-                  'contains an opening balance entry.', file=sys.stderr)
-            sys.exit(2)
         print(opening_balance)
     if args.sort:
         all_transactions = list(all_transactions)
