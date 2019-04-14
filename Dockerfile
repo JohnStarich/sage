@@ -27,7 +27,11 @@ RUN apk add --no-cache \
 
 WORKDIR /src
 ENTRYPOINT ["/src/sync.py"]
-CMD ["--help"]
+CMD []
+VOLUME ["/data"]
+ENV HOME=/data
+ENV LEDGER_FILE=/data/ledger.journal
+ENV LEDGER_RULES_FILE=/data/ledger.rules
 
 COPY --from=builder /install /usr/local
 
