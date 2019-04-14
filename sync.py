@@ -21,15 +21,29 @@ def apply_rules(rules: RulesFile, statement_transactions):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config',
-                        default=Path('~/ofxclient.ini').expanduser())
-    parser.add_argument('-r', '--rules', required=True)
-    parser.add_argument('-d', '--days', default=3, type=int)
-    parser.add_argument('--open', '--opening-balances', action='store_true')
-    parser.add_argument('--ledger', default=getenv('LEDGER_FILE', default=''))
-    parser.add_argument('--sort', action='store_true')
+                        default=Path('~/ofxclient.ini').expanduser(),
+                        help="Path to OFX Client ini file. Defaults to "
+                        "~/ofxclient.ini")
+    parser.add_argument('-r', '--rules',
+                        default=getenv('LEDGER_RULES_FILE', default=''),
+                        help="Path to an hledger CSV rules file. Defaults "
+                        "to $LEDGER_RULES_FILE")
+    parser.add_argument('-d', '--days', default=3, type=int,
+                        help="Number of days to download from OFX"
+                        "-connected institutions. Defaults to 3.")
+    parser.add_argument('--open', '--opening-balances', action='store_true',
+                        help="Add an 'opening balance' transaction, "
+                        "calculated from the given OFX files or downloads.")
+    parser.add_argument('--ledger', default=getenv('LEDGER_FILE', default=''),
+                        help="Path to a ledger file. Defaults to $LEDGER_FILE")
+    parser.add_argument('--sort', action='store_true',
+                        help="Sort transactions by date. Default is not "
+                        "guaranteed to be sorted.")
     parser.add_argument('ofx_file', nargs='*')
     args = parser.parse_args()
 
+    if args.rules == "":
+        parser.error("the following arguments are required: -r/--rules")
     rules = RulesFile.from_file(args.rules)
     c = OfxConfig(file_name=args.config)
     ledger = None
