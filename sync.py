@@ -5,17 +5,34 @@ from handlers import OfxDownload, OfxFiles
 from itertools import chain
 from ledger import Ledger, LedgerPosting, LedgerTransaction
 from ofxclient.config import OfxConfig
-from os import getenv
+from os import getenv, fsync
 from pathlib import Path
 from rules import RulesFile
 
 import argparse
+import fcntl
 import sys
 
 
 def apply_rules(rules: RulesFile, statement_transactions):
     for transactions in statement_transactions:
         yield map(rules.transform, transactions)
+
+
+class FileLock(object):
+    def __init__(self, path: Path, *args, **kwargs):
+        self.file = path.open(*args, **kwargs)
+
+    def __enter__(self, *args, **kwargs):
+        fcntl.lockf(self.file, fcntl.LOCK_EX)
+        return self.file
+
+    def __exit__(self, exc_type=None, *_):
+        self.file.flush()
+        fsync(self.file.fileno())
+        fcntl.lockf(self.file, fcntl.LOCK_UN)
+        self.file.close()
+        return exc_type is None
 
 
 if __name__ == '__main__':
@@ -39,6 +56,10 @@ if __name__ == '__main__':
     parser.add_argument('--sort', action='store_true',
                         help="Sort transactions by date. Default is not "
                         "guaranteed to be sorted.")
+    parser.add_argument('--in-place', action='store_true',
+                        help="WARNING: This flag updates your ledger file in-"
+                        "place. Make certain it is under version control "
+                        "(e.g. Git) before using.")
     parser.add_argument('ofx_file', nargs='*')
     args = parser.parse_args()
 
@@ -48,9 +69,11 @@ if __name__ == '__main__':
     c = OfxConfig(file_name=args.config)
     ledger = None
     if args.ledger != "":
-        file_path = Path(args.ledger).expanduser()
-        if file_path.exists():
-            ledger = Ledger.from_file(file_path)
+        ledger_file = Path(args.ledger).expanduser()
+        if ledger_file.exists():
+            ledger = Ledger.from_file(ledger_file)
+    elif args.in_place is True:
+        parser.error("--in-place: Ledger file not found.")
 
     if len(args.ofx_file) == 0:
         handler = OfxDownload(days=args.days, config=c)
@@ -102,13 +125,22 @@ if __name__ == '__main__':
             description='* Opening Balance',
         )
         print(opening_balance)
+
     if args.sort:
         all_transactions = list(all_transactions)
         all_transactions.sort()
-    if ledger is not None:
-        for t in all_transactions:
-            if t.postings[0].id not in ledger:
-                print(t)
+
+    if args.in_place is True:
+        # Append-only operations
+        output_file = FileLock(ledger_file, 'a')
     else:
-        for t in all_transactions:
-            print(t)
+        output_file = sys.stdout
+
+    with output_file as f:
+        if ledger is not None:
+            for t in all_transactions:
+                if t.postings[0].id not in ledger:
+                    print(t, file=f)
+        else:
+            for t in all_transactions:
+                print(t, file=f)
