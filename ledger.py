@@ -1,7 +1,7 @@
 from decimal import Decimal
 from funcs import filter, flat_map, func_chain, map
 from itertools import chain, groupby
-from ofxparse import Statement, Transaction
+from ofxparse import Account, Statement, Transaction
 from pathlib import Path
 from typing import Callable, Collection, Iterable, Tuple
 
@@ -103,16 +103,23 @@ class LedgerTransaction(object):
         self.description = description
 
     @staticmethod
-    def from_ofxparse(raw: Transaction, account_name: str,
+    def from_ofxparse(account: Account, account_name: str, raw: Transaction,
                       balance: Decimal) -> 'LedgerTransaction':
-        txn_id = raw.id.replace(",", "_").replace(":", "_")
+        # Follows FITID recommendation from OFX 102 Section 3.2.1
+        fit_id = ''.join([
+            account.institution.fid,
+            account.account_id,
+            raw.id,
+        ])
+        # clean ID for hledger tags
+        fit_id = fit_id.replace(",", "_").replace(":", "_")
         postings = [
             LedgerPosting(
-                id=txn_id,
+                id=fit_id,
                 account=account_name,
                 amount=raw.amount,
                 balance=balance,
-                comment='id:' + txn_id,
+                comment='id:' + fit_id,
             ),
             LedgerPosting(
                 id=None,
@@ -155,14 +162,16 @@ class AccountStatement(object):
     applying balance assertions.
     """
 
-    def __init__(self, account_name: str, statement: Statement):
+    def __init__(self, account: Account, account_name: str,
+                 statement: Statement):
+        self.account = account
         self.account_name = account_name
         self.statement = statement
 
     @staticmethod
-    def from_pair(pair: Tuple[str, Statement]) -> 'AccountStatement':
-        account_name, statement = pair
-        return AccountStatement(account_name, statement)
+    def from_tuple(tup: Tuple[Account, str, Statement]) -> 'AccountStatement':
+        account, account_name, statement = tup
+        return AccountStatement(account, account_name, statement)
 
     def transactions(self) -> Iterable[LedgerTransaction]:
         groups = groupby(self.statement.transactions,
@@ -198,12 +207,12 @@ class AccountStatement(object):
         (after=True) or in reverse (after=False) to propagate the balance
         correctly.
         """
-        account_name = self.account_name
         balance = self.statement.balance
 
         def parse_transaction(raw: Transaction) -> LedgerTransaction:
             nonlocal balance
-            t = LedgerTransaction.from_ofxparse(raw, account_name, balance)
+            t = LedgerTransaction.from_ofxparse(
+                    self.account, self.account_name, raw, balance)
             if after is True:
                 balance += raw.amount
             else:

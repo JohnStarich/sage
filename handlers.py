@@ -48,8 +48,8 @@ class OfxHandler(object):
     def transactions(self) -> Iterable[Iterable[LedgerTransaction]]:
         return func_chain(
             self.accounts(),
-            split(self.account_name, self.statement),
-            map(AccountStatement.from_pair),
+            split(lambda a: a, self.account_name, self.statement),
+            map(AccountStatement.from_tuple),
             map(AccountStatement.transactions),
         )
 
