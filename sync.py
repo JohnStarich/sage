@@ -153,9 +153,16 @@ if __name__ == '__main__':
         if opening_balance is not None:
             print(opening_balance, file=f)
         if ledger is not None:
+            txns_added = 0
             for t in all_transactions:
                 if t.postings[0].id not in ledger:
                     print(t, file=f)
+                    txns_added += 1
+            if txns_added == 0:
+                print("No new transactions.", file=sys.stderr)
+            else:
+                print("Found %d new transactions." % txns_added,
+                      file=sys.stderr)
         else:
             for t in all_transactions:
                 print(t, file=f)
