@@ -25,14 +25,33 @@ RUN apk add --no-cache \
         openssl \
         xmlsec
 
-WORKDIR /src
+COPY --from=builder /install /usr/local
+
+# Add crude rate limiter to appease some pesky institutions
+RUN sed -i '/def post(self, query):/a \        \
+_next = getattr(self, "_next", time.time() + 2); \
+time.sleep(max(0, _next - time.time())); \
+setattr(self, "_next", time.time() + 2) \
+' /usr/local/lib/python3*/site-packages/ofxclient/client.py
+
+WORKDIR /data
 ENTRYPOINT ["/src/sync.py"]
 CMD []
 VOLUME ["/data"]
-ENV HOME=/data
+
+RUN ln -s /data/ofxclient.ini ~/ofxclient.ini
+
+# Use the simple keyring to simplify where passwords are stored.
+# TODO move to an encrypted-at-rest keyring
+RUN path=~/.local/share/python_keyring; \
+        mkdir -p "$path" && \
+        echo $'\
+[backend]\n\
+default-keyring=simplekeyring.SimpleKeyring\n\
+' > "$path"/keyringrc.cfg
+
 ENV LEDGER_FILE=/data/ledger.journal
 ENV LEDGER_RULES_FILE=/data/ledger.rules
+ENV SYNC_EMBEDDED=true
 
-COPY --from=builder /install /usr/local
-
-COPY . ./
+COPY . /src

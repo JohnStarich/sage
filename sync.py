@@ -11,6 +11,7 @@ from rules import RulesFile
 
 import argparse
 import fcntl
+import subprocess
 import sys
 
 
@@ -60,8 +61,20 @@ if __name__ == '__main__':
                         help="WARNING: This flag updates your ledger file in-"
                         "place. Make certain it is under version control "
                         "(e.g. Git) before using.")
+    if getenv('SYNC_EMBEDDED') == 'true':
+        parser.add_argument('--setup', action='store_true',
+                            help="Start guided setup of sync and ofxclient.")
     parser.add_argument('ofx_file', nargs='*')
     args = parser.parse_args()
+
+    if hasattr(args, 'setup') and args.setup is True:
+        ofxclient_args = ['ofxclient']
+        if args.config != "":
+            ofxclient_args += ['--config', args.config]
+        rc = subprocess.call(ofxclient_args)
+        if rc != 0:
+            parser.error("ofxclient failed with exit code: %d" % rc)
+        sys.exit(0)
 
     if args.rules == "":
         parser.error("the following arguments are required: -r/--rules")
@@ -84,6 +97,7 @@ if __name__ == '__main__':
 
     if args.open is False:
         all_transactions = chain.from_iterable(statement_transactions)
+        opening_balance = None
     else:
         open_id = 'Opening-Balance'
         if ledger is not None and open_id in ledger:
@@ -124,7 +138,6 @@ if __name__ == '__main__':
             date=min(map(lambda t: t.date, first_acct_txns)),
             description='* Opening Balance',
         )
-        print(opening_balance)
 
     if args.sort:
         all_transactions = list(all_transactions)
@@ -137,6 +150,8 @@ if __name__ == '__main__':
         output_file = sys.stdout
 
     with output_file as f:
+        if opening_balance is not None:
+            print(opening_balance, file=f)
         if ledger is not None:
             for t in all_transactions:
                 if t.postings[0].id not in ledger:

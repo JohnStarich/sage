@@ -1,12 +1,47 @@
 from itertools import chain
+from functools import lru_cache
 from funcs import func_chain, map, split
 from ledger import AccountStatement, LedgerTransaction
-from ofxclient import Account as ClientAccount
+from ofxclient import Account as ClientAccount, BankAccount, \
+        CreditCardAccount, BrokerageAccount, Institution as ClientInstitution
 from ofxclient.config import OfxConfig
 from ofxparse import Account, OfxParser, Statement
-from typing import Iterable
+from typing import Iterable, Union
 
 import sys
+
+
+@lru_cache(maxsize=20)
+def _ofx_account_name(account: Union[Account, ClientAccount]) -> str:
+    if isinstance(account, Account):
+        institution = ClientInstitution.deserialize(
+                account.institution.__dict__)
+        account = ClientAccount.from_ofxparse(account, institution)
+    institution_str = account.institution.description
+    account_str = account.description
+    if isinstance(account, BankAccount):
+        account_category = 'assets'
+        account_str = account_str.lstrip()
+        for prefix in [account.institution.description,
+                       account.institution.org]:
+            if account_str.startswith(prefix):
+                account_str = account_str[len(prefix):]
+    elif isinstance(account, CreditCardAccount):
+        account_category = 'liabilities'
+    elif isinstance(account, BrokerageAccount):
+        account_category = 'assets:invest'
+    else:
+        raise Exception("Unknown account type: %s" % type(account))
+
+    account_name = ":".join([
+        account_category,
+        institution_str.strip(),
+        account_str.strip(),
+    ])
+
+    if '  ' in account_name:
+        account_name = ' '.join(account_name.split())  # Remove extra spaces
+    return account_name
 
 
 class OfxHandler(object):
@@ -38,7 +73,8 @@ class OfxFiles(OfxHandler):
     def account_name(self, account: Account) -> str:
         account_id = account.account_id
         if account_id in self._account_map:
-            return self._account_map[account_id].description
+            account = self._account_map[account_id]
+            return _ofx_account_name(account)
         else:
             return '%s %s' % (
                 account.institution.organization,
@@ -70,10 +106,10 @@ class OfxDownload(OfxHandler):
         self._accounts = config.accounts()
 
     def account_name(self, account: Account) -> str:
-        return account.description
+        return _ofx_account_name(account)
 
     def statement(self, account: ClientAccount) -> Statement:
-        print("Fetching transactions for %s..." % account.description,
+        print("Fetching transactions for %s..." % _ofx_account_name(account),
               file=sys.stderr, end=' ')
         statement = account.statement(self._days)
         print("Downloaded transactions.", file=sys.stderr)
