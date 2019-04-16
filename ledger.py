@@ -1,9 +1,10 @@
 from decimal import Decimal
 from funcs import filter, flat_map, func_chain, map
 from itertools import chain, groupby
+from ofxclient import Account as ClientAccount
 from ofxparse import Account, Statement, Transaction
 from pathlib import Path
-from typing import Callable, Collection, Iterable, Tuple
+from typing import Callable, Collection, Iterable, Tuple, Union
 
 
 class Ledger(set):
@@ -103,12 +104,19 @@ class LedgerTransaction(object):
         self.description = description
 
     @staticmethod
-    def from_ofxparse(account: Account, account_name: str, raw: Transaction,
+    def from_ofxparse(account: Union[Account, ClientAccount],
+                      account_name: str, raw: Transaction,
                       balance: Decimal) -> 'LedgerTransaction':
+        if isinstance(account, Account):
+            account_id = account.account_id
+            institution_id = account.institution.fid
+        elif isinstance(account, ClientAccount):
+            account_id = account.number
+            institution_id = account.institution.id
         # Follows FITID recommendation from OFX 102 Section 3.2.1
-        fit_id = ''.join([
-            account.institution.fid,
-            account.account_id,
+        fit_id = '-'.join([
+            institution_id,
+            account_id,
             raw.id,
         ])
         # clean ID for hledger tags
