@@ -128,10 +128,9 @@ if __name__ == '__main__':
             )),
         ))
         opening_postings.append(LedgerPosting(
-            id=open_id,
             account='equity:Opening Balances',
             amount=None,
-            comment='id:' + open_id,
+            tags={'id': open_id},
         ))
         opening_balance = LedgerTransaction(
             postings=opening_postings,

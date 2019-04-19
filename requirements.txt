@@ -1,2 +1,4 @@
 git+https://github.com/captin411/ofxclient.git@v2.0.4
 ofxparse==0.20
+Flask==1.0.2
+gunicorn==19.9.0

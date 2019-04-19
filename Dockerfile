@@ -35,7 +35,7 @@ setattr(self, "_next", time.time() + 2) \
 ' /usr/local/lib/python3*/site-packages/ofxclient/client.py
 
 WORKDIR /data
-ENTRYPOINT ["/src/sync.py"]
+ENTRYPOINT ["gunicorn", "server:app", "--bind=0.0.0.0"]
 CMD []
 VOLUME ["/data"]
 
@@ -54,4 +54,5 @@ ENV LEDGER_FILE=/data/ledger.journal
 ENV LEDGER_RULES_FILE=/data/ledger.rules
 ENV SYNC_EMBEDDED=true
 
+ENV PYTHONPATH=/src
 COPY . /src

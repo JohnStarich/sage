@@ -94,7 +94,7 @@ class IfExpr(object):
         first_txn = transaction.postings[0]
         transaction_str = ','.join([
             transaction.date_str(),
-            '"%s"' % transaction.description.replace('"', '\\"'),
+            '"%s"' % transaction.payee.replace('"', '\\"'),
             '$',
             str(first_txn.amount),
             str(first_txn.balance),
