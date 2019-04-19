@@ -44,7 +44,9 @@ def flat_map(func: Callable, iterable: Iterable) -> Iterable:
     """
     flat_map() is like map() but flattens the output once after mapping
     """
-    return itertools.chain.from_iterable(map(func, iterable))
+    for item in iterable:
+        for mapped_item in func(item):
+            yield mapped_item
 
 
 @chainable
