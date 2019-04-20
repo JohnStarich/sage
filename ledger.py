@@ -9,7 +9,7 @@ from typing import Callable, Collection, Dict, Iterable, Tuple, \
         Union
 
 
-class Ledger(set):
+class Ledger(object):
     def __init__(self, lines: Iterable[str]):
         self.transactions = list(Ledger._parse_lines(lines))
         txn_ids = chain(
@@ -25,7 +25,20 @@ class Ledger(set):
                 filter(lambda i: i is not None),
             ),
         )
-        super().__init__(txn_ids)
+        self._transaction_ids = set(txn_ids)
+
+    def __contains__(self, item):
+        if item is None:
+            return False
+        if isinstance(item, str):
+            return item in self._transaction_ids
+        if isinstance(item, LedgerTransaction):
+            return item.id in self._transaction_ids or \
+                any(map(lambda p: p.id in self._transaction_ids,
+                        item.postings))
+        if isinstance(item, LedgerPosting):
+            return item.id in self._transaction_ids
+        return False
 
     @staticmethod
     def from_file(path: Path):

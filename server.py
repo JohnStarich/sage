@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from flask import Flask, Response
-from funcs import filter, flat_map, func_chain, map
+from funcs import filter, func_chain, map
 from handlers import OfxDownload
 from itertools import chain
 from ledger import Ledger
@@ -24,25 +24,12 @@ def get_ledger():
     return str(ledger)
 
 
-def filter_transactions(txns):
-    for txn in txns:
-        if txn.id in ledger:
-            continue
-        in_ledger = False
-        for p in txn.postings:
-            if p.id in ledger:
-                in_ledger = True
-                break
-        if not in_ledger:
-            yield txn
-
-
 @app.route('/download')
 def download():
     statement_transactions = apply_rules(rules, handler.transactions())
     txns = func_chain(
         chain.from_iterable(statement_transactions),
-        filter(filter_transactions),
+        filter(lambda t: t not in ledger),
         map(str),
     )
     return Response(txns)
