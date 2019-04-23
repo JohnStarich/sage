@@ -5,8 +5,8 @@ from itertools import chain, groupby
 from ofxclient import Account as ClientAccount
 from ofxparse import Account, Statement, Transaction
 from pathlib import Path
-from typing import Callable, Collection, Dict, Iterable, Tuple, \
-        Union
+from typing import Callable, Collection, Dict, Iterable, Set, \
+        Tuple, Union
 
 
 class Ledger(object):
@@ -27,17 +27,59 @@ class Ledger(object):
         )
         self._transaction_ids = set(txn_ids)
 
-    def __contains__(self, item):
+    def _contains_or_ids(self, item, find_all=False
+                         ) -> (bool, Set[str]):
+        """
+        Returns if item is in self. If it is not present, also returns
+        the IDs that were missing. IDs are only valid if contains is False.
+        Set find_all=True to return all IDs that are missing, rather than
+        returning early at the first missing ID.
+        """
         if item is None:
-            return False
+            return False, set()
         if isinstance(item, str):
-            return item in self._transaction_ids
+            return item in self._transaction_ids, set(item)
         if isinstance(item, LedgerTransaction):
-            return item.id in self._transaction_ids or \
-                any(map(lambda p: p.id in self._transaction_ids,
-                        item.postings))
+            missing_ids = set()
+            contains = False
+
+            if item.id is not None:
+                # Check top-level transaction ID
+                if item.id in self._transaction_ids:
+                    if not find_all:
+                        return True, set()
+                    contains = True
+                else:
+                    missing_ids.add(item.id)
+
+            for posting in item.postings:
+                # Check every posting ID
+                if posting.id is not None:
+                    if posting.id in self._transaction_ids:
+                        if not find_all:
+                            return True, set()
+                        contains = True
+                    else:
+                        missing_ids.add(posting.id)
+            return contains, missing_ids
+
         if isinstance(item, LedgerPosting):
-            return item.id in self._transaction_ids
+            return item.id in self._transaction_ids, set(item.id)
+        return False, set()
+
+    def __contains__(self, item):
+        contains, _ = self._contains_or_ids(item)
+        return contains
+
+    def add(self, transaction: 'LedgerTransaction'):
+        if not isinstance(transaction, LedgerTransaction):
+            raise TypeError("Only LedgerTransactions can be appended to a "
+                            "ledger.")
+        contains, ids = self._contains_or_ids(transaction, find_all=True)
+        if not contains:
+            self.transactions.append(transaction)
+            self._transaction_ids |= ids
+            return True
         return False
 
     @staticmethod
