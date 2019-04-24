@@ -14,10 +14,10 @@ from sync import FileLock, apply_rules
 
 app = Flask(__name__)
 # TODO auto-reload when file updates
-ledger_file = Path('data/ledger.journal')
-LEDGER_LOCK = FileLock(ledger_file)
+LEDGER_FILE = Path('data/ledger.journal')
+LEDGER_LOCK = FileLock(LEDGER_FILE)
 with LEDGER_LOCK:
-    LEDGER = Ledger.from_file(ledger_file)
+    LEDGER = Ledger.from_file(LEDGER_FILE)
 LAST_SYNC = None
 SYNC_INTERVAL = timedelta(seconds=10)
 
@@ -62,11 +62,14 @@ def sync():
 
         def progress_add():
             global LAST_SYNC
-            for statement in handler.transactions():
-                for txn in statement:
-                    txn = RULES.transform(txn)
-                    if LEDGER.add(txn):
-                        yield txn
+            with open(LEDGER_FILE, 'a') as f:
+                for statement in handler.transactions():
+                    for txn in statement:
+                        txn = RULES.transform(txn)
+                        if LEDGER.add(txn):
+                            f.write(str(txn))
+                            f.write('\n')
+                            yield txn
             LAST_SYNC = now
 
         return Response(map(str, progress_add()))
