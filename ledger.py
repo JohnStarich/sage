@@ -192,6 +192,7 @@ class LedgerPosting(object):
                 if ':' not in tag:
                     raise Exception("Invalid tag format: " + tag)
                 key, value = tag.split(':', maxsplit=1)
+                value = value.strip()
                 if ' ' in key:
                     raise Exception("Tag keys must not contain"
                                     " spaces: " + key)
