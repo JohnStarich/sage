@@ -22,18 +22,22 @@ def apply_rules(rules: RulesFile, statement_transactions):
 
 class FileLock(object):
     def __init__(self, path: Path, *args, **kwargs):
+        if len(args) == 0:
+            args = ['a']  # Need write access on some OSes
         self.file = path.open(*args, **kwargs)
 
     def __enter__(self, *args, **kwargs):
-        fcntl.lockf(self.file, fcntl.LOCK_EX)
+        fcntl.lockf(self.file.fileno(), fcntl.LOCK_EX)
         return self.file
 
     def __exit__(self, exc_type=None, *_):
         self.file.flush()
         fsync(self.file.fileno())
-        fcntl.lockf(self.file, fcntl.LOCK_UN)
-        self.file.close()
+        fcntl.lockf(self.file.fileno(), fcntl.LOCK_UN)
         return exc_type is None
+
+    def close(self):
+        self.file.close()
 
 
 if __name__ == '__main__':

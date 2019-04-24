@@ -15,8 +15,9 @@ from sync import FileLock, apply_rules
 app = Flask(__name__)
 # TODO auto-reload when file updates
 ledger_file = Path('data/ledger.journal')
-LEDGER = Ledger.from_file(ledger_file)
 LEDGER_LOCK = FileLock(ledger_file)
+with LEDGER_LOCK:
+    LEDGER = Ledger.from_file(ledger_file)
 LAST_SYNC = None
 SYNC_INTERVAL = timedelta(seconds=10)
 
@@ -43,29 +44,29 @@ def download():
 
 @app.route('/sync', methods=['POST'])
 def sync():
-    global LAST_SYNC
-    # with LEDGER_LOCK:
-    if LAST_SYNC is not None:
-        if datetime.now() - LAST_SYNC < SYNC_INTERVAL:
-            return ""
-        most_recent_txn = LAST_SYNC
-    else:
-        most_recent_txn = LEDGER.transactions[-1].date
-    now = datetime.now()
-    days_delta = int((now - most_recent_txn).total_seconds() / 3600 / 24)
-    days_delta = min(30, days_delta)  # cap at 30 days
-    if days_delta < 0:
-        raise Exception("Invalid date!!! %s" % days_delta)
-    handler = OfxDownload(days=days_delta, config=CONFIG)
+    with LEDGER_LOCK:
+        now = datetime.now()
+        if LAST_SYNC is not None:
+            if now - LAST_SYNC < SYNC_INTERVAL:
+                return ""
+            most_recent_txn = LAST_SYNC
+        elif len(LEDGER.transactions) > 0:
+            most_recent_txn = min(map(lambda t: t.date, LEDGER.transactions))
+        else:
+            most_recent_txn = now - timedelta(days=30)
+        days_delta = int((now - most_recent_txn).total_seconds() / 3600 / 24)
+        days_delta = min(30, days_delta)  # cap at 30 days
+        if days_delta < 0:
+            raise Exception("Date delta must be positive: %s" % days_delta)
+        handler = OfxDownload(days=days_delta, config=CONFIG)
 
-    LAST_SYNC = datetime.now()
+        def progress_add():
+            global LAST_SYNC
+            for statement in handler.transactions():
+                for txn in statement:
+                    txn = RULES.transform(txn)
+                    if LEDGER.add(txn):
+                        yield txn
+            LAST_SYNC = now
 
-    def progress_add():
-        transactions = func_chain(
-            chain.from_iterable(handler.transactions()),
-            map(RULES.transform),
-        )
-        for txn in transactions:
-            if LEDGER.add(txn):
-                yield txn
-    return Response(map(str, progress_add()))
+        return Response(map(str, progress_add()))
