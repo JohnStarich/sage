@@ -27,16 +27,9 @@ RUN apk add --no-cache \
 
 COPY --from=builder /install /usr/local
 
-# Add crude rate limiter to appease some pesky institutions
-RUN sed -i '/def post(self, query):/a \        \
-_next = getattr(self, "_next", time.time() + 2); \
-time.sleep(max(0, _next - time.time())); \
-setattr(self, "_next", time.time() + 2) \
-' /usr/local/lib/python3*/site-packages/ofxclient/client.py
-
 WORKDIR /data
-ENTRYPOINT ["gunicorn", "server:app", "--bind=0.0.0.0"]
-CMD []
+ENTRYPOINT ["/src/sync.py"]
+CMD ["--server"]
 VOLUME ["/data"]
 
 RUN ln -s /data/ofxclient.ini ~/ofxclient.ini

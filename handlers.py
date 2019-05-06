@@ -116,7 +116,13 @@ class OfxDownload(OfxHandler):
     def statement(self, account: ClientAccount) -> Statement:
         print("Fetching transactions for %s..." % _ofx_account_name(account),
               file=sys.stderr, end=' ')
-        statement = account.statement(self._days)
+        download = account.download(days=self._days)
+        parsed = OfxParser.parse(download)
+        if 'severity' in parsed.status and \
+                parsed.status['severity'] == 'ERROR':
+            raise Exception("Error downloading transactions. "
+                            "Raw OFX response:\n\n%s" % download.getvalue())
+        statement = parsed.account.statement
         print("Downloaded transactions.", file=sys.stderr)
         return statement
 

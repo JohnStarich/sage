@@ -27,6 +27,11 @@ class Ledger(object):
         )
         self._transaction_ids = set(txn_ids)
 
+    def last_transaction(self):
+        return max(self.transactions,
+                   key=lambda t: t.date,
+                   default=None)
+
     def _contains_or_ids(self, item, find_all=False
                          ) -> (bool, Set[str]):
         """

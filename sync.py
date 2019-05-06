@@ -5,7 +5,7 @@ from handlers import OfxDownload, OfxFiles
 from itertools import chain
 from ledger import Ledger, LedgerPosting, LedgerTransaction
 from ofxclient.config import OfxConfig
-from os import getenv, fsync
+from os import getenv, fsync, set_inheritable
 from pathlib import Path
 from rules import RulesFile
 
@@ -21,10 +21,16 @@ def apply_rules(rules: RulesFile, statement_transactions):
 
 
 class FileLock(object):
-    def __init__(self, path: Path, *args, **kwargs):
-        if len(args) == 0:
-            args = ['a']  # Need write access on some OSes
-        self.file = path.open(*args, **kwargs)
+    # TODO still doesn't function correctly across multiple processes
+
+    def __init__(self, file: Path, **kwargs):
+        if 'mode' not in kwargs:
+            kwargs['mode'] = 'a'  # Need write access on some OSes
+        if isinstance(file, Path):
+            self.file = open(file, **kwargs)
+            set_inheritable(self.file.fileno(), True)
+        else:
+            raise TypeError("Invalid type for 'file': %s" % type(file))
 
     def __enter__(self, *args, **kwargs):
         fcntl.lockf(self.file.fileno(), fcntl.LOCK_EX)
@@ -65,20 +71,33 @@ if __name__ == '__main__':
                         help="WARNING: This flag updates your ledger file in-"
                         "place. Make certain it is under version control "
                         "(e.g. Git) before using.")
-    if getenv('SYNC_EMBEDDED') == 'true':
+    embedded = getenv('SYNC_EMBEDDED') == 'true'
+    if embedded:
         parser.add_argument('--setup', action='store_true',
                             help="Start guided setup of sync and ofxclient.")
+        parser.add_argument('--server', action='store_true',
+                            help="Start a sync API server in the foreground.")
     parser.add_argument('ofx_file', nargs='*')
     args = parser.parse_args()
 
-    if hasattr(args, 'setup') and args.setup is True:
-        ofxclient_args = ['ofxclient']
-        if args.config != "":
-            ofxclient_args += ['--config', args.config]
-        rc = subprocess.call(ofxclient_args)
-        if rc != 0:
-            parser.error("ofxclient failed with exit code: %d" % rc)
-        sys.exit(0)
+    if embedded:
+        if args.setup is True:
+            ofxclient_args = ['ofxclient']
+            if args.config != "":
+                ofxclient_args += ['--config', args.config]
+            rc = subprocess.call(ofxclient_args)
+            if rc != 0:
+                parser.error("ofxclient failed with exit code: %d" % rc)
+            sys.exit(0)
+        if args.server is True:
+            from server import SyncServer, run
+            sync_server = SyncServer(
+                Path(args.ledger).expanduser(),
+                Path(args.rules).expanduser(),
+                Path(args.config).expanduser(),
+            )
+            run(sync_server)
+            sys.exit(0)
 
     if args.rules == "":
         parser.error("the following arguments are required: -r/--rules")
