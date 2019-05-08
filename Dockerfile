@@ -1,6 +1,6 @@
 FROM python:3-alpine as base
 
-FROM base as builder
+FROM base as deps
 
 RUN apk add --no-cache \
         build-base \
@@ -25,7 +25,7 @@ RUN apk add --no-cache \
         openssl \
         xmlsec
 
-COPY --from=builder /install /usr/local
+COPY --from=deps /install /usr/local
 
 WORKDIR /data
 ENTRYPOINT ["/src/sync.py"]

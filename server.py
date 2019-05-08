@@ -11,6 +11,12 @@ from os.path import getsize
 from pathlib import Path
 from rules import RulesFile
 from sync import FileLock
+from functools import wraps
+
+import csv
+import json
+import subprocess
+import shutil
 
 
 app = Flask(__name__)
@@ -133,6 +139,72 @@ def sync():
             SYNC.last_sync = now
 
         return Response(map(str, progress_add()))
+
+
+# TODO temporary work-around until hledger or alternative report can
+# be used in container
+def requires_hledger(f):
+    @wraps(f)
+    def wrapped():
+        if not shutil.which('hledger'):
+            return Response(None, 501)
+        return f()
+    return wrapped
+
+
+@app.route('/balances')
+@requires_hledger
+def get_balances():
+    process = subprocess.Popen([
+        'hledger', '-f', SYNC.ledger_file, 'balance',
+        '--empty', '--output-format=csv',
+        'assets:', 'liabilities:',
+    ], stdout=subprocess.PIPE, universal_newlines=True)
+
+    balance_lines = csv.reader(process.stdout)
+    next(balance_lines)  # skip header
+    # assuming columns are account, balance
+    balances = dict(balance_lines)
+    return json.dumps(balances, indent=True)
+
+
+@app.route('/incomestatement')
+@requires_hledger
+def get_incomestatement():
+    process = subprocess.Popen([
+        'hledger', '-f', SYNC.ledger_file, 'incomestatement',
+        '--empty', '--output-format=csv', '--monthly',
+    ], stdout=subprocess.PIPE, universal_newlines=True)
+
+    statement_lines = csv.reader(process.stdout)
+    next(statement_lines)  # skip header
+    months = next(statement_lines)[1:]
+    next(statement_lines)  # skip header
+    revenues = {}
+    for line in statement_lines:
+        account, *amounts = line
+        if account == 'Total:':
+            revenues['Total'] = amounts
+            break
+        account = account[len('revenue:'):]  # trim off 'revenue:' prefix
+        revenues[account] = amounts
+    next(statement_lines)  # skip header
+    expenses = {}
+    for line in statement_lines:
+        account, *amounts = line
+        if account == 'Total:':
+            expenses['Total'] = amounts
+            break
+        account = account[len('expenses:'):]  # trim off 'expenses:' prefix
+        expenses[account] = amounts
+    _, *net_amounts = next(statement_lines)
+    statement = {
+        'dates': months,
+        'revenues': revenues,
+        'expenses': expenses,
+        'net': net_amounts,
+    }
+    return json.dumps(statement, indent=True)
 
 
 if __name__ == '__main__':
