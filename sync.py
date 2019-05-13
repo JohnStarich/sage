@@ -167,7 +167,7 @@ if __name__ == '__main__':
 
     if args.in_place is True:
         # Append-only operations
-        output_file = FileLock(ledger_file, 'a')
+        output_file = FileLock(ledger_file)
     else:
         output_file = sys.stdout
 
