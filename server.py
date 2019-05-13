@@ -2,8 +2,10 @@
 
 from datetime import datetime, timedelta
 from flask import Flask, Response
+from functools import wraps
 from gunicorn.app.base import BaseApplication
 from handlers import OfxDownload
+from itertools import chain
 from lazy import lazy
 from ledger import Ledger
 from ofxclient.config import OfxConfig
@@ -11,7 +13,6 @@ from os.path import getsize
 from pathlib import Path
 from rules import RulesFile
 from sync import FileLock
-from functools import wraps
 
 import csv
 import json
@@ -152,14 +153,29 @@ def requires_hledger(f):
     return wrapped
 
 
+def process_output(process) -> Exception:
+    lines = chain(process.stderr.readlines(), process.stdout.readlines())
+    output = ''.join(lines)
+    return Exception("Error fetching income statement (%d):\n%s" % (
+        process.returncode,
+        output,
+    ))
+
+
 @app.route('/balances')
 @requires_hledger
 def get_balances():
-    process = subprocess.Popen([
-        'hledger', '-f', SYNC.ledger_file, 'balance',
-        '--empty', '--output-format=csv',
-        'assets:', 'liabilities:',
-    ], stdout=subprocess.PIPE, universal_newlines=True)
+    process = subprocess.Popen(
+        ['hledger', '-f', SYNC.ledger_file, 'balance',
+         '--empty', '--output-format=csv',
+         'assets:', 'liabilities:'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
+    process.wait()
+    if process.returncode != 0:
+        raise process_output(process)
 
     balance_lines = csv.reader(process.stdout)
     next(balance_lines)  # skip header
@@ -171,10 +187,16 @@ def get_balances():
 @app.route('/incomestatement')
 @requires_hledger
 def get_incomestatement():
-    process = subprocess.Popen([
-        'hledger', '-f', SYNC.ledger_file, 'incomestatement',
-        '--empty', '--output-format=csv', '--monthly',
-    ], stdout=subprocess.PIPE, universal_newlines=True)
+    process = subprocess.Popen(
+        ['hledger', '-f', SYNC.ledger_file, 'incomestatement',
+         '--empty', '--output-format=csv', '--monthly'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
+    process.wait()
+    if process.returncode != 0:
+        raise process_output(process)
 
     statement_lines = csv.reader(process.stdout)
     next(statement_lines)  # skip header
