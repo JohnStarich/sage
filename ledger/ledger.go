@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"strings"
 )
 
 type Ledger struct {
@@ -40,51 +39,8 @@ func New(transactions []Transaction) (*Ledger, error) {
 func NewFromReader(reader io.Reader) (*Ledger, error) {
 	var transactions []Transaction
 	scanner := bufio.NewScanner(reader)
-	var txn Transaction
-	readingPostings := false
-
-	endTxn := func() error {
-		if !readingPostings {
-			return nil
-		}
-		if len(txn.Postings) < 2 {
-			return fmt.Errorf("A transaction must have at least two postings: %s", txn.String())
-		}
-		readingPostings = false
-		transactions = append(transactions, txn)
-		txn = Transaction{}
-		return nil
-	}
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if trimLine := strings.TrimSpace(line); trimLine == "" || trimLine[0] == ';' {
-			// is blank line
-			if err := endTxn(); err != nil {
-				return nil, err
-			}
-		} else if !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
-			if err := endTxn(); err != nil {
-				return nil, err
-			}
-			// is txn payee line
-			err := parsePayeeLine(&txn, line)
-			if err != nil {
-				return nil, err
-			}
-			readingPostings = true
-		} else if readingPostings {
-			// is posting line
-			posting, err := NewPostingFromString(line)
-			if err != nil {
-				return nil, err
-			}
-			txn.Postings = append(txn.Postings, posting)
-		} else {
-			return nil, fmt.Errorf("Unknown line format detected: %s", line)
-		}
-	}
-	if err := endTxn(); err != nil {
+	transactions, err := readAllTransactions(scanner)
+	if err != nil {
 		return nil, err
 	}
 	return New(transactions)

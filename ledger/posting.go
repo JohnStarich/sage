@@ -8,6 +8,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const (
+	usd = "$"
+)
+
 type Posting struct {
 	Account  string
 	Amount   *decimal.Decimal
@@ -20,12 +24,8 @@ type Posting struct {
 func NewPostingFromString(line string) (Posting, error) {
 	var posting Posting
 	// TODO support more than USD
-	posting.Currency = "$"
 	// comment / tags
 	tokens := strings.SplitN(line, ";", 2)
-	if len(tokens) == 0 {
-		return posting, fmt.Errorf("Invalid posting has no tokens: '%s'", line)
-	}
 	line = strings.TrimSpace(tokens[0])
 	if len(tokens) == 2 {
 		posting.Comment, posting.Tags = parseTags(strings.TrimSpace(tokens[1]))
@@ -33,10 +33,10 @@ func NewPostingFromString(line string) (Posting, error) {
 
 	// account
 	tokens = strings.SplitN(line, "  ", 2)
-	if len(tokens) == 0 {
+	posting.Account = strings.TrimSpace(tokens[0])
+	if posting.Account == "" {
 		return posting, fmt.Errorf("An account name must be specified: '%s'", line)
 	}
-	posting.Account = strings.TrimSpace(tokens[0])
 	if len(tokens) < 2 {
 		return posting, nil
 	}
@@ -44,14 +44,12 @@ func NewPostingFromString(line string) (Posting, error) {
 
 	// amount / balance
 	tokens = strings.SplitN(line, "=", 2)
-	if len(tokens) == 0 {
-		return posting, fmt.Errorf("Invalid posting amount: '%s'", line)
-	}
 	var err error
 	posting.Amount, err = parseAmount(strings.TrimSpace(tokens[0]))
 	if err != nil {
 		return posting, errors.Wrap(err, "Invalid amount")
 	}
+	posting.Currency = usd
 	if len(tokens) == 2 {
 		posting.Balance, err = parseAmount(strings.TrimSpace(tokens[1]))
 		if err != nil {
@@ -62,7 +60,7 @@ func NewPostingFromString(line string) (Posting, error) {
 }
 
 func parseAmount(amount string) (*decimal.Decimal, error) {
-	amount = strings.TrimPrefix(amount, "$")
+	amount = strings.TrimPrefix(amount, usd)
 	amount = strings.TrimSpace(amount)
 	decAmount, err := decimal.NewFromString(amount)
 	if err != nil {
@@ -91,7 +89,7 @@ func (p Posting) FormatTable(accountLen, amountLen int) string {
 		balance = fmt.Sprintf(" = %s %s", p.Currency, p.Balance.String())
 	}
 	return fmt.Sprintf(
-		"%s  %s%s%s\n",
+		"%s  %s%s%s",
 		stringPad(p.Account, accountLen),
 		amount,
 		balance,
