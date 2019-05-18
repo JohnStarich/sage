@@ -101,13 +101,13 @@ func TestNewFromReader(t *testing.T) {
 					Postings: []Posting{
 						{
 							Account:  "expenses:food",
-							Amount:   decFloat(1.25),
+							Amount:   *decFloat(1.25),
 							Currency: usd,
 							Tags:     makeIDTag("B"),
 						},
 						{
 							Account:  "assets:Bank 1",
-							Amount:   decFloat(-1.25),
+							Amount:   *decFloat(-1.25),
 							Currency: usd,
 							Tags:     makeIDTag("C"),
 						},
@@ -137,13 +137,13 @@ func TestLedgerString(t *testing.T) {
 			Postings: []Posting{
 				{
 					Account:  "expenses:food",
-					Amount:   decFloat(1.25),
+					Amount:   *decFloat(1.25),
 					Currency: usd,
 					Tags:     makeIDTag("B"),
 				},
 				{
 					Account:  "assets:Bank 1",
-					Amount:   decFloat(-1.25),
+					Amount:   *decFloat(-1.25),
 					Currency: usd,
 					Tags:     makeIDTag("C"),
 				},

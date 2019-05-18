@@ -14,7 +14,7 @@ const (
 
 type Posting struct {
 	Account  string
-	Amount   *decimal.Decimal
+	Amount   decimal.Decimal
 	Balance  *decimal.Decimal
 	Comment  string
 	Currency string
@@ -38,7 +38,7 @@ func NewPostingFromString(line string) (Posting, error) {
 		return posting, fmt.Errorf("An account name must be specified: '%s'", line)
 	}
 	if len(tokens) < 2 {
-		return posting, nil
+		return posting, missingAmountErr
 	}
 	line = strings.TrimSpace(tokens[1])
 
@@ -51,7 +51,9 @@ func NewPostingFromString(line string) (Posting, error) {
 	}
 	posting.Currency = usd
 	if len(tokens) == 2 {
-		posting.Balance, err = parseAmount(strings.TrimSpace(tokens[1]))
+		var balance decimal.Decimal
+		balance, err = parseAmount(strings.TrimSpace(tokens[1]))
+		posting.Balance = &balance
 		if err != nil {
 			return posting, errors.Wrap(err, "Invalid balance")
 		}
@@ -59,14 +61,10 @@ func NewPostingFromString(line string) (Posting, error) {
 	return posting, nil
 }
 
-func parseAmount(amount string) (*decimal.Decimal, error) {
+func parseAmount(amount string) (decimal.Decimal, error) {
 	amount = strings.TrimPrefix(amount, usd)
 	amount = strings.TrimSpace(amount)
-	decAmount, err := decimal.NewFromString(amount)
-	if err != nil {
-		return nil, err
-	}
-	return &decAmount, nil
+	return decimal.NewFromString(amount)
 }
 
 func (p Posting) ID() string {
@@ -79,11 +77,8 @@ func stringPad(s string, amount int) string {
 }
 
 func (p Posting) FormatTable(accountLen, amountLen int) string {
-	var amount string
-	if p.Amount != nil {
-		amount = fmt.Sprintf("%s %s", p.Currency, p.Amount.String())
-		amount = stringPad(amount, amountLen+len(p.Currency)+1)
-	}
+	amount := fmt.Sprintf("%s %s", p.Currency, p.Amount.String())
+	amount = stringPad(amount, amountLen+len(p.Currency)+1)
 	var balance string
 	if p.Balance != nil {
 		balance = fmt.Sprintf(" = %s %s", p.Currency, p.Balance.String())

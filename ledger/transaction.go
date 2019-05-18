@@ -15,6 +15,10 @@ const (
 	dateFormat = "2006/01/02"
 )
 
+var (
+	missingAmountErr = fmt.Errorf("A transaction's postings may only have one missing amount, and it must be the last posting")
+)
+
 type Transaction struct {
 	Comment  string
 	Date     time.Time
@@ -27,6 +31,8 @@ func readAllTransactions(scanner *bufio.Scanner) ([]Transaction, error) {
 	var transactions []Transaction
 	var txn Transaction
 	readingPostings := false
+	missingAmount := false
+	var sum decimal.Decimal
 
 	endTxn := func() error {
 		if !readingPostings {
@@ -35,23 +41,19 @@ func readAllTransactions(scanner *bufio.Scanner) ([]Transaction, error) {
 		if len(txn.Postings) < 2 {
 			return fmt.Errorf("A transaction must have at least two postings:\n%s", txn.String())
 		}
-		var sum decimal.Decimal
+		var total decimal.Decimal
 		for _, p := range txn.Postings[:len(txn.Postings)-1] {
-			if p.Amount == nil {
-				return fmt.Errorf("A transaction's postings may only have one missing amount, and it must be the last posting:\n%s", txn.String())
-			}
-			sum = sum.Sub(*p.Amount)
+			total = total.Sub(p.Amount)
 		}
 		lastPosting := &txn.Postings[len(txn.Postings)-1]
-		if lastPosting.Amount == nil {
-			lastPosting.Amount = &sum
-			lastPosting.Currency = usd
-		} else if !lastPosting.Amount.Equal(sum) {
+		if !lastPosting.Amount.Equal(total) {
 			return fmt.Errorf("Detected unbalanced transaction:\n%s", txn.String())
 		}
 		// valid txn
 		readingPostings = false
+		missingAmount = false
 		transactions = append(transactions, txn)
+		sum = decimal.Zero
 		txn = Transaction{}
 		return nil
 	}
@@ -75,9 +77,18 @@ func readAllTransactions(scanner *bufio.Scanner) ([]Transaction, error) {
 			readingPostings = true
 		} else if readingPostings {
 			// is posting line
+			if missingAmount {
+				return nil, fmt.Errorf("Missing amount is only allowed on the last posting.")
+			}
 			posting, err := NewPostingFromString(line)
-			if err != nil {
+			if err == missingAmountErr {
+				missingAmount = true
+				posting.Amount = sum
+				posting.Currency = usd
+			} else if err != nil {
 				return nil, err
+			} else {
+				sum = sum.Sub(posting.Amount)
 			}
 			txn.Postings = append(txn.Postings, posting)
 		} else {
@@ -167,9 +178,7 @@ func (t Transaction) String() string {
 	accountLen, amountLen := 0, 0
 	for _, posting := range t.Postings {
 		accountLen = max(accountLen, len(posting.Account))
-		if posting.Amount != nil {
-			amountLen = max(amountLen, len(posting.Amount.String()))
-		}
+		amountLen = max(amountLen, len(posting.Amount.String()))
 	}
 	for _, posting := range t.Postings {
 		postings = append(postings, posting.FormatTable(-accountLen, amountLen))

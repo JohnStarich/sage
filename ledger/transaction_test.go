@@ -47,8 +47,8 @@ func TestReadAllTransactions(t *testing.T) {
 					Comment: "hey there",
 					Tags:    map[string]string{"what's": "up?"},
 					Postings: []Posting{
-						Posting{Account: "expenses:food", Amount: decFloat(1.25), Currency: usd},
-						Posting{Account: "assets:Bank 1", Amount: decFloat(-1.25), Currency: usd},
+						Posting{Account: "expenses:food", Amount: *decFloat(1.25), Currency: usd},
+						Posting{Account: "assets:Bank 1", Amount: *decFloat(-1.25), Currency: usd},
 					},
 				},
 			},
@@ -70,8 +70,8 @@ func TestReadAllTransactions(t *testing.T) {
 					Comment: "hey there",
 					Tags:    map[string]string{"what's": "up?"},
 					Postings: []Posting{
-						Posting{Account: "expenses:food", Amount: decFloat(1.25), Currency: usd},
-						Posting{Account: "assets:Bank 1", Amount: decFloat(-1.25), Currency: usd},
+						Posting{Account: "expenses:food", Amount: *decFloat(1.25), Currency: usd},
+						Posting{Account: "assets:Bank 1", Amount: *decFloat(-1.25), Currency: usd},
 					},
 				},
 				{
@@ -80,8 +80,8 @@ func TestReadAllTransactions(t *testing.T) {
 					Comment: "hey there dude",
 					Tags:    map[string]string{"what's": "up?"},
 					Postings: []Posting{
-						Posting{Account: "expenses:food", Amount: decFloat(2.33), Currency: usd},
-						Posting{Account: "assets:Bank 2", Amount: decFloat(-2.33), Currency: usd},
+						Posting{Account: "expenses:food", Amount: *decFloat(2.33), Currency: usd},
+						Posting{Account: "assets:Bank 2", Amount: *decFloat(-2.33), Currency: usd},
 					},
 				},
 			},
@@ -113,8 +113,8 @@ func TestReadAllTransactions(t *testing.T) {
 					Date:  parseDate(t, "2019/01/02"),
 					Payee: "some burger place",
 					Postings: []Posting{
-						Posting{Account: "expenses:food", Amount: decFloat(1.25), Currency: usd},
-						Posting{Account: "assets:Bank 1", Amount: decFloat(-1.25), Currency: usd},
+						Posting{Account: "expenses:food", Amount: *decFloat(1.25), Currency: usd},
+						Posting{Account: "assets:Bank 1", Amount: *decFloat(-1.25), Currency: usd},
 					},
 				},
 			},
@@ -149,8 +149,8 @@ func TestReadAllTransactions(t *testing.T) {
 					Date:  parseDate(t, "2019/01/02"),
 					Payee: "some burger place",
 					Postings: []Posting{
-						Posting{Account: "expenses:food", Amount: decFloat(1.25), Currency: usd},
-						Posting{Account: "assets:Bank 1", Amount: decFloat(-1.25), Currency: usd},
+						Posting{Account: "expenses:food", Amount: *decFloat(1.25), Currency: usd},
+						Posting{Account: "assets:Bank 1", Amount: *decFloat(-1.25), Currency: usd},
 					},
 				},
 			},
@@ -209,8 +209,8 @@ func TestReadAllTransactions(t *testing.T) {
 					Date:  parseDate(t, "2019/01/02"),
 					Payee: "some burger place",
 					Postings: []Posting{
-						Posting{Account: "expenses:food", Amount: decFloat(1.25), Currency: usd},
-						Posting{Account: "assets:Bank 1", Amount: decFloat(-1.25), Currency: usd},
+						Posting{Account: "expenses:food", Amount: *decFloat(1.25), Currency: usd},
+						Posting{Account: "assets:Bank 1", Amount: *decFloat(-1.25), Currency: usd},
 					},
 				},
 			},
@@ -319,8 +319,8 @@ func TestTransactionString(t *testing.T) {
 				Date:    parseDate(t, "2019/01/05"),
 				Payee:   "somebody",
 				Postings: []Posting{
-					{Account: "expenses:food", Amount: decFloat(1.25), Currency: usd},
-					{Account: "assets:Bank 1", Amount: decFloat(-1.25), Currency: usd},
+					{Account: "expenses:food", Amount: *decFloat(1.25), Currency: usd},
+					{Account: "assets:Bank 1", Amount: *decFloat(-1.25), Currency: usd},
 				},
 				Tags: map[string]string{"what's": "up?"},
 			},
@@ -336,8 +336,8 @@ func TestTransactionString(t *testing.T) {
 				Date:  parseDate(t, "2019/01/05"),
 				Payee: "somebody",
 				Postings: []Posting{
-					{Account: "expenses:food", Amount: decFloat(1.25), Currency: usd},
-					{Account: "assets:Bank 1", Amount: decFloat(-1.25), Currency: usd},
+					{Account: "expenses:food", Amount: *decFloat(1.25), Currency: usd},
+					{Account: "assets:Bank 1", Amount: *decFloat(-1.25), Currency: usd},
 				},
 			},
 			str: prep(

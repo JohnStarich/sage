@@ -14,17 +14,18 @@ func decFloat(f float64) *decimal.Decimal {
 
 func TestNewPostingFromString(t *testing.T) {
 	for _, tc := range []struct {
-		description string
-		str         string
-		posting     Posting
-		shouldErr   bool
+		description   string
+		str           string
+		posting       Posting
+		shouldErr     bool
+		missingAmount bool
 	}{
 		{
 			description: "fully specified posting",
 			str:         "assets:Bank1  $ 1.25 = $ 101.25 ; hey there what's: up?",
 			posting: Posting{
 				Account:  "assets:Bank1",
-				Amount:   decFloat(1.25),
+				Amount:   *decFloat(1.25),
 				Balance:  decFloat(101.25),
 				Comment:  "hey there",
 				Currency: usd,
@@ -36,7 +37,7 @@ func TestNewPostingFromString(t *testing.T) {
 			str:         "assets:Bank1  $ 1.25 = $ 101.25 ; hey there",
 			posting: Posting{
 				Account:  "assets:Bank1",
-				Amount:   decFloat(1.25),
+				Amount:   *decFloat(1.25),
 				Balance:  decFloat(101.25),
 				Comment:  "hey there",
 				Currency: usd,
@@ -47,7 +48,7 @@ func TestNewPostingFromString(t *testing.T) {
 			str:         "assets:Bank1  $ 1.25 = $ 101.25",
 			posting: Posting{
 				Account:  "assets:Bank1",
-				Amount:   decFloat(1.25),
+				Amount:   *decFloat(1.25),
 				Balance:  decFloat(101.25),
 				Currency: usd,
 			},
@@ -57,7 +58,7 @@ func TestNewPostingFromString(t *testing.T) {
 			str:         "assets:Bank1  $ 1.25 ; hey there",
 			posting: Posting{
 				Account:  "assets:Bank1",
-				Amount:   decFloat(1.25),
+				Amount:   *decFloat(1.25),
 				Comment:  "hey there",
 				Currency: usd,
 			},
@@ -67,7 +68,7 @@ func TestNewPostingFromString(t *testing.T) {
 			str:         "assets:Bank1  $ 1.25",
 			posting: Posting{
 				Account:  "assets:Bank1",
-				Amount:   decFloat(1.25),
+				Amount:   *decFloat(1.25),
 				Currency: usd,
 			},
 		},
@@ -77,6 +78,8 @@ func TestNewPostingFromString(t *testing.T) {
 			posting: Posting{
 				Account: "assets:Bank1",
 			},
+			shouldErr:     true,
+			missingAmount: true,
 		},
 		{
 			description: "invalid amount",
@@ -94,15 +97,20 @@ func TestNewPostingFromString(t *testing.T) {
 			shouldErr:   true,
 		},
 		{
-			description: "account with space",
-			str:         "assets:Bank 1",
-			posting:     Posting{Account: "assets:Bank 1"},
+			description:   "account with space",
+			str:           "assets:Bank 1",
+			posting:       Posting{Account: "assets:Bank 1"},
+			shouldErr:     true,
+			missingAmount: true,
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			posting, err := NewPostingFromString(tc.str)
 			if tc.shouldErr {
 				assert.Error(t, err)
+				if tc.missingAmount {
+					assert.Equal(t, missingAmountErr, err)
+				}
 				return
 			} else {
 				assert.NoError(t, err)
@@ -124,7 +132,7 @@ func TestPostingString(t *testing.T) {
 			description: "fully specified posting",
 			posting: Posting{
 				Account:  "assets:Bank 1",
-				Amount:   decFloat(1.25),
+				Amount:   *decFloat(1.25),
 				Balance:  decFloat(101.25),
 				Comment:  "hey there",
 				Currency: "$",
