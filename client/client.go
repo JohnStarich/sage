@@ -91,6 +91,26 @@ func (s *sageClient) Request(req *ofxgo.Request) (*ofxgo.Response, error) {
 	return ofxresp, nil
 }
 
+var (
+	requestReplacer = strings.NewReplacer(
+		"</DTCLIENT>", "",
+		"</DTSTART>", "",
+		"</DTEND>", "",
+		"</INCLUDE>", "",
+		"</USERID>", "",
+		"</USERPASS>", "",
+		"</LANGUAGE>", "",
+		"</ORG>", "",
+		"</FID>", "",
+		"</APPID>", "",
+		"</APPVER>", "",
+		"</TRNUID>", "",
+		"</BANKID>", "",
+		"</ACCTID>", "",
+		"</ACCTTYPE>", "",
+	)
+)
+
 // RequestNoParse is mostly lifted from basic client's implementation
 func (s *sageClient) RequestNoParse(r *ofxgo.Request) (*http.Response, error) {
 	r.SetClientFields(s)
@@ -100,14 +120,14 @@ func (s *sageClient) RequestNoParse(r *ofxgo.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	data := b.Bytes()
-	// fix line endings for USAA-like institutions
-	data = bytes.Replace(data, []byte{'\n'}, []byte{'\r', '\n'}, -1)
-	// fix closing tag issue for OFX 102 and USAA
-	for _, s := range []string{"DTCLIENT", "DTSTART", "DTEND", "INCLUDE", "USERID", "USERPASS", "LANGUAGE", "ORG", "FID", "APPID", "APPVER", "TRNUID", "BANKID", "ACCTID", "ACCTTYPE"} {
-		data = bytes.Replace(data, []byte("</"+s+">"), []byte{}, -1)
+	data := b.String()
+	// fix for institutions that require Windows-like line endings
+	data = strings.Replace(data, "\n", "\r\n", -1)
+	if s.Client.OfxVersion().String()[0] == '1' {
+		// fix closing tag issue for OFX 102 and USAA
+		data = requestReplacer.Replace(data)
 	}
-	b = bytes.NewBuffer(data)
+	b = bytes.NewBufferString(data)
 
 	return s.RawRequest(r.URL, b)
 }
