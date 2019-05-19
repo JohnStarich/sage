@@ -2,13 +2,10 @@ package client
 
 import (
 	"bytes"
-	"context"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/aclindsa/ofxgo"
 	"github.com/pkg/errors"
@@ -130,44 +127,4 @@ func (s *sageClient) RequestNoParse(r *ofxgo.Request) (*http.Response, error) {
 	b = bytes.NewBufferString(data)
 
 	return s.RawRequest(r.URL, b)
-}
-
-// RawRequest is mostly lifted from basic client's implementation
-func (s *sageClient) RawRequest(url string, r io.Reader) (*http.Response, error) {
-	if !strings.HasPrefix(url, "https://") {
-		return nil, errors.New("Refusing to send OFX request with possible plain-text password over non-https protocol")
-	}
-
-	req, err := http.NewRequest("POST", url, r)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "httpclient")
-	req.Header.Set("Content-Type", "application/x-ofx")
-	req.Header.Set("Accept-Type", "application/x-ofx")
-
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	req = req.WithContext(ctx)
-
-	s.Logger.Debug("Sending request", zap.Reflect("headers", req.Header))
-	response, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if response.StatusCode != 200 {
-		if ce := s.Logger.Check(zap.DebugLevel, "Bad status code in response"); ce != nil {
-			body, err := ioutil.ReadAll(response.Body)
-			if err != nil {
-				return nil, errors.Wrap(err, "Failed to read response body")
-			}
-			response.Body.Close()
-			response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-			ce.Write(zap.Reflect("headers", response.Header))
-			s.Logger.Debug(string(body))
-		}
-		return nil, errors.New("OFXQuery response status: " + response.Status)
-	}
-
-	return response, nil
 }
