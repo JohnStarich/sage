@@ -36,13 +36,6 @@ func Transactions(a Account, duration time.Duration) error {
 
 	response, err := ofxClient.Request(&query)
 	if err != nil {
-		var messages []string
-		for _, m := range query.Bank {
-			messages = append(messages, fmt.Sprintf("%+v", m))
-		}
-		for _, m := range query.CreditCard {
-			messages = append(messages, fmt.Sprintf("%+v", m))
-		}
 		return err
 	}
 
