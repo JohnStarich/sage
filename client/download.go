@@ -2,19 +2,23 @@ package client
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/aclindsa/ofxgo"
+	"github.com/johnstarich/sage/ledger"
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 )
 
-func Transactions(a Account, duration time.Duration) error {
+func Transactions(a Account, duration time.Duration) ([]ledger.Transaction, error) {
 	query, err := a.Statement(duration)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(query.Bank) == 0 && len(query.CreditCard) == 0 {
-		return errors.Errorf("Invalid statement query: does not contain any statement requests: %+v", query)
+		return nil, errors.Errorf("Invalid statement query: does not contain any statement requests: %+v", query)
 	}
 
 	institution := a.Institution()
@@ -22,7 +26,7 @@ func Transactions(a Account, duration time.Duration) error {
 
 	ofxClient, err := New(institution.URL(), config)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	query.URL = institution.URL()
@@ -36,82 +40,136 @@ func Transactions(a Account, duration time.Duration) error {
 
 	response, err := ofxClient.Request(&query)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if response.Signon.Status.Code != 0 {
 		meaning, err := response.Signon.Status.CodeMeaning()
 		if err != nil {
-			return errors.Wrap(err, "Failed to parse OFX response code")
+			return nil, errors.Wrap(err, "Failed to parse OFX response code")
 		}
-		return errors.Errorf("Nonzero signon status (%d: %s) with message: %s", response.Signon.Status.Code, meaning, response.Signon.Status.Message)
+		return nil, errors.Errorf("Nonzero signon status (%d: %s) with message: %s", response.Signon.Status.Code, meaning, response.Signon.Status.Message)
 	}
 
-	if len(query.Bank) > 0 {
-		if len(response.Bank) == 0 {
-			return errors.Errorf("No banking messages received")
+	statements := append(response.Bank, response.CreditCard...)
+	if len(statements) == 0 {
+		return nil, errors.Errorf("No messages received")
+	}
+
+	accountName := LedgerAccountName(a)
+	var txns []ledger.Transaction
+
+	for _, message := range statements {
+		var balance decimal.Decimal
+		var balanceCurrency string
+		var balanceDate time.Time
+		var statementTxns []ofxgo.Transaction
+		switch statement := message.(type) {
+		case *ofxgo.StatementResponse:
+			balance, err = decimal.NewFromString(statement.BalAmt.String())
+			if err != nil {
+				return nil, err
+			}
+			balanceCurrency = normalizeCurrency(statement.CurDef.String())
+			balanceDate = statement.DtAsOf.Time
+			statementTxns = statement.BankTranList.Transactions
+		case *ofxgo.CCStatementResponse:
+			balance, err = decimal.NewFromString(statement.BalAmt.String())
+			if err != nil {
+				return nil, err
+			}
+			balanceCurrency = normalizeCurrency(statement.CurDef.String())
+			balanceDate = statement.DtAsOf.Time
+			statementTxns = statement.BankTranList.Transactions
+		default:
+			return nil, fmt.Errorf("Invalid statement type: %T", message)
 		}
 
-		if stmt, ok := response.Bank[0].(*ofxgo.StatementResponse); ok {
-			fmt.Printf("Balance: %s %s (as of %s)\n", stmt.BalAmt, stmt.CurDef, stmt.DtAsOf)
-			fmt.Println("Transactions:")
-			for _, tran := range stmt.BankTranList.Transactions {
-				currency := stmt.CurDef
-				if tran.Currency != nil {
-					if ok, _ := tran.Currency.Valid(); ok {
-						currency = tran.Currency.CurSym
-					}
+		for _, txn := range statementTxns {
+			currency := balanceCurrency
+			if txn.Currency != nil {
+				if ok, _ := txn.Currency.Valid(); ok {
+					currency = normalizeCurrency(txn.Currency.CurSym.String())
 				}
+			}
 
-				var name string
-				if len(tran.Name) > 0 {
-					name = string(tran.Name)
-				} else {
-					name = string(tran.Payee.Name)
-				}
+			var name string
+			if len(txn.Name) > 0 {
+				name = string(txn.Name)
+			} else {
+				name = string(txn.Payee.Name)
+			}
 
-				if len(tran.Memo) > 0 {
-					name = name + " - " + string(tran.Memo)
-				}
+			// TODO poke ofxgo lib maintainers to support a decimal type here. 100 bits of precision is good, but there's no reason it can't be the exact same value the institution returned.
+			amount, err := decimal.NewFromString(txn.TrnAmt.String())
+			if err != nil {
+				return nil, err
+			}
 
-				fmt.Printf("%s %-15s %-11s %s\n", tran.DtPosted, tran.TrnAmt.String()+" "+currency.String(), tran.TrnType, name)
+			// Follows FITID recommendation from OFX 102 Section 3.2.1
+			id := institution.FID() + "-" + a.ID() + "-" + string(txn.FiTID)
+			// clean ID for use as an hledger tag
+			// TODO move tag (de)serialization into ledger package
+			id = strings.Replace(id, ",", "_", -1)
+			id = strings.Replace(id, ":", "_", -1)
+
+			txns = append(txns, ledger.Transaction{
+				Date:  txn.DtPosted.Time,
+				Payee: name,
+				Postings: []ledger.Posting{
+					{
+						Account:  accountName,
+						Amount:   amount,
+						Balance:  nil, // set balance in next section
+						Currency: currency,
+						Tags:     map[string]string{"id": id},
+					},
+					{
+						Account:  "uncategorized",
+						Amount:   amount.Neg(),
+						Currency: currency,
+					},
+				},
+			})
+		}
+
+		sort.SliceStable(txns, func(a, b int) bool {
+			return txns[a].Date.Before(txns[b].Date)
+		})
+
+		balanceDateIndex := 0
+		for i, txn := range txns {
+			if !balanceDate.Before(txn.Date) {
+				balanceDateIndex = i
+				break
 			}
 		}
-		return nil
+
+		runningBalance := balance
+		for i := range txns[0:balanceDateIndex] {
+			i = len(txns) - 1 - i // reverse index
+			txns[i].Postings[0].Balance = decToPtr(runningBalance)
+			runningBalance = runningBalance.Sub(txns[i].Postings[0].Amount)
+		}
+		runningBalance = balance
+		for i := range txns[balanceDateIndex:] {
+			runningBalance = runningBalance.Add(txns[i].Postings[0].Amount)
+			txns[i].Postings[0].Balance = decToPtr(runningBalance)
+		}
 	}
 
-	if len(query.CreditCard) > 0 {
-		if len(response.CreditCard) == 0 {
-			return errors.Errorf("No credit card messages received")
-		}
+	return txns, nil
+}
 
-		if stmt, ok := response.CreditCard[0].(*ofxgo.CCStatementResponse); ok {
-			fmt.Printf("Balance: %s %s (as of %s)\n", stmt.BalAmt, stmt.CurDef, stmt.DtAsOf)
-			fmt.Println("Transactions:")
-			for _, tran := range stmt.BankTranList.Transactions {
-				currency := stmt.CurDef
-				if tran.Currency != nil {
-					if ok, _ := tran.Currency.Valid(); ok {
-						currency = tran.Currency.CurSym
-					}
-				}
+func decToPtr(d decimal.Decimal) *decimal.Decimal {
+	return &d
+}
 
-				var name string
-				if len(tran.Name) > 0 {
-					name = string(tran.Name)
-				} else {
-					name = string(tran.Payee.Name)
-				}
-
-				if len(tran.Memo) > 0 {
-					name = name + " - " + string(tran.Memo)
-				}
-
-				fmt.Printf("%s %-15s %-11s %s\n", tran.DtPosted, tran.TrnAmt.String()+" "+currency.String(), tran.TrnType, name)
-			}
-		}
-		return nil
+func normalizeCurrency(currency string) string {
+	switch currency {
+	case "USD":
+		return "$"
+	default:
+		return currency
 	}
-
-	return errors.Errorf("Unknown account type: %+v", a)
 }

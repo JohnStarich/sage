@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/aclindsa/ofxgo"
@@ -30,4 +31,32 @@ func (b baseAccount) ID() string {
 func (b baseAccount) Description() string {
 	// TODO not implemented
 	return ""
+}
+
+func LedgerAccountName(a Account) string {
+	var accountType string
+	switch a.(type) {
+	case CreditCard:
+		accountType = "liabilities"
+	case Bank:
+		accountType = "assets"
+	default:
+		panic("unimplemented")
+	}
+
+	description := a.Institution().Description()
+	accountName := a.Description()
+	if accountName == "" {
+		accountName = redactPrefix(a.ID())
+	}
+	return fmt.Sprintf("%s:%s:%s", accountType, description, accountName)
+}
+
+func redactPrefix(s string) string {
+	const suffixLen = 4
+	suffix := s
+	if len(s) > suffixLen {
+		suffix = s[len(s)-suffixLen:]
+	}
+	return "****" + suffix
 }

@@ -6,13 +6,15 @@ import (
 	"github.com/aclindsa/ofxgo"
 )
 
+type Bank interface {
+	Account
+
+	BankID() string
+}
+
 type bankAccount struct {
 	baseAccount
 	bankID string
-}
-
-func (b bankAccount) ID() string {
-	return b.id
 }
 
 func (b bankAccount) BankID() string {
