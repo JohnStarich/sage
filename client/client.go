@@ -20,12 +20,7 @@ type sageClient struct {
 func New(url string, config Config) (ofxgo.Client, error) {
 	s := &sageClient{}
 
-	basicClient := &ofxgo.BasicClient{
-		AppID:       "OFXGO",
-		AppVer:      "0001",
-		SpecVersion: ofxgo.OfxVersion200,
-		NoIndent:    config.NoIndent,
-	}
+	basicClient := &ofxgo.BasicClient{NoIndent: config.NoIndent}
 	if config.AppID != "" {
 		basicClient.AppID = config.AppID
 	}
