@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 )
 
@@ -19,6 +20,7 @@ var (
 	missingAmountErr = fmt.Errorf("A transaction's postings may only have one missing amount, and it must be the last posting")
 )
 
+// Transaction is a strict(er) representation of a ledger transaction. The extra restrictions are used to verify correctness more easily.
 type Transaction struct {
 	Comment  string
 	Date     time.Time
@@ -108,11 +110,10 @@ func parsePayeeLine(txn *Transaction, line string) error {
 		txn.Comment, txn.Tags = parseTags(strings.TrimSpace(tokens[1]))
 	}
 	tokens = strings.SplitN(line, " ", 2)
-	if len(tokens) != 2 {
-		return fmt.Errorf("Not enough tokens for payee line: %s", line)
+	date := strings.TrimSpace(tokens[0])
+	if len(tokens) == 2 {
+		txn.Payee = strings.TrimSpace(tokens[1])
 	}
-	date, payee := strings.TrimSpace(tokens[0]), strings.TrimSpace(tokens[1])
-	txn.Payee = payee
 	var err error
 	txn.Date, err = time.Parse(dateFormat, date)
 	if err != nil {
@@ -171,6 +172,24 @@ func max(a, b int) int {
 
 func (t Transaction) ID() string {
 	return t.Tags[idTag]
+}
+
+func (t Transaction) Balanced() bool {
+	var sum decimal.Decimal
+	for _, p := range t.Postings {
+		sum = sum.Add(p.Amount)
+	}
+	return sum.IsZero()
+}
+
+func (t Transaction) Validate() error {
+	if len(t.Postings) < 2 {
+		return errors.New("Transactions must have a minimum of 2 postings")
+	}
+	if !t.Balanced() {
+		return errors.Errorf("Transaction is not balanced - postings do not sum to zero: %+v", t.Postings)
+	}
+	return nil
 }
 
 func (t Transaction) String() string {

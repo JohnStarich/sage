@@ -103,6 +103,15 @@ func TestNewPostingFromString(t *testing.T) {
 			shouldErr:     true,
 			missingAmount: true,
 		},
+		{
+			description: "thousands separator",
+			str:         "assets:Bank1  $ 1,234.56",
+			posting: Posting{
+				Account:  "assets:Bank1",
+				Amount:   *decFloat(1234.56),
+				Currency: usd,
+			},
+		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			posting, err := NewPostingFromString(tc.str)

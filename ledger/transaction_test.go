@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -231,6 +232,24 @@ func TestReadAllTransactions(t *testing.T) {
 			`,
 			shouldErr: true,
 		},
+		{
+			description: "missing payee",
+			input: `
+2019/01/02
+	expenses:food   $ 1.25
+	assets:Bank 1
+			`,
+			transactions: []Transaction{
+				{
+					Date:  parseDate(t, "2019/01/02"),
+					Payee: "",
+					Postings: []Posting{
+						Posting{Account: "expenses:food", Amount: *decFloat(1.25), Currency: usd},
+						Posting{Account: "assets:Bank 1", Amount: *decFloat(-1.25), Currency: usd},
+					},
+				},
+			},
+		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			txns, err := readAllTransactions(scanFromStr(tc.input))
@@ -351,4 +370,108 @@ func TestTransactionString(t *testing.T) {
 			assert.Equal(t, tc.str, tc.txn.String())
 		})
 	}
+}
+
+func TestTransactionBalanced(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		txn         Transaction
+		balanced    bool
+	}{
+		{
+			description: "zero postings",
+			txn:         Transaction{},
+			balanced:    true,
+		},
+		{
+			description: "one zero posting",
+			txn: Transaction{
+				Postings: []Posting{{Amount: decimal.Zero}},
+			},
+			balanced: true,
+		},
+		{
+			description: "two balanced postings",
+			txn: Transaction{
+				Postings: []Posting{
+					{Amount: *decFloat(1.25)},
+					{Amount: *decFloat(-1.25)},
+				},
+			},
+			balanced: true,
+		},
+		{
+			description: "multiple balanced postings",
+			txn: Transaction{
+				Postings: []Posting{
+					{Amount: *decFloat(1.25)},
+					{Amount: *decFloat(6.25)},
+					{Amount: *decFloat(-4)},
+					{Amount: *decFloat(-3.50)},
+				},
+			},
+			balanced: true,
+		},
+		{
+			description: "one unbalanced posting",
+			txn: Transaction{
+				Postings: []Posting{{Amount: *decFloat(1)}},
+			},
+			balanced: false,
+		},
+		{
+			description: "two unbalanced postings",
+			txn: Transaction{
+				Postings: []Posting{
+					{Amount: *decFloat(1)},
+					{Amount: *decFloat(2)},
+				},
+			},
+			balanced: false,
+		},
+		{
+			description: "multiple unbalanced postings",
+			txn: Transaction{
+				Postings: []Posting{
+					{Amount: *decFloat(1)},
+					{Amount: *decFloat(2)},
+					{Amount: *decFloat(3)},
+					{Amount: *decFloat(4)},
+					{Amount: *decFloat(-100)},
+				},
+			},
+			balanced: false,
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			assert.Equal(t, tc.balanced, tc.txn.Balanced())
+		})
+	}
+}
+
+func TestTransactionValidate(t *testing.T) {
+	t.Run("valid", func(t *testing.T) {
+		assert.NoError(t, Transaction{
+			Postings: []Posting{
+				{Amount: *decFloat(1.25)},
+				{Amount: *decFloat(-1.25)},
+			},
+		}.Validate())
+	})
+
+	// require 2 minimum postings to more easily verify assertions and categorize transactions
+	t.Run("too few postings", func(t *testing.T) {
+		assert.EqualError(t, Transaction{}.Validate(), "Transactions must have a minimum of 2 postings")
+	})
+
+	t.Run("unbalanced postings", func(t *testing.T) {
+		err := Transaction{
+			Postings: []Posting{
+				{Amount: *decFloat(1)},
+				{Amount: *decFloat(2)},
+			},
+		}.Validate()
+		require.Error(t, err)
+		assert.True(t, strings.HasPrefix(err.Error(), "Transaction is not balanced - postings do not sum to zero:"))
+	})
 }

@@ -64,6 +64,8 @@ func NewPostingFromString(line string) (Posting, error) {
 func parseAmount(amount string) (decimal.Decimal, error) {
 	amount = strings.TrimPrefix(amount, usd)
 	amount = strings.TrimSpace(amount)
+	// TODO support thousands delimiter other than ','
+	amount = strings.Replace(amount, ",", "", -1)
 	return decimal.NewFromString(amount)
 }
 
