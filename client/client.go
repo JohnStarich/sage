@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -12,12 +13,24 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	loggerDevEnv = "DEVELOPMENT"
+)
+
 type sageClient struct {
 	ofxgo.Client
 	*zap.Logger
 }
 
 func New(url string, config Config) (ofxgo.Client, error) {
+	return newClient(url, config, getLoggerFromEnv, ofxgo.GetClient)
+}
+
+func newClient(
+	url string, config Config,
+	getLogger func() (*zap.Logger, error),
+	getClient func(string, *ofxgo.BasicClient) ofxgo.Client,
+) (ofxgo.Client, error) {
 	s := &sageClient{}
 
 	basicClient := &ofxgo.BasicClient{NoIndent: config.NoIndent}
@@ -34,57 +47,76 @@ func New(url string, config Config) (ofxgo.Client, error) {
 		}
 		basicClient.SpecVersion = ofxVersion
 	}
-	s.Client = ofxgo.GetClient(url, basicClient)
+	s.Client = getClient(url, basicClient)
 	var err error
-	if os.Getenv("DEVELOPMENT") == "true" {
-		s.Logger, err = zap.NewDevelopment()
-	} else {
-		s.Logger, err = zap.NewProduction()
-	}
+	s.Logger, err = getLogger()
 	if err != nil {
 		return nil, err
 	}
 	return s, nil
 }
 
-func (s *sageClient) Request(req *ofxgo.Request) (*ofxgo.Response, error) {
-	if ce := s.Logger.Check(zap.DebugLevel, "Sending request"); ce != nil {
-		reqCopyStruct := *req
-		reqCopy := &reqCopyStruct
-		reqCopy.SetClientFields(s.Client)
-		b, err := reqCopy.Marshal()
-		if err == nil {
-			ce.Write()
-			s.Logger.Debug(b.String())
-		} else {
-			ce.Write(zap.Error(err))
-		}
+func getLoggerFromEnv() (*zap.Logger, error) {
+	if os.Getenv(loggerDevEnv) == "true" {
+		return zap.NewDevelopment()
 	}
+	return zap.NewProduction()
+}
 
-	response, reqErr := s.RequestNoParse(req)
-	if ce := s.Logger.Check(zap.DebugLevel, "Received response"); response != nil && ce != nil {
-		b, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			return nil, errors.Wrap(err, "Failed to read response body")
-		}
-		response.Body.Close()
-		s.Logger.Debug(string(b))
-		response.Body = ioutil.NopCloser(bytes.NewBuffer(b))
-	}
-	if reqErr != nil {
-		return nil, errors.Wrap(reqErr, "Error sending request")
+func (s *sageClient) Request(req *ofxgo.Request) (*ofxgo.Response, error) {
+	return request(req, s.RequestNoParse, ofxgo.ParseResponse)
+}
+
+func request(
+	req *ofxgo.Request,
+	serveRequest func(*ofxgo.Request) (*http.Response, error),
+	parseResponse func(io.Reader) (*ofxgo.Response, error),
+) (*ofxgo.Response, error) {
+	response, err := serveRequest(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error sending request")
 	}
 	defer response.Body.Close()
 
-	ofxresp, parseErr := ofxgo.ParseResponse(response.Body)
+	ofxresp, parseErr := parseResponse(response.Body)
 	if parseErr != nil {
 		return nil, errors.Wrap(parseErr, "Error parsing response body")
 	}
 	return ofxresp, nil
 }
 
-var (
-	requestReplacer = strings.NewReplacer(
+// RequestNoParse is mostly lifted from basic client's implementation
+func (s *sageClient) RequestNoParse(req *ofxgo.Request) (*http.Response, error) {
+	return doInstrumentedRequest(req, s.Logger, newRequestMarshaler(s), s.RawRequest)
+}
+
+func doInstrumentedRequest(
+	req *ofxgo.Request, logger *zap.Logger, marshal requestMarshaler,
+	doPostRequest func(string, io.Reader) (*http.Response, error),
+) (*http.Response, error) {
+	requestData, err := marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	logger.Debug("Marshaled request:\n" + requestData.String())
+
+	response, responseErr := doPostRequest(req.URL, requestData)
+	if ce := logger.Check(zap.DebugLevel, "Received response"); responseErr == nil && ce != nil {
+		b, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to read response body")
+		}
+		response.Body.Close()
+		logger.Debug(string(b))
+		response.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+	}
+	return response, responseErr
+}
+
+type requestMarshaler func(*ofxgo.Request) (*bytes.Buffer, error)
+
+func newRequestMarshaler(c ofxgo.Client) requestMarshaler {
+	requestReplacer := strings.NewReplacer(
 		"</DTCLIENT>", "",
 		"</DTSTART>", "",
 		"</DTEND>", "",
@@ -101,25 +133,21 @@ var (
 		"</ACCTID>", "",
 		"</ACCTTYPE>", "",
 	)
-)
+	return func(req *ofxgo.Request) (*bytes.Buffer, error) {
+		req.SetClientFields(c)
 
-// RequestNoParse is mostly lifted from basic client's implementation
-func (s *sageClient) RequestNoParse(r *ofxgo.Request) (*http.Response, error) {
-	r.SetClientFields(s)
+		b, err := req.Marshal()
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to marshal request")
+		}
 
-	b, err := r.Marshal()
-	if err != nil {
-		return nil, err
+		data := b.String()
+		// fix for institutions that require Windows-like line endings
+		data = strings.Replace(data, "\n", "\r\n", -1)
+		if c.OfxVersion().String()[0] == '1' {
+			// fix closing tag issue for OFX 102 and USAA
+			data = requestReplacer.Replace(data)
+		}
+		return bytes.NewBufferString(data), nil
 	}
-
-	data := b.String()
-	// fix for institutions that require Windows-like line endings
-	data = strings.Replace(data, "\n", "\r\n", -1)
-	if s.Client.OfxVersion().String()[0] == '1' {
-		// fix closing tag issue for OFX 102 and USAA
-		data = requestReplacer.Replace(data)
-	}
-	b = bytes.NewBufferString(data)
-
-	return s.RawRequest(r.URL, b)
 }
