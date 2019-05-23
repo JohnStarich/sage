@@ -29,6 +29,11 @@ type Savings struct {
 	bankAccount
 }
 
+const (
+	checkingType = "CHECKING"
+	savingsType  = "SAVINGS"
+)
+
 func NewCheckingAccount(id, bankID string, institution Institution) Account {
 	return Checking{bankAccount: newBankAccount(id, bankID, institution)}
 }
@@ -48,12 +53,21 @@ func newBankAccount(id, bankID string, institution Institution) bankAccount {
 }
 
 func (b bankAccount) statementFromAccountType(duration time.Duration, accountType string) (ofxgo.Request, error) {
-	uid, err := ofxgo.RandomUID()
+	return generateBankStatement(b, duration, accountType, ofxgo.RandomUID, time.Now)
+}
+
+func generateBankStatement(
+	b bankAccount,
+	duration time.Duration, accountType string,
+	getUID func() (*ofxgo.UID, error),
+	getTime func() time.Time,
+) (ofxgo.Request, error) {
+	uid, err := getUID()
 	if err != nil {
 		return ofxgo.Request{}, err
 	}
 
-	end := time.Now()
+	end := getTime()
 	start := end.Add(-duration)
 	accountTypeEnum, err := ofxgo.NewAcctType(accountType)
 	if err != nil {
@@ -77,9 +91,9 @@ func (b bankAccount) statementFromAccountType(duration time.Duration, accountTyp
 }
 
 func (c Checking) Statement(duration time.Duration) (ofxgo.Request, error) {
-	return c.statementFromAccountType(duration, "CHECKING")
+	return c.statementFromAccountType(duration, checkingType)
 }
 
 func (s Savings) Statement(duration time.Duration) (ofxgo.Request, error) {
-	return s.statementFromAccountType(duration, "SAVINGS")
+	return s.statementFromAccountType(duration, savingsType)
 }

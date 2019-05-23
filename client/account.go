@@ -41,7 +41,7 @@ func LedgerAccountName(a Account) string {
 	case Bank:
 		accountType = "assets"
 	default:
-		panic("unimplemented")
+		panic(fmt.Sprintf("Unknown account type: %T", a))
 	}
 
 	description := a.Institution().Description()
