@@ -12,8 +12,22 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func Transactions(a Account, duration time.Duration) ([]ledger.Transaction, error) {
-	query, err := a.Statement(duration)
+// Transactions downloads and returns transactions from a bank or credit card account for the given time period, ending today
+func Transactions(account Account, duration time.Duration) ([]ledger.Transaction, error) {
+	institution := account.Institution()
+	client, err := New(institution.URL(), institution.Config())
+	if err != nil {
+		return nil, err
+	}
+
+	return transactions(account, duration, client.Request)
+}
+
+func transactions(
+	account Account, duration time.Duration,
+	doRequest func(*ofxgo.Request) (*ofxgo.Response, error),
+) ([]ledger.Transaction, error) {
+	query, err := account.Statement(duration)
 	if err != nil {
 		return nil, err
 	}
@@ -21,13 +35,8 @@ func Transactions(a Account, duration time.Duration) ([]ledger.Transaction, erro
 		return nil, errors.Errorf("Invalid statement query: does not contain any statement requests: %+v", query)
 	}
 
-	institution := a.Institution()
+	institution := account.Institution()
 	config := institution.Config()
-
-	ofxClient, err := New(institution.URL(), config)
-	if err != nil {
-		return nil, err
-	}
 
 	query.URL = institution.URL()
 	query.Signon = ofxgo.SignonRequest{
@@ -38,7 +47,7 @@ func Transactions(a Account, duration time.Duration) ([]ledger.Transaction, erro
 		UserPass:  ofxgo.String(institution.Password()),
 	}
 
-	response, err := ofxClient.Request(&query)
+	response, err := doRequest(&query)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +65,6 @@ func Transactions(a Account, duration time.Duration) ([]ledger.Transaction, erro
 		return nil, errors.Errorf("No messages received")
 	}
 
-	accountName := LedgerAccountName(a)
 	var txns []ledger.Transaction
 
 	for _, message := range statements {
@@ -85,82 +93,22 @@ func Transactions(a Account, duration time.Duration) ([]ledger.Transaction, erro
 			return nil, fmt.Errorf("Invalid statement type: %T", message)
 		}
 
+		accountName := LedgerAccountName(account)
 		for _, txn := range statementTxns {
-			currency := balanceCurrency
-			if txn.Currency != nil {
-				if ok, _ := txn.Currency.Valid(); ok {
-					currency = normalizeCurrency(txn.Currency.CurSym.String())
-				}
-			}
-
-			var name string
-			if len(txn.Name) > 0 {
-				name = string(txn.Name)
-			} else {
-				name = string(txn.Payee.Name)
-			}
-
-			// TODO poke ofxgo lib maintainers to support a decimal type here. 100 bits of precision is good, but there's no reason it can't be the exact same value the institution returned.
-			amount, err := decimal.NewFromString(txn.TrnAmt.String())
+			parsedTxn, err := parseTransaction(txn, balanceCurrency, account, accountName)
 			if err != nil {
 				return nil, err
 			}
-
-			// Follows FITID recommendation from OFX 102 Section 3.2.1
-			id := institution.FID() + "-" + a.ID() + "-" + string(txn.FiTID)
-			// clean ID for use as an hledger tag
-			// TODO move tag (de)serialization into ledger package
-			id = strings.Replace(id, ",", "_", -1)
-			id = strings.Replace(id, ":", "_", -1)
-
-			txns = append(txns, ledger.Transaction{
-				Date:  txn.DtPosted.Time,
-				Payee: name,
-				Postings: []ledger.Posting{
-					{
-						Account:  accountName,
-						Amount:   amount,
-						Balance:  nil, // set balance in next section
-						Currency: currency,
-						Tags:     map[string]string{"id": id},
-					},
-					{
-						Account:  "uncategorized",
-						Amount:   amount.Neg(),
-						Currency: currency,
-					},
-				},
-			})
+			txns = append(txns, parsedTxn)
 		}
 
-		sort.SliceStable(txns, func(a, b int) bool {
-			return txns[a].Date.Before(txns[b].Date)
-		})
-
-		balanceDateIndex := 0
-		for i, txn := range txns {
-			if !balanceDate.Before(txn.Date) {
-				balanceDateIndex = i
-				break
-			}
-		}
-
-		runningBalance := balance
-		for i := range txns[0:balanceDateIndex] {
-			i = len(txns) - 1 - i // reverse index
-			txns[i].Postings[0].Balance = decToPtr(runningBalance)
-			runningBalance = runningBalance.Sub(txns[i].Postings[0].Amount)
-		}
-		runningBalance = balance
-		for i := range txns[balanceDateIndex:] {
-			runningBalance = runningBalance.Add(txns[i].Postings[0].Amount)
-			txns[i].Postings[0].Balance = decToPtr(runningBalance)
-		}
+		balanceTransactions(txns, balance, balanceDate)
 	}
 
 	return txns, nil
 }
 
+// decToPtr makes a copy of d and returns a reference to it
 func decToPtr(d decimal.Decimal) *decimal.Decimal {
 	return &d
 }
@@ -171,5 +119,81 @@ func normalizeCurrency(currency string) string {
 		return "$"
 	default:
 		return currency
+	}
+}
+
+func parseTransaction(txn ofxgo.Transaction, balanceCurrency string, account Account, accountName string) (ledger.Transaction, error) {
+	currency := balanceCurrency
+	if txn.Currency != nil {
+		if ok, _ := txn.Currency.Valid(); ok {
+			currency = normalizeCurrency(txn.Currency.CurSym.String())
+		}
+	}
+
+	var name string
+	if len(txn.Name) > 0 {
+		name = string(txn.Name)
+	} else {
+		name = string(txn.Payee.Name)
+	}
+
+	// TODO poke ofxgo lib maintainers to support a decimal type here. 100 bits of precision is good, but there's no reason it can't be the exact same value the institution returned.
+	amount, err := decimal.NewFromString(txn.TrnAmt.String())
+	if err != nil {
+		return ledger.Transaction{}, err
+	}
+
+	institution := account.Institution()
+	// Follows FITID recommendation from OFX 102 Section 3.2.1
+	id := institution.FID() + "-" + account.ID() + "-" + string(txn.FiTID)
+	// clean ID for use as an hledger tag
+	// TODO move tag (de)serialization into ledger package
+	id = strings.Replace(id, ",", "_", -1)
+	id = strings.Replace(id, ":", "_", -1)
+
+	return ledger.Transaction{
+		Date:  txn.DtPosted.Time,
+		Payee: name,
+		Postings: []ledger.Posting{
+			{
+				Account:  accountName,
+				Amount:   amount,
+				Balance:  nil, // set balance in next section
+				Currency: currency,
+				Tags:     map[string]string{"id": id},
+			},
+			{
+				Account:  "uncategorized",
+				Amount:   amount.Neg(),
+				Currency: currency,
+			},
+		},
+	}, nil
+}
+
+// balanceTransactions sorts and adds balances to each transaction
+func balanceTransactions(txns []ledger.Transaction, balance decimal.Decimal, balanceDate time.Time) {
+	sort.SliceStable(txns, func(a, b int) bool {
+		return txns[a].Date.Before(txns[b].Date)
+	})
+
+	balanceDateIndex := 0
+	for i, txn := range txns {
+		if !balanceDate.Before(txn.Date) {
+			balanceDateIndex = i
+			break
+		}
+	}
+
+	runningBalance := balance
+	for i := range txns[0:balanceDateIndex] {
+		i = len(txns) - 1 - i // reverse index
+		txns[i].Postings[0].Balance = decToPtr(runningBalance)
+		runningBalance = runningBalance.Sub(txns[i].Postings[0].Amount)
+	}
+	runningBalance = balance
+	for i := range txns[balanceDateIndex:] {
+		runningBalance = runningBalance.Add(txns[i].Postings[0].Amount)
+		txns[i].Postings[0].Balance = decToPtr(runningBalance)
 	}
 }
