@@ -20,12 +20,19 @@ func Transactions(account Account, duration time.Duration) ([]ledger.Transaction
 		return nil, err
 	}
 
-	return transactions(account, duration, client.Request)
+	return fetchTransactions(
+		account, duration,
+		balanceTransactions,
+		client.Request,
+		parseTransaction,
+	)
 }
 
-func transactions(
+func fetchTransactions(
 	account Account, duration time.Duration,
+	balanceTransactions func([]ledger.Transaction, decimal.Decimal, time.Time),
 	doRequest func(*ofxgo.Request) (*ofxgo.Response, error),
+	parseTransaction func(ofxgo.Transaction, string, string, func(string) string) (ledger.Transaction, error),
 ) ([]ledger.Transaction, error) {
 	query, err := account.Statement(duration)
 	if err != nil {
@@ -35,6 +42,7 @@ func transactions(
 		return nil, errors.Errorf("Invalid statement query: does not contain any statement requests: %+v", query)
 	}
 
+	accountName := LedgerAccountName(account)
 	institution := account.Institution()
 	config := institution.Config()
 
@@ -65,6 +73,7 @@ func transactions(
 		return nil, errors.Errorf("No messages received")
 	}
 
+	makeTxnID := makeUniqueTxnID(account)
 	var txns []ledger.Transaction
 
 	for _, message := range statements {
@@ -93,9 +102,8 @@ func transactions(
 			return nil, fmt.Errorf("Invalid statement type: %T", message)
 		}
 
-		accountName := LedgerAccountName(account)
 		for _, txn := range statementTxns {
-			parsedTxn, err := parseTransaction(txn, balanceCurrency, account, accountName)
+			parsedTxn, err := parseTransaction(txn, balanceCurrency, accountName, makeTxnID)
 			if err != nil {
 				return nil, err
 			}
@@ -122,34 +130,25 @@ func normalizeCurrency(currency string) string {
 	}
 }
 
-func parseTransaction(txn ofxgo.Transaction, balanceCurrency string, account Account, accountName string) (ledger.Transaction, error) {
-	currency := balanceCurrency
+func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeTxnID func(string) string) (ledger.Transaction, error) {
 	if txn.Currency != nil {
 		if ok, _ := txn.Currency.Valid(); ok {
 			currency = normalizeCurrency(txn.Currency.CurSym.String())
 		}
 	}
 
-	var name string
-	if len(txn.Name) > 0 {
-		name = string(txn.Name)
-	} else {
+	name := string(txn.Name)
+	if name == "" && txn.Payee != nil {
 		name = string(txn.Payee.Name)
 	}
 
-	// TODO poke ofxgo lib maintainers to support a decimal type here. 100 bits of precision is good, but there's no reason it can't be the exact same value the institution returned.
+	// TODO can ofxgo lib support a decimal type instead of big.Rat?
 	amount, err := decimal.NewFromString(txn.TrnAmt.String())
 	if err != nil {
 		return ledger.Transaction{}, err
 	}
 
-	institution := account.Institution()
-	// Follows FITID recommendation from OFX 102 Section 3.2.1
-	id := institution.FID() + "-" + account.ID() + "-" + string(txn.FiTID)
-	// clean ID for use as an hledger tag
-	// TODO move tag (de)serialization into ledger package
-	id = strings.Replace(id, ",", "_", -1)
-	id = strings.Replace(id, ":", "_", -1)
+	id := makeTxnID(string(txn.FiTID))
 
 	return ledger.Transaction{
 		Date:  txn.DtPosted.Time,
@@ -177,23 +176,36 @@ func balanceTransactions(txns []ledger.Transaction, balance decimal.Decimal, bal
 		return txns[a].Date.Before(txns[b].Date)
 	})
 
-	balanceDateIndex := 0
+	balanceDateIndex := len(txns)
 	for i, txn := range txns {
-		if !balanceDate.Before(txn.Date) {
+		if txn.Date.After(balanceDate) {
+			// the end of balance date
 			balanceDateIndex = i
 			break
 		}
 	}
 
 	runningBalance := balance
-	for i := range txns[0:balanceDateIndex] {
-		i = len(txns) - 1 - i // reverse index
+	for i := balanceDateIndex - 1; i >= 0; i-- {
 		txns[i].Postings[0].Balance = decToPtr(runningBalance)
 		runningBalance = runningBalance.Sub(txns[i].Postings[0].Amount)
 	}
 	runningBalance = balance
-	for i := range txns[balanceDateIndex:] {
+	for i := balanceDateIndex; i < len(txns); i++ {
 		runningBalance = runningBalance.Add(txns[i].Postings[0].Amount)
 		txns[i].Postings[0].Balance = decToPtr(runningBalance)
+	}
+}
+
+func makeUniqueTxnID(account Account) func(string) string {
+	return func(txnID string) string {
+		institution := account.Institution()
+		// Follows FITID recommendation from OFX 102 Section 3.2.1
+		id := institution.FID() + "-" + account.ID() + "-" + txnID
+		// clean ID for use as an hledger tag
+		// TODO move tag (de)serialization into ledger package
+		id = strings.Replace(id, ",", "_", -1)
+		id = strings.Replace(id, ":", "_", -1)
+		return id
 	}
 }
