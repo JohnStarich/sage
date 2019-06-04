@@ -410,3 +410,24 @@ func TestParseTransaction(t *testing.T) {
 		assertEqualTransactions(t, tc.expectedTxn, txn)
 	}
 }
+
+func TestMakeUniqueTxnID(t *testing.T) {
+	for _, tc := range []struct {
+		fid, accountID, txnID string
+		expectedID            string
+	}{
+		{"some FID", "some account", "some txn", "some FID-some account-some txn"},
+		{"some, punctuation", "some account", "txn", "some punctuation-some account-txn"},
+		{"some punctuation", "some: account", "txn", "some punctuation-some account-txn"},
+	} {
+		t.Run("", func(t *testing.T) {
+			account := mockAccount{
+				baseAccount: baseAccount{
+					id:          tc.accountID,
+					institution: institution{fid: tc.fid},
+				},
+			}
+			assert.Equal(t, tc.expectedID, makeUniqueTxnID(account)(tc.txnID))
+		})
+	}
+}

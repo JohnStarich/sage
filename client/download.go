@@ -193,14 +193,15 @@ func balanceTransactions(txns []ledger.Transaction, balance decimal.Decimal, bal
 }
 
 func makeUniqueTxnID(account Account) func(string) string {
+	institution := account.Institution()
+	// Follows FITID recommendation from OFX 102 Section 3.2.1
+	idPrefix := institution.FID() + "-" + account.ID() + "-"
 	return func(txnID string) string {
-		institution := account.Institution()
-		// Follows FITID recommendation from OFX 102 Section 3.2.1
-		id := institution.FID() + "-" + account.ID() + "-" + txnID
+		id := idPrefix + txnID
 		// clean ID for use as an hledger tag
 		// TODO move tag (de)serialization into ledger package
-		id = strings.Replace(id, ",", "_", -1)
-		id = strings.Replace(id, ":", "_", -1)
+		id = strings.Replace(id, ",", "", -1)
+		id = strings.Replace(id, ":", "", -1)
 		return id
 	}
 }
