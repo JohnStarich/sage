@@ -32,7 +32,7 @@ func fetchTransactions(
 	account Account, duration time.Duration,
 	balanceTransactions func([]ledger.Transaction, decimal.Decimal, time.Time),
 	doRequest func(*ofxgo.Request) (*ofxgo.Response, error),
-	parseTransaction func(ofxgo.Transaction, string, string, func(string) string) (ledger.Transaction, error),
+	parseTransaction func(ofxgo.Transaction, string, string, func(string) string) ledger.Transaction,
 ) ([]ledger.Transaction, error) {
 	query, err := account.Statement(duration)
 	if err != nil {
@@ -103,10 +103,7 @@ func fetchTransactions(
 		}
 
 		for _, txn := range statementTxns {
-			parsedTxn, err := parseTransaction(txn, balanceCurrency, accountName, makeTxnID)
-			if err != nil {
-				return nil, err
-			}
+			parsedTxn := parseTransaction(txn, balanceCurrency, accountName, makeTxnID)
 			txns = append(txns, parsedTxn)
 		}
 
@@ -130,7 +127,7 @@ func normalizeCurrency(currency string) string {
 	}
 }
 
-func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeTxnID func(string) string) (ledger.Transaction, error) {
+func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeTxnID func(string) string) ledger.Transaction {
 	if txn.Currency != nil {
 		if ok, _ := txn.Currency.Valid(); ok {
 			currency = normalizeCurrency(txn.Currency.CurSym.String())
@@ -143,10 +140,8 @@ func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeT
 	}
 
 	// TODO can ofxgo lib support a decimal type instead of big.Rat?
-	amount, err := decimal.NewFromString(txn.TrnAmt.String())
-	if err != nil {
-		return ledger.Transaction{}, err
-	}
+	// NOTE: TrnAmt uses big.Rat internally, which can't form an invalid number with .String()
+	amount := decimal.RequireFromString(txn.TrnAmt.String())
 
 	id := makeTxnID(string(txn.FiTID))
 
@@ -167,7 +162,7 @@ func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeT
 				Currency: currency,
 			},
 		},
-	}, nil
+	}
 }
 
 // balanceTransactions sorts and adds balances to each transaction

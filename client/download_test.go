@@ -167,25 +167,32 @@ func TestBalanceTransactions(t *testing.T) {
 	}
 }
 
-// assertEqualTransactions carefully compares postings, with special handling for balances
+// assertEqualTransactions carefully compares postings, with special handling for amounts and balances
 func assertEqualTransactions(t *testing.T, expected, actual ledger.Transaction) bool {
 	failed := false
 	for i := range expected.Postings {
 		if expected.Postings[i].Balance != actual.Postings[i].Balance {
 			if expected.Postings[i].Balance == nil {
-				failed = failed || assert.Nil(t, actual.Postings[i].Balance)
+				failed = failed || !assert.Nil(t, actual.Postings[i].Balance)
 			} else if actual.Postings[i].Balance == nil {
-				failed = failed || assert.NotNil(t, actual.Postings[i].Balance)
+				failed = failed || !assert.NotNil(t, actual.Postings[i].Balance)
 			} else {
-				failed = failed || assert.Equal(t,
+				failed = failed || !assert.Equal(t,
 					expected.Postings[i].Balance.String(),
 					actual.Postings[i].Balance.String(),
 					"Balances not equal for posting index #%d", i,
 				)
 			}
 		}
+		failed = failed || !assert.Equal(t,
+			expected.Postings[i].Amount.String(),
+			actual.Postings[i].Amount.String(),
+			"Amounts not equal for posting index #%d", i,
+		)
 		expected.Postings[i].Balance = nil
 		actual.Postings[i].Balance = nil
+		expected.Postings[i].Amount = decimal.Zero
+		actual.Postings[i].Amount = decimal.Zero
 	}
 	failed = failed || !assert.Equal(t, expected, actual)
 	return !failed
@@ -213,7 +220,6 @@ func TestFetchTransactions(t *testing.T) {
 		duration    time.Duration
 		queryErr    bool
 		requestErr  bool
-		parseErr    bool
 		expectErr   bool
 	}{
 		{
@@ -230,11 +236,6 @@ func TestFetchTransactions(t *testing.T) {
 			requestErr:  true,
 			expectErr:   true,
 		},
-		{
-			description: "parse error",
-			parseErr:    true,
-			expectErr:   true,
-		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			ofxRequest := ofxgo.Request{
@@ -243,7 +244,6 @@ func TestFetchTransactions(t *testing.T) {
 				},
 			}
 			requestErr := errors.New("query error")
-			parseErr := errors.New("parse error")
 			queryErr := errors.New("query error")
 			responseTxns := []ofxgo.Transaction{{TrnAmt: makeOFXAmount(0.4)}}
 			responseBalance := makeOFXAmount(2.00)
@@ -300,13 +300,10 @@ func TestFetchTransactions(t *testing.T) {
 			}
 
 			parsedTxns := make([]ledger.Transaction, 0)
-			parseTxn := func(ofxgo.Transaction, string, string, func(string) string) (ledger.Transaction, error) {
-				if tc.parseErr {
-					return ledger.Transaction{}, parseErr
-				}
+			parseTxn := func(ofxgo.Transaction, string, string, func(string) string) ledger.Transaction {
 				txn := ledger.Transaction{Comment: "some parsed txn"}
 				parsedTxns = append(parsedTxns, txn)
-				return txn, nil
+				return txn
 			}
 
 			balancedTimes := 0
@@ -326,9 +323,6 @@ func TestFetchTransactions(t *testing.T) {
 				if tc.requestErr {
 					assert.Equal(t, requestErr, err)
 				}
-				if tc.parseErr {
-					assert.Equal(t, parseErr, err)
-				}
 				return
 			}
 
@@ -343,4 +337,76 @@ func makeOFXAmount(f float64) ofxgo.Amount {
 	bigF := big.NewFloat(f)
 	rat, _ := bigF.Rat(nil)
 	return ofxgo.Amount{*rat}
+}
+
+func TestParseTransaction(t *testing.T) {
+	defaultCurrency := "some currency"
+	const defaultToUSDRate = 2
+	const usd = "$"
+	var usdCurrency *ofxgo.Currency
+	if currSym, err := ofxgo.NewCurrSymbol("USD"); err != nil {
+		panic(err)
+	} else {
+		usdCurrency = &ofxgo.Currency{
+			CurSym:  *currSym,
+			CurRate: makeOFXAmount(defaultToUSDRate),
+		}
+		_, err := usdCurrency.Valid()
+		require.NoError(t, err)
+	}
+
+	for _, tc := range []struct {
+		description string
+		accountName string
+		txn         ofxgo.Transaction
+		expectedTxn ledger.Transaction
+	}{
+		{
+			description: "happy path",
+			accountName: "assets:Bank 1",
+			txn: ofxgo.Transaction{
+				Currency: usdCurrency,
+				Name:     ofxgo.String(""),
+				Payee:    &ofxgo.Payee{Name: "Some transaction"},
+				TrnAmt:   makeOFXAmount(1.25),
+			},
+			expectedTxn: ledger.Transaction{
+				Payee: "Some transaction",
+				Postings: []ledger.Posting{
+					{Account: "assets:Bank 1", Currency: usd, Amount: decimal.NewFromFloat(1.25)},
+					{Account: "uncategorized", Currency: usd, Amount: decimal.NewFromFloat(-1.25)},
+				},
+			},
+		},
+		{
+			description: "name instead of payee",
+			accountName: "assets:Bank 1",
+			txn: ofxgo.Transaction{
+				Currency: usdCurrency,
+				Name:     ofxgo.String("Hey there"),
+				Payee:    &ofxgo.Payee{Name: "Some transaction"},
+				TrnAmt:   makeOFXAmount(1.25),
+			},
+			expectedTxn: ledger.Transaction{
+				Payee: "Hey there",
+				Postings: []ledger.Posting{
+					{Account: "assets:Bank 1", Currency: usd, Amount: decimal.NewFromFloat(1.25)},
+					{Account: "uncategorized", Currency: usd, Amount: decimal.NewFromFloat(-1.25)},
+				},
+			},
+		},
+	} {
+		someFID := "some FID"
+		makeTxnID := func(id string) string {
+			assert.Equal(t, string(tc.txn.FiTID), id)
+			return someFID
+		}
+		txn := parseTransaction(tc.txn, defaultCurrency, tc.accountName, makeTxnID)
+		require.Len(t, txn.Postings, len(tc.expectedTxn.Postings))
+		if len(tc.expectedTxn.Postings) > 0 && tc.expectedTxn.Postings[0].Tags == nil {
+			// add default ID tag
+			tc.expectedTxn.Postings[0].Tags = map[string]string{"id": someFID}
+		}
+		assertEqualTransactions(t, tc.expectedTxn, txn)
+	}
 }
