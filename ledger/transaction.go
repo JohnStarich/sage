@@ -13,7 +13,7 @@ import (
 
 const (
 	idTag      = "id"
-	dateFormat = "2006/01/02"
+	DateFormat = "2006/01/02"
 )
 
 var (
@@ -115,7 +115,7 @@ func parsePayeeLine(txn *Transaction, line string) error {
 		txn.Payee = strings.TrimSpace(tokens[1])
 	}
 	var err error
-	txn.Date, err = time.Parse(dateFormat, date)
+	txn.Date, err = time.Parse(DateFormat, date)
 	if err != nil {
 		return err
 	}

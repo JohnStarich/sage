@@ -13,7 +13,7 @@ import (
 )
 
 func parseDate(t *testing.T, s string) time.Time {
-	date, err := time.Parse(dateFormat, s)
+	date, err := time.Parse(DateFormat, s)
 	require.NoError(t, err)
 	return date
 }
