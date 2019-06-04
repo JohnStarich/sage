@@ -220,6 +220,7 @@ func TestFetchTransactions(t *testing.T) {
 		duration    time.Duration
 		queryErr    bool
 		requestErr  bool
+		responseErr bool
 		expectErr   bool
 	}{
 		{
@@ -234,6 +235,11 @@ func TestFetchTransactions(t *testing.T) {
 		{
 			description: "request error",
 			requestErr:  true,
+			expectErr:   true,
+		},
+		{
+			description: "response error",
+			responseErr: true,
 			expectErr:   true,
 		},
 	} {
@@ -296,7 +302,11 @@ func TestFetchTransactions(t *testing.T) {
 				if tc.requestErr {
 					return nil, requestErr
 				}
-				return &statementResponse, nil
+				resp := statementResponse
+				if tc.responseErr {
+					resp.Signon.Status.Code = 1000
+				}
+				return &resp, nil
 			}
 
 			parsedTxns := make([]ledger.Transaction, 0)
