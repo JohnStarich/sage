@@ -20,7 +20,7 @@ type csvRule struct {
 }
 
 func NewCSVRule(account1, account2, comment string, conditions ...string) (Rule, error) {
-	pattern, err := regexp.Compile(strings.Join(conditions, "|"))
+	pattern, err := regexp.Compile("(?i)" + strings.Join(conditions, "|"))
 	if err != nil {
 		return csvRule{}, err
 	}

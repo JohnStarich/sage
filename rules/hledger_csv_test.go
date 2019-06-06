@@ -26,7 +26,7 @@ func TestNewCSVRule(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, csvRule{
 		conditions: conditions,
-		matchLine:  regexp.MustCompile("a|b|c"),
+		matchLine:  regexp.MustCompile("(?i)a|b|c"),
 		account1:   someAccount1,
 		account2:   someAccount2,
 		comment:    someComment,
@@ -90,6 +90,12 @@ func TestCSVRuleMatch(t *testing.T) {
 		{
 			description: "match condition",
 			conditions:  []string{txn1.Payee},
+			txn:         txn1,
+			shouldMatch: true,
+		},
+		{
+			description: "match condition case insensitive",
+			conditions:  []string{strings.ToUpper(txn1.Payee)},
 			txn:         txn1,
 			shouldMatch: true,
 		},
