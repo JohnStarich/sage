@@ -30,7 +30,7 @@ func Transactions(account Account, duration time.Duration) ([]ledger.Transaction
 
 func fetchTransactions(
 	account Account, duration time.Duration,
-	balanceTransactions func([]ledger.Transaction, decimal.Decimal, time.Time),
+	balanceTransactions func([]ledger.Transaction, decimal.Decimal, time.Time, time.Time),
 	doRequest func(*ofxgo.Request) (*ofxgo.Response, error),
 	parseTransaction func(ofxgo.Transaction, string, string, func(string) string) ledger.Transaction,
 ) ([]ledger.Transaction, error) {
@@ -79,7 +79,7 @@ func fetchTransactions(
 	for _, message := range statements {
 		var balance decimal.Decimal
 		var balanceCurrency string
-		var balanceDate time.Time
+		var balanceDate, statementEndDate time.Time
 		var statementTxns []ofxgo.Transaction
 		switch statement := message.(type) {
 		case *ofxgo.StatementResponse:
@@ -89,6 +89,7 @@ func fetchTransactions(
 			}
 			balanceCurrency = normalizeCurrency(statement.CurDef.String())
 			balanceDate = statement.DtAsOf.Time
+			statementEndDate = statement.BankTranList.DtEnd.Time
 			statementTxns = statement.BankTranList.Transactions
 		case *ofxgo.CCStatementResponse:
 			balance, err = decimal.NewFromString(statement.BalAmt.String())
@@ -97,6 +98,7 @@ func fetchTransactions(
 			}
 			balanceCurrency = normalizeCurrency(statement.CurDef.String())
 			balanceDate = statement.DtAsOf.Time
+			statementEndDate = statement.BankTranList.DtEnd.Time
 			statementTxns = statement.BankTranList.Transactions
 		default:
 			return nil, fmt.Errorf("Invalid statement type: %T", message)
@@ -107,7 +109,7 @@ func fetchTransactions(
 			txns = append(txns, parsedTxn)
 		}
 
-		balanceTransactions(txns, balance, balanceDate)
+		balanceTransactions(txns, balance, balanceDate, statementEndDate)
 	}
 
 	return txns, nil
@@ -166,10 +168,15 @@ func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeT
 }
 
 // balanceTransactions sorts and adds balances to each transaction
-func balanceTransactions(txns []ledger.Transaction, balance decimal.Decimal, balanceDate time.Time) {
+func balanceTransactions(txns []ledger.Transaction, balance decimal.Decimal, balanceDate time.Time, statementEndDate time.Time) {
 	sort.SliceStable(txns, func(a, b int) bool {
 		return txns[a].Date.Before(txns[b].Date)
 	})
+
+	if balanceDate.After(statementEndDate) {
+		// don't trust this balance, it was recorded after the statement end date
+		return
+	}
 
 	balanceDateIndex := len(txns)
 	for i, txn := range txns {

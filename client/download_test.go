@@ -50,17 +50,20 @@ func TestBalanceTransactions(t *testing.T) {
 		txns         []ledger.Transaction
 		balance      float64
 		balanceDate  string
+		endDate      string
 		expectedTxns []ledger.Transaction
 	}{
 		{
 			description: "no transactions",
 			balance:     0,
 			balanceDate: "2019/01/01",
+			endDate:     "2019/01/01",
 		},
 		{
 			description: "one transaction",
 			balance:     5.00,
 			balanceDate: "2019/01/01",
+			endDate:     "2019/01/02",
 			txns: []ledger.Transaction{
 				makeTxn("2019/01/02", -2.00),
 			},
@@ -72,6 +75,7 @@ func TestBalanceTransactions(t *testing.T) {
 			description: "sorts transactions",
 			balance:     5.00,
 			balanceDate: "2019/01/01",
+			endDate:     "2019/01/03",
 			txns: []ledger.Transaction{
 				makeTxn("2019/01/03", -3.00),
 				makeTxn("2019/01/02", -1.00),
@@ -85,6 +89,7 @@ func TestBalanceTransactions(t *testing.T) {
 			description: "populates prior to balance date",
 			balance:     5.00,
 			balanceDate: "2019/01/05",
+			endDate:     "2019/01/05",
 			txns: []ledger.Transaction{
 				makeTxn("2019/01/02", -2.00),
 			},
@@ -96,6 +101,7 @@ func TestBalanceTransactions(t *testing.T) {
 			description: "balance before 3 txns",
 			balance:     6.00,
 			balanceDate: "2019/01/01",
+			endDate:     "2019/01/04",
 			txns: []ledger.Transaction{
 				makeTxn("2019/01/02", -1.00),
 				makeTxn("2019/01/03", -2.00),
@@ -111,6 +117,7 @@ func TestBalanceTransactions(t *testing.T) {
 			description: "balance after 3 txns",
 			balance:     0.00,
 			balanceDate: "2019/01/05",
+			endDate:     "2019/01/05",
 			txns: []ledger.Transaction{
 				makeTxn("2019/01/02", -1.00),
 				makeTxn("2019/01/03", -2.00),
@@ -126,6 +133,7 @@ func TestBalanceTransactions(t *testing.T) {
 			description: "balance between 3 txns",
 			balance:     5.00,
 			balanceDate: "2019/01/03",
+			endDate:     "2019/01/04",
 			txns: []ledger.Transaction{
 				makeTxn("2019/01/01", -1.00),
 				makeTxn("2019/01/02", -2.00),
@@ -141,6 +149,7 @@ func TestBalanceTransactions(t *testing.T) {
 			description: "balance on same day as txn",
 			balance:     6.00,
 			balanceDate: "2019/01/02",
+			endDate:     "2019/01/03",
 			txns: []ledger.Transaction{
 				makeTxn("2019/01/01", -1.00),
 				makeTxn("2019/01/02", -2.00),
@@ -154,11 +163,26 @@ func TestBalanceTransactions(t *testing.T) {
 				makeTxnWithBalance("2019/01/03", -4.00, 2.00),
 			},
 		},
+		{
+			description: "refuse to add balances if balance date is after end date",
+			balance:     10000,
+			balanceDate: "2020/01/01",
+			endDate:     "2019/01/02",
+			txns: []ledger.Transaction{
+				makeTxn("2019/01/01", -1.00),
+				makeTxn("2019/01/02", -2.00),
+			},
+			expectedTxns: []ledger.Transaction{
+				makeTxn("2019/01/01", -1.00),
+				makeTxn("2019/01/02", -2.00),
+			},
+		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			balance := decimal.NewFromFloat(tc.balance)
 			balanceDate := parseDate(tc.balanceDate)
-			balanceTransactions(tc.txns, balance, balanceDate)
+			statementEndDate := parseDate(tc.endDate)
+			balanceTransactions(tc.txns, balance, balanceDate, statementEndDate)
 			require.Len(t, tc.txns, len(tc.expectedTxns))
 			for i := range tc.expectedTxns {
 				assertEqualTransactions(t, tc.expectedTxns[i], tc.txns[i])
@@ -254,6 +278,7 @@ func TestFetchTransactions(t *testing.T) {
 			responseTxns := []ofxgo.Transaction{{TrnAmt: makeOFXAmount(0.4)}}
 			responseBalance := makeOFXAmount(2.00)
 			responseBalanceDate := parseDate("2019/01/02")
+			responseStatementEndDate := parseDate("0001/01/01") // use zero value for test simplicity
 			statementResponse := ofxgo.Response{
 				Bank: []ofxgo.Message{
 					&ofxgo.StatementResponse{
@@ -317,11 +342,12 @@ func TestFetchTransactions(t *testing.T) {
 			}
 
 			balancedTimes := 0
-			balanceTxns := func(txns []ledger.Transaction, balance decimal.Decimal, balanceDate time.Time) {
+			balanceTxns := func(txns []ledger.Transaction, balance decimal.Decimal, balanceDate, statementEndDate time.Time) {
 				balancedTimes++
 				assert.Equal(t, parsedTxns, txns)
 				assert.Equal(t, responseBalance.String(), balance.String())
 				assert.Equal(t, responseBalanceDate, balanceDate)
+				assert.Equal(t, responseStatementEndDate, statementEndDate)
 			}
 
 			txns, err := fetchTransactions(account, tc.duration, balanceTxns, doRequest, parseTxn)
