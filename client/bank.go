@@ -52,23 +52,21 @@ func newBankAccount(id, bankID string, institution Institution) bankAccount {
 	}
 }
 
-func (b bankAccount) statementFromAccountType(duration time.Duration, accountType string) (ofxgo.Request, error) {
-	return generateBankStatement(b, duration, accountType, ofxgo.RandomUID, time.Now)
+func (b bankAccount) statementFromAccountType(start, end time.Time, accountType string) (ofxgo.Request, error) {
+	return generateBankStatement(b, start, end, accountType, ofxgo.RandomUID)
 }
 
 func generateBankStatement(
 	b bankAccount,
-	duration time.Duration, accountType string,
+	start, end time.Time,
+	accountType string,
 	getUID func() (*ofxgo.UID, error),
-	getTime func() time.Time,
 ) (ofxgo.Request, error) {
 	uid, err := getUID()
 	if err != nil {
 		return ofxgo.Request{}, err
 	}
 
-	end := getTime()
-	start := end.Add(-duration)
 	accountTypeEnum, err := ofxgo.NewAcctType(accountType)
 	if err != nil {
 		return ofxgo.Request{}, err
@@ -90,10 +88,10 @@ func generateBankStatement(
 	}, nil
 }
 
-func (c Checking) Statement(duration time.Duration) (ofxgo.Request, error) {
-	return c.statementFromAccountType(duration, checkingType)
+func (c Checking) Statement(start, end time.Time) (ofxgo.Request, error) {
+	return c.statementFromAccountType(start, end, checkingType)
 }
 
-func (s Savings) Statement(duration time.Duration) (ofxgo.Request, error) {
-	return s.statementFromAccountType(duration, savingsType)
+func (s Savings) Statement(start, end time.Time) (ofxgo.Request, error) {
+	return s.statementFromAccountType(start, end, savingsType)
 }

@@ -10,6 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	someEndTime   = time.Now()
+	someStartTime = someEndTime.Add(-5 * time.Minute)
+)
+
 func TestBankAccount(t *testing.T) {
 	assert.Equal(t, "some ID", bankAccount{bankID: "some ID"}.BankID())
 }
@@ -42,7 +47,7 @@ func TestNewSavingsAccount(t *testing.T) {
 
 func TestBankStatementFromAccountType(t *testing.T) {
 	b := bankAccount{}
-	_, err := b.statementFromAccountType(1*time.Minute, checkingType)
+	_, err := b.statementFromAccountType(someStartTime, someEndTime, checkingType)
 	require.NoError(t, err)
 }
 
@@ -96,14 +101,8 @@ func TestGenerateBankStatement(t *testing.T) {
 				}
 				return &uid, nil
 			}
-			timestamp := time.Now()
 
-			getTime := func() time.Time {
-				return timestamp
-			}
-
-			dur := 42 * time.Second
-			req, err := generateBankStatement(tc.account, dur, tc.inputAccountType, getUID, getTime)
+			req, err := generateBankStatement(tc.account, someStartTime, someEndTime, tc.inputAccountType, getUID)
 			if tc.expectErr {
 				assert.Error(t, err)
 				return
@@ -121,8 +120,8 @@ func TestGenerateBankStatement(t *testing.T) {
 							AcctID:   ofxgo.String(tc.account.ID()),
 							AcctType: acctTypeEnum,
 						},
-						DtStart: &ofxgo.Date{Time: timestamp.Add(-dur)},
-						DtEnd:   &ofxgo.Date{Time: timestamp},
+						DtStart: &ofxgo.Date{Time: someStartTime},
+						DtEnd:   &ofxgo.Date{Time: someEndTime},
 						Include: true, // Include transactions (instead of only balance information)
 					},
 				},
@@ -132,7 +131,7 @@ func TestGenerateBankStatement(t *testing.T) {
 }
 
 func TestCheckingStatement(t *testing.T) {
-	req, err := Checking{}.Statement(1 * time.Minute)
+	req, err := Checking{}.Statement(someStartTime, someEndTime)
 	require.NoError(t, err)
 	require.Len(t, req.Bank, 1)
 	require.IsType(t, &ofxgo.StatementRequest{}, req.Bank[0])
@@ -141,7 +140,7 @@ func TestCheckingStatement(t *testing.T) {
 }
 
 func TestSavingsStatement(t *testing.T) {
-	req, err := Savings{}.Statement(1 * time.Minute)
+	req, err := Savings{}.Statement(someStartTime, someEndTime)
 	require.NoError(t, err)
 	require.Len(t, req.Bank, 1)
 	require.IsType(t, &ofxgo.StatementRequest{}, req.Bank[0])

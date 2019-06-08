@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/aclindsa/ofxgo"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -20,6 +22,7 @@ const (
 type sageClient struct {
 	ofxgo.Client
 	*zap.Logger
+	*rate.Limiter
 }
 
 func New(url string, config Config) (ofxgo.Client, error) {
@@ -48,6 +51,10 @@ func newClient(
 		basicClient.SpecVersion = ofxVersion
 	}
 	s.Client = getClient(url, basicClient)
+	s.Limiter = rate.NewLimiter(rate.Inf, 0)
+	if _, ok := s.Client.(*ofxgo.DiscoverCardClient); ok {
+		s.Limiter = rate.NewLimiter(rate.Every(5*time.Second), 1)
+	}
 	var err error
 	s.Logger, err = getLogger()
 	if err != nil {
@@ -150,4 +157,15 @@ func newRequestMarshaler(c ofxgo.Client) requestMarshaler {
 		}
 		return bytes.NewBufferString(data), nil
 	}
+}
+
+func (s *sageClient) RawRequest(url string, r io.Reader) (*http.Response, error) {
+	reservation := s.Limiter.Reserve()
+	if !reservation.OK() {
+		return nil, errors.New("Cannot satisfy rate limiter burst condition")
+	}
+	delay := reservation.Delay()
+	s.Logger.Debug("Rate limiting", zap.Duration("delay", delay))
+	time.Sleep(delay)
+	return s.Client.RawRequest(url, r)
 }

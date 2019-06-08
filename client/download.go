@@ -13,15 +13,15 @@ import (
 )
 
 // Transactions downloads and returns transactions from a bank or credit card account for the given time period, ending today
-func Transactions(account Account, duration time.Duration) ([]ledger.Transaction, error) {
-	institution := account.Institution()
-	client, err := New(institution.URL(), institution.Config())
+func Transactions(account Account, start, end time.Time) ([]ledger.Transaction, error) {
+	client, err := clientForInstitution(account.Institution())
 	if err != nil {
 		return nil, err
 	}
 
 	return fetchTransactions(
-		account, duration,
+		account,
+		start, end,
 		balanceTransactions,
 		client.Request,
 		parseTransaction,
@@ -29,12 +29,13 @@ func Transactions(account Account, duration time.Duration) ([]ledger.Transaction
 }
 
 func fetchTransactions(
-	account Account, duration time.Duration,
+	account Account,
+	start, end time.Time,
 	balanceTransactions func([]ledger.Transaction, decimal.Decimal, time.Time, time.Time),
 	doRequest func(*ofxgo.Request) (*ofxgo.Response, error),
 	parseTransaction func(ofxgo.Transaction, string, string, func(string) string) ledger.Transaction,
 ) ([]ledger.Transaction, error) {
-	query, err := account.Statement(duration)
+	query, err := account.Statement(start, end)
 	if err != nil {
 		return nil, err
 	}

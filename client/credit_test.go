@@ -3,7 +3,6 @@ package client
 import (
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/aclindsa/ofxgo"
 	"github.com/stretchr/testify/assert"
@@ -38,14 +37,7 @@ func TestGenerateCCStatement(t *testing.T) {
 				}
 				return &uid, nil
 			}
-			timestamp := time.Now()
-
-			getTime := func() time.Time {
-				return timestamp
-			}
-
-			dur := 42 * time.Second
-			req, err := generateCCStatement(creditCard, dur, getUID, getTime)
+			req, err := generateCCStatement(creditCard, someStartTime, someEndTime, getUID)
 			if tc.expectErr {
 				assert.Error(t, err)
 				return
@@ -59,8 +51,8 @@ func TestGenerateCCStatement(t *testing.T) {
 						CCAcctFrom: ofxgo.CCAcct{
 							AcctID: ofxgo.String(creditCard.ID()),
 						},
-						DtStart: &ofxgo.Date{Time: timestamp.Add(-dur)},
-						DtEnd:   &ofxgo.Date{Time: timestamp},
+						DtStart: &ofxgo.Date{Time: someStartTime},
+						DtEnd:   &ofxgo.Date{Time: someEndTime},
 						Include: true, // Include transactions (instead of only balance information)
 					},
 				},
@@ -70,7 +62,7 @@ func TestGenerateCCStatement(t *testing.T) {
 }
 
 func TestCreditCardStatement(t *testing.T) {
-	req, err := CreditCard{}.Statement(1 * time.Minute)
+	req, err := CreditCard{}.Statement(someStartTime, someEndTime)
 	require.NoError(t, err)
 	require.Len(t, req.CreditCard, 1)
 	assert.IsType(t, &ofxgo.CCStatementRequest{}, req.CreditCard[0])

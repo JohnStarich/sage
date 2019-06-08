@@ -225,13 +225,13 @@ func assertEqualTransactions(t *testing.T, expected, actual ledger.Transaction) 
 type mockAccount struct {
 	baseAccount
 	bankID    string
-	statement func(time.Duration) (ofxgo.Request, error)
+	statement func(start, end time.Time) (ofxgo.Request, error)
 }
 
 var _ Bank = mockAccount{}
 
-func (m mockAccount) Statement(d time.Duration) (ofxgo.Request, error) {
-	return m.statement(d)
+func (m mockAccount) Statement(start, end time.Time) (ofxgo.Request, error) {
+	return m.statement(start, end)
 }
 
 func (m mockAccount) BankID() string {
@@ -241,7 +241,8 @@ func (m mockAccount) BankID() string {
 func TestFetchTransactions(t *testing.T) {
 	for _, tc := range []struct {
 		description string
-		duration    time.Duration
+		startTime   time.Time
+		endTime     time.Time
 		queryErr    bool
 		requestErr  bool
 		responseErr bool
@@ -249,7 +250,8 @@ func TestFetchTransactions(t *testing.T) {
 	}{
 		{
 			description: "happy path",
-			duration:    1 * time.Hour,
+			startTime:   someStartTime,
+			endTime:     someEndTime,
 		},
 		{
 			description: "query error",
@@ -305,8 +307,9 @@ func TestFetchTransactions(t *testing.T) {
 						},
 					},
 				},
-				statement: func(d time.Duration) (ofxgo.Request, error) {
-					assert.Equal(t, tc.duration, d)
+				statement: func(start, end time.Time) (ofxgo.Request, error) {
+					assert.Equal(t, tc.startTime, start)
+					assert.Equal(t, tc.endTime, end)
 					if tc.queryErr {
 						return ofxRequest, requestErr
 					}
@@ -350,7 +353,7 @@ func TestFetchTransactions(t *testing.T) {
 				assert.Equal(t, responseStatementEndDate, statementEndDate)
 			}
 
-			txns, err := fetchTransactions(account, tc.duration, balanceTxns, doRequest, parseTxn)
+			txns, err := fetchTransactions(account, tc.startTime, tc.endTime, balanceTxns, doRequest, parseTxn)
 			if tc.expectErr {
 				require.Error(t, err)
 				if tc.queryErr {

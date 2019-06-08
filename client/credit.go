@@ -19,22 +19,20 @@ func NewCreditCard(id string, institution Institution) Account {
 	}
 }
 
-func (cc CreditCard) Statement(duration time.Duration) (ofxgo.Request, error) {
-	return generateCCStatement(cc, duration, ofxgo.RandomUID, time.Now)
+func (cc CreditCard) Statement(start, end time.Time) (ofxgo.Request, error) {
+	return generateCCStatement(cc, start, end, ofxgo.RandomUID)
 }
 
 func generateCCStatement(
-	cc CreditCard, duration time.Duration,
+	cc CreditCard,
+	start, end time.Time,
 	getUID func() (*ofxgo.UID, error),
-	getTime func() time.Time,
 ) (ofxgo.Request, error) {
 	uid, err := getUID()
 	if err != nil {
 		return ofxgo.Request{}, err
 	}
 
-	end := getTime()
-	start := end.Add(-duration)
 	return ofxgo.Request{
 		CreditCard: []ofxgo.Message{
 			&ofxgo.CCStatementRequest{

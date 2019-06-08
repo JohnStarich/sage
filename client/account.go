@@ -12,7 +12,7 @@ type Account interface {
 	Description() string
 	Institution() Institution
 
-	Statement(time.Duration) (ofxgo.Request, error)
+	Statement(start, end time.Time) (ofxgo.Request, error)
 }
 
 type baseAccount struct {
