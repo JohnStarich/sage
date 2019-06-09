@@ -1,4 +1,4 @@
-package sage
+package sync
 
 import (
 	"fmt"

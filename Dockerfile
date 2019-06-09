@@ -7,8 +7,10 @@ RUN apk add --no-cache \
 ENV CGO_ENABLED=0
 
 WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
-RUN go build -o /sage ./cmd/server/main.go
+RUN go build -o /sage -v .
 
 FROM scratch
 
@@ -17,5 +19,5 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 WORKDIR /data
 ENTRYPOINT ["/sage"]
-CMD ["/data/ledger.rules", "/data/ledger.journal", "/data/ofxclient.ini"]
+CMD ["-server", "-rules=/data/ledger.rules", "-ledger=/data/ledger.journal", "-ofxclient=/data/ofxclient.ini"]
 VOLUME ["/data"]
