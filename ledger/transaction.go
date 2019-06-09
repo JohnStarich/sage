@@ -29,6 +29,8 @@ type Transaction struct {
 	Tags     map[string]string
 }
 
+type Transactions []Transaction
+
 func readAllTransactions(scanner *bufio.Scanner) ([]Transaction, error) {
 	var transactions []Transaction
 	var txn Transaction
@@ -211,4 +213,10 @@ func (t Transaction) String() string {
 		serializeComment(t.Comment, t.Tags),
 		strings.Join(postings, "\n    "),
 	)
+}
+
+func (txns Transactions) Sort() {
+	sort.SliceStable(txns, func(a, b int) bool {
+		return txns[a].Date.Before(txns[b].Date)
+	})
 }

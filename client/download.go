@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -170,9 +169,7 @@ func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeT
 
 // balanceTransactions sorts and adds balances to each transaction
 func balanceTransactions(txns []ledger.Transaction, balance decimal.Decimal, balanceDate time.Time, statementEndDate time.Time) {
-	sort.SliceStable(txns, func(a, b int) bool {
-		return txns[a].Date.Before(txns[b].Date)
-	})
+	ledger.Transactions(txns).Sort()
 
 	if balanceDate.After(statementEndDate) {
 		// don't trust this balance, it was recorded after the statement end date

@@ -73,12 +73,12 @@ func TestNew(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			ldg, err := New(tc.transactions)
 			if tc.duplicateID != "" {
-				assert.Error(t, err)
-				assert.Equal(t, duplicateTransactionError(tc.duplicateID), err)
+				require.Error(t, err)
+				assert.Equal(t, duplicateTransactionError(tc.duplicateID).Error(), err.Error())
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, tc.transactions, ldg.transactions)
+			assert.Equal(t, tc.transactions, []Transaction(ldg.transactions))
 		})
 	}
 }
