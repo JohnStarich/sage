@@ -7,11 +7,11 @@ services:
 
 jobs:
   include:
-    - name: lint
+    - name: Lint
       script: make fmt vet
-    - name: test
+    - name: Test
       script: make test
-    - name: docker
+    - name: Build Docker image
       script: make docker
     - stage: GitHub Release
       script: make -j4 dist
