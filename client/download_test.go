@@ -285,7 +285,7 @@ func TestFetchTransactions(t *testing.T) {
 				Bank: []ofxgo.Message{
 					&ofxgo.StatementResponse{
 						BalAmt: responseBalance,
-						DtAsOf: ofxgo.Date{responseBalanceDate},
+						DtAsOf: ofxgo.Date{Time: responseBalanceDate},
 						BankTranList: &ofxgo.TransactionList{
 							Transactions: responseTxns,
 						},
@@ -375,7 +375,7 @@ func TestFetchTransactions(t *testing.T) {
 func makeOFXAmount(f float64) ofxgo.Amount {
 	bigF := big.NewFloat(f)
 	rat, _ := bigF.Rat(nil)
-	return ofxgo.Amount{*rat}
+	return ofxgo.Amount{Rat: *rat}
 }
 
 func TestParseTransaction(t *testing.T) {
