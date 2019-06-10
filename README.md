@@ -1,4 +1,4 @@
-# Sage
+# Sage [![Build Status](https://travis-ci.com/JohnStarich/sage.svg?branch=master)](https://travis-ci.com/JohnStarich/sage) [![Coverage Status](https://coveralls.io/repos/github/JohnStarich/sage/badge.svg?branch=master)](https://coveralls.io/github/JohnStarich/sage?branch=master)
 
 Be your own accountant, without the stress.
 
