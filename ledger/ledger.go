@@ -116,7 +116,7 @@ func (l *Ledger) Validate() error {
 	previousAccountTxn := make(map[string]Transaction, len(balances))
 	for ix, txn := range transactions {
 		if err := txn.Validate(); err != nil {
-			return err
+			return NewValidateError(ix, err)
 		}
 		for _, p := range txn.Postings {
 			if p.Balance == nil {
@@ -126,7 +126,7 @@ func (l *Ledger) Validate() error {
 			}
 			prevBalance, balExists := balances[p.Account]
 			if !balExists {
-				return errors.Errorf("Balance assertion found for account '%s', but no opening balance detected:\n%s", p.Account, txn)
+				return NewValidateError(ix, errors.Errorf("Balance assertion found for account '%s', but no opening balance detected:\n%s", p.Account, txn))
 			}
 			beforeAssertion := p.Balance.Sub(p.Amount)
 			if !prevBalance.Equal(beforeAssertion) {

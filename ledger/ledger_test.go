@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -375,6 +376,92 @@ func TestLedgerValidate(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestLastTransactionTime(t *testing.T) {
+	now := time.Now()
+	ldg, err := New([]Transaction{
+		{Payee: "some payee", Date: now.Add(-1 * time.Hour)},
+		{Payee: "some other payee", Date: now},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, now, ldg.LastTransactionTime())
+
+	ldg, err = New(nil)
+	require.NoError(t, err)
+	assert.Zero(t, ldg.LastTransactionTime())
+}
+
+func TestAddTransactions(t *testing.T) {
+	somePostings := []Posting{
+		{Account: "some bank"},
+		{Account: "some business"},
+	}
+	txn1 := Transaction{Payee: "woot woot", Postings: somePostings, Tags: makeIDTag("a")}
+	txn2 := Transaction{Payee: "the dough", Postings: somePostings, Tags: makeIDTag("b")}
+	brokenTxn := Transaction{Payee: "broken transaction", Postings: nil, Tags: makeIDTag("c")}
+	for _, tc := range []struct {
+		description  string
+		txns         []Transaction
+		newTxns      []Transaction
+		expectedTxns []Transaction
+		expectedErr  bool
+	}{
+		{description: "no transactions"},
+		{
+			description:  "add to empty ledger",
+			newTxns:      []Transaction{txn1, txn2},
+			expectedTxns: []Transaction{txn1, txn2},
+		},
+		{
+			description:  "ignore duplicates from old to new txns",
+			txns:         []Transaction{txn1},
+			newTxns:      []Transaction{txn1},
+			expectedTxns: []Transaction{txn1},
+		},
+		{
+			description:  "ignore duplicates in new txns",
+			txns:         []Transaction{txn1},
+			newTxns:      []Transaction{txn1, txn1},
+			expectedTxns: []Transaction{txn1},
+		},
+		{
+			description:  "validate new transactions before adding",
+			txns:         []Transaction{txn1},
+			newTxns:      []Transaction{brokenTxn},
+			expectedTxns: []Transaction{txn1},
+			expectedErr:  true,
+		},
+		{
+			description:  "add txns up to first failure",
+			txns:         []Transaction{txn1},
+			newTxns:      []Transaction{txn2, brokenTxn},
+			expectedTxns: []Transaction{txn1, txn2},
+			expectedErr:  true,
+		},
+		{
+			description:  "no validate error if txns started invalid",
+			txns:         []Transaction{brokenTxn},
+			newTxns:      []Transaction{},
+			expectedTxns: []Transaction{brokenTxn},
+			expectedErr:  true,
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			ldg, err := New(tc.txns)
+			require.NoError(t, err)
+
+			err = ldg.AddTransactions(tc.newTxns)
+			if tc.expectedErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.expectedTxns, []Transaction(ldg.transactions))
+			idSet, _, _ := makeIDSet(ldg.transactions)
+			assert.Equal(t, idSet, ldg.idSet)
 		})
 	}
 }
