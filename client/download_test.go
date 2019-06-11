@@ -280,7 +280,6 @@ func TestFetchTransactions(t *testing.T) {
 			responseTxns := []ofxgo.Transaction{{TrnAmt: makeOFXAmount(0.4)}}
 			responseBalance := makeOFXAmount(2.00)
 			responseBalanceDate := parseDate("2019/01/02")
-			responseStatementEndDate := parseDate("0001/01/01") // use zero value for test simplicity
 			statementResponse := ofxgo.Response{
 				Bank: []ofxgo.Message{
 					&ofxgo.StatementResponse{
@@ -344,16 +343,13 @@ func TestFetchTransactions(t *testing.T) {
 				return txn
 			}
 
-			balancedTimes := 0
-			balanceTxns := func(txns []ledger.Transaction, balance decimal.Decimal, balanceDate, statementEndDate time.Time) {
-				balancedTimes++
-				assert.Equal(t, parsedTxns, txns)
-				assert.Equal(t, responseBalance.String(), balance.String())
-				assert.Equal(t, responseBalanceDate, balanceDate)
-				assert.Equal(t, responseStatementEndDate, statementEndDate)
-			}
-
-			txns, err := fetchTransactions(account, tc.startTime, tc.endTime, balanceTxns, doRequest, parseTxn)
+			txns, err := fetchTransactions(
+				account,
+				tc.startTime,
+				tc.endTime,
+				doRequest,
+				parseTxn,
+			)
 			if tc.expectErr {
 				require.Error(t, err)
 				if tc.queryErr {
@@ -366,7 +362,6 @@ func TestFetchTransactions(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, 1, balancedTimes, "balance must be called for every statement")
 			assert.Equal(t, parsedTxns, txns, "returned txns must be equal to result of parse")
 		})
 	}

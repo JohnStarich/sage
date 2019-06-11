@@ -21,7 +21,8 @@ func Transactions(account Account, start, end time.Time) ([]ledger.Transaction, 
 	return fetchTransactions(
 		account,
 		start, end,
-		balanceTransactions,
+		// TODO it seems the ledger balance is nearly always the current balance, rather than the statement close. Restore this when a true closing balance can be found
+		//balanceTransactions,
 		client.Request,
 		parseTransaction,
 	)
@@ -30,7 +31,6 @@ func Transactions(account Account, start, end time.Time) ([]ledger.Transaction, 
 func fetchTransactions(
 	account Account,
 	start, end time.Time,
-	balanceTransactions func([]ledger.Transaction, decimal.Decimal, time.Time, time.Time),
 	doRequest func(*ofxgo.Request) (*ofxgo.Response, error),
 	parseTransaction func(ofxgo.Transaction, string, string, func(string) string) ledger.Transaction,
 ) ([]ledger.Transaction, error) {
@@ -77,28 +77,14 @@ func fetchTransactions(
 	var txns []ledger.Transaction
 
 	for _, message := range statements {
-		var balance decimal.Decimal
 		var balanceCurrency string
-		var balanceDate, statementEndDate time.Time
 		var statementTxns []ofxgo.Transaction
 		switch statement := message.(type) {
 		case *ofxgo.StatementResponse:
-			balance, err = decimal.NewFromString(statement.BalAmt.String())
-			if err != nil {
-				return nil, err
-			}
 			balanceCurrency = normalizeCurrency(statement.CurDef.String())
-			balanceDate = statement.DtAsOf.Time
-			statementEndDate = statement.BankTranList.DtEnd.Time
 			statementTxns = statement.BankTranList.Transactions
 		case *ofxgo.CCStatementResponse:
-			balance, err = decimal.NewFromString(statement.BalAmt.String())
-			if err != nil {
-				return nil, err
-			}
 			balanceCurrency = normalizeCurrency(statement.CurDef.String())
-			balanceDate = statement.DtAsOf.Time
-			statementEndDate = statement.BankTranList.DtEnd.Time
 			statementTxns = statement.BankTranList.Transactions
 		default:
 			return nil, fmt.Errorf("Invalid statement type: %T", message)
@@ -108,8 +94,6 @@ func fetchTransactions(
 			parsedTxn := parseTransaction(txn, balanceCurrency, accountName, makeTxnID)
 			txns = append(txns, parsedTxn)
 		}
-
-		balanceTransactions(txns, balance, balanceDate, statementEndDate)
 	}
 
 	return txns, nil
