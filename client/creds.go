@@ -5,24 +5,37 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-func AccountsFromOFXClientIni(fileName string) ([]Account, error) {
-	var accounts []Account
-	cfg, err := ini.Load(fileName)
+type credConfig []map[string]string
+
+func AccountsFromOFXClientINI(fileName string) ([]Account, error) {
+	var cfg credConfig
+	iniFile, err := ini.Load(fileName)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, section := range cfg.Sections() {
-		if section.Name() == ini.DEFAULT_SECTION {
-			continue
+	for _, section := range iniFile.Sections() {
+		if section.Name() != ini.DEFAULT_SECTION {
+			cfg = append(cfg, section.KeysHash())
 		}
-		getErr := false
-		field := ""
+	}
+
+	return accountsFromOFXClientConfig(cfg)
+}
+
+func accountsFromOFXClientConfig(cfg credConfig) ([]Account, error) {
+	var accounts []Account
+	var errs credErrors
+
+	for ix, section := range cfg {
+		description := section["institution.description"] + ":" + section["description"]
 		mustGet := func(key string) string {
-			value := section.Key(key).String()
+			value := section[key]
 			if value == "" {
-				getErr = true
-				field = key
+				errs = append(
+					errs,
+					errors.Errorf("Missing required field '%s' for ofxclient account #%d '%s'", key, ix+1, description),
+				)
 			}
 			return value
 		}
@@ -40,32 +53,32 @@ func AccountsFromOFXClientIni(fileName string) ([]Account, error) {
 				OFXVersion: mustGet("institution.client_args.ofx_version"),
 			},
 		)
-		if accountType := section.Key("account_type").String(); accountType != "" {
+		if accountType, ok := section["account_type"]; ok {
 			// bank
 			switch accountType {
-			case "CHECKING":
+			case checkingType:
 				accounts = append(accounts, NewCheckingAccount(
 					mustGet("number"),
 					mustGet("routing_number"),
 					inst,
 				))
-			case "SAVINGS":
+			case savingsType:
 				accounts = append(accounts, NewSavingsAccount(
 					mustGet("number"),
 					mustGet("routing_number"),
 					inst,
 				))
 			default:
-				return nil, errors.Errorf("Unknown account type: %s", accountType)
+				errs = append(errs, errors.Errorf("Unknown account type '%s' for ofxclient account #%d '%s'", accountType, ix+1, description))
 			}
 		} else {
 			// credit card
 			accounts = append(accounts, NewCreditCard(mustGet("number"), inst))
 		}
-		if getErr {
-			return nil, errors.New("Failed to parse ofxclient.ini: missing field: " + field)
-		}
 	}
 
+	if len(errs) > 0 {
+		return nil, errors.Wrap(errs, "Failed to parse ofxclient.ini")
+	}
 	return accounts, nil
 }

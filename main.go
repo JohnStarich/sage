@@ -111,7 +111,7 @@ func handleErrors() (usageErr bool, err error) {
 		return false, err
 	}
 
-	accounts, err := client.AccountsFromOFXClientIni(*ofxClientFileName)
+	accounts, err := client.AccountsFromOFXClientINI(*ofxClientFileName)
 	if err != nil {
 		return false, err
 	}
