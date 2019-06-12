@@ -16,11 +16,31 @@ For future features, [see below](#future-work)
 
 ## Install
 
-To install, run `go get github.com/johnstarich/sage`
+Choose one of the following options:
+
+* Download and install the latest release from the [releases page](https://github.com/JohnStarich/sage/releases/latest) or this script:
+```bash
+curl -fsSL -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/JohnStarich/sage/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep -i "$(uname -s)-$(uname -m)" | xargs curl -fSL -o sage
+chmod +x sage
+./sage -help  # Optionally move sage into your PATH
+```
+* Download the source and build it: `go get github.com/johnstarich/sage`
+* Or pull the container image from [Docker Hub](https://hub.docker.com/r/johnstarich/sage): `docker pull johnstarich/sage`
+
+Note: If you use the Docker image, the default command will look for the ledger and other setup files in `/data`. Example run command:
+```bash
+# ./data should contain ofxclient.ini, ledger.rules, and ledger.journal
+docker run -d \
+    --name sage \
+    --volume "$PWD/data":/data \
+    johnstarich/sage
+```
 
 ## Usage
 
 For available options, run `sage -help`
+
+## Setup
 
 Sage requires a ledger ([plain text accounting][]) file, an `ofxclient.ini` [credentials][ofxclient] file, and an [`hledger` rules][hledger rules] file.
 
