@@ -35,7 +35,7 @@ test:
 
 .PHONY: build
 build:
-	go build .
+	go build -ldflags='-X github.com/johnstarich/sage/consts.Version=${VERSION}'
 
 .PHONY: docker
 docker:

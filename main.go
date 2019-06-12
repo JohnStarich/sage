@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/johnstarich/sage/client"
+	"github.com/johnstarich/sage/consts"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/sync"
@@ -94,9 +95,15 @@ func handleErrors() (usageErr bool, err error) {
 	rulesFileName := flagSet.String("rules", "", "Required: Path to an hledger CSV import rules file")
 	ledgerFileName := flagSet.String("ledger", "", "Required: Path to a ledger file")
 	ofxClientFileName := flagSet.String("ofxclient", "", "Required: Path to an ofxclient ini file, includes connection information for institutions")
+	requestVersion := flagSet.Bool("version", false, "Print the version and exit")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return true, err
 	}
+	if *requestVersion {
+		fmt.Println(consts.Version)
+		return false, nil
+	}
+
 	if err := requireFlags(flagSet); err != nil {
 		return true, errors.Errorf("%s\n%s", err.Error(), usage(flagSet))
 	}
