@@ -3,6 +3,7 @@ package ledger
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"io"
 	"strings"
 	"time"
@@ -188,4 +189,21 @@ func (l *Ledger) AddTransactions(txns []Transaction) error {
 	l.idSet = idSet
 	l.transactions = newTransactions
 	return err
+}
+
+func (l *Ledger) WriteJSON(w io.Writer) {
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "    ")
+	enc.Encode(l.transactions)
+}
+
+func (l *Ledger) Balances() map[string]decimal.Decimal {
+	balances := make(map[string]decimal.Decimal)
+	for _, txn := range l.transactions {
+		for _, p := range txn.Postings {
+			balances[p.Account] = balances[p.Account].Add(p.Amount)
+		}
+	}
+	return balances
 }

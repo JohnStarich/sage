@@ -18,6 +18,10 @@ import (
 const (
 	syncInterval = 4 * time.Hour
 	syncKey      = "syncFunc"
+	loggerKey    = "logger"
+	ledgerKey    = "ledger"
+	accountsKey  = "accounts"
+	rulesKey     = "rules"
 )
 
 func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules, logger *zap.Logger) error {
@@ -34,7 +38,13 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 	engine.Use(
 		ginzap.Ginzap(logger, time.RFC3339, true),
 		ginzap.RecoveryWithZap(logger, true),
-		func(c *gin.Context) { c.Set(syncKey, runSync) },
+		func(c *gin.Context) {
+			c.Set(syncKey, runSync)
+			c.Set(loggerKey, logger)
+			c.Set(ledgerKey, ldg)
+			c.Set(accountsKey, accounts)
+			c.Set(rulesKey, r)
+		},
 	)
 
 	setupRoutes(engine.Group("/v1"))
@@ -83,13 +93,7 @@ func setupRoutes(router gin.IRouter) {
 		})
 	})
 
-	router.POST("/sync", func(c *gin.Context) {
-		runSync := c.MustGet(syncKey).(func() error)
-		err := runSync()
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-		c.Status(http.StatusOK)
-	})
+	router.POST("/sync", syncLedger)
+	router.GET("/transactions", getTransactions)
+	router.GET("/balances", getBalances)
 }
