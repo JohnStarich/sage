@@ -82,10 +82,14 @@ func fetchTransactions(
 		switch statement := message.(type) {
 		case *ofxgo.StatementResponse:
 			balanceCurrency = normalizeCurrency(statement.CurDef.String())
-			statementTxns = statement.BankTranList.Transactions
+			if statement.BankTranList != nil {
+				statementTxns = statement.BankTranList.Transactions
+			}
 		case *ofxgo.CCStatementResponse:
 			balanceCurrency = normalizeCurrency(statement.CurDef.String())
-			statementTxns = statement.BankTranList.Transactions
+			if statement.BankTranList != nil {
+				statementTxns = statement.BankTranList.Transactions
+			}
 		default:
 			return nil, fmt.Errorf("Invalid statement type: %T", message)
 		}

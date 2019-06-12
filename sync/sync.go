@@ -1,24 +1,39 @@
 package sync
 
 import (
-	"fmt"
+	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/johnstarich/sage/client"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 const (
 	days = 24 * time.Hour
 )
 
-func Sync(ldg *ledger.Ledger, accounts []client.Account, r rules.Rules) error {
-	return sync(ldg, r, downloadTxns(accounts))
+func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules) error {
+	ledgerErr := Ledger(logger, ldg, accounts, r)
+	if ledgerErr != nil {
+		if _, ok := ledgerErr.(ledger.Error); !ok {
+			return ledgerErr
+		}
+	}
+	if err := File(ldg, ledgerFileName); err != nil {
+		return err
+	}
+	return ledgerErr
 }
 
-func sync(ldg *ledger.Ledger, r rules.Rules, download func(start, end time.Time) ([]ledger.Transaction, error)) error {
+func Ledger(logger *zap.Logger, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules) error {
+	return ledgerSync(logger, ldg, r, downloadTxns(accounts))
+}
+
+func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, r rules.Rules, download func(start, end time.Time) ([]ledger.Transaction, error)) error {
 	if err := ldg.Validate(); err != nil {
 		return errors.Wrap(err, "Existing ledger is not valid")
 	}
@@ -36,9 +51,7 @@ func sync(ldg *ledger.Ledger, r rules.Rules, download func(start, end time.Time)
 	downloadedTime := beforeStart
 	for downloadedTime.Before(now) {
 		end := min(now, downloadedTime.Add(maxDownloadDuration))
-		{
-			fmt.Printf("Downloading txns... (%s - %s)\n", downloadedTime, end)
-		}
+		logger.Info("Downloading txns...", zap.Time("start", downloadedTime), zap.Time("end", end))
 		txns, err := download(downloadedTime, end)
 		if err != nil {
 			return err
@@ -62,6 +75,11 @@ func sync(ldg *ledger.Ledger, r rules.Rules, download func(start, end time.Time)
 	}
 
 	return ldg.AddTransactions(allTxns)
+}
+
+func File(ldg *ledger.Ledger, fileName string) error {
+	err := ioutil.WriteFile(fileName, []byte(ldg.String()), os.ModePerm)
+	return errors.Wrap(err, "Error writing ledger to disk")
 }
 
 func downloadTxns(accounts []client.Account) func(start, end time.Time) ([]ledger.Transaction, error) {

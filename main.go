@@ -4,21 +4,18 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
 	"github.com/johnstarich/sage/consts"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
+	"github.com/johnstarich/sage/server"
 	"github.com/johnstarich/sage/sync"
 	"github.com/pkg/errors"
-)
-
-const (
-	syncInterval = 4 * time.Hour
+	"go.uber.org/zap"
 )
 
 func loadLedger(fileName string) (*ledger.Ledger, error) {
@@ -47,20 +44,20 @@ func loadRules(fileName string) (rules.Rules, error) {
 	return r, nil
 }
 
-func start(server bool, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules) error {
-	for {
-		if err := sync.Sync(ldg, accounts, r); err != nil {
-			fmt.Fprintln(os.Stderr, errors.Wrap(err, "Error syncing ledger"))
-		}
-
-		if err := ioutil.WriteFile(ledgerFileName, []byte(ldg.String()), os.ModePerm); err != nil {
-			return errors.Wrap(err, "Error writing updated ledger to disk")
-		}
-		if !server {
-			return nil
-		}
-		time.Sleep(syncInterval)
+func start(isServer bool, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules) error {
+	logger, err := zap.NewProduction()
+	if os.Getenv("DEVELOPMENT") == "true" {
+		logger, err = zap.NewDevelopment()
 	}
+	if err != nil {
+		return err
+	}
+
+	if !isServer {
+		return sync.Sync(logger, ledgerFileName, ldg, accounts, r)
+	}
+	gin.SetMode(gin.ReleaseMode)
+	return server.Run("0.0.0.0:8080", ledgerFileName, ldg, accounts, r, logger)
 }
 
 func usage(flagSet *flag.FlagSet) string {
