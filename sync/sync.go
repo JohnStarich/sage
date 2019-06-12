@@ -3,6 +3,7 @@ package sync
 import (
 	"io/ioutil"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/johnstarich/sage/client"
@@ -16,7 +17,13 @@ const (
 	days = 24 * time.Hour
 )
 
+var (
+	mu sync.Mutex // basic protection against concurrent sync operations
+)
+
 func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules) error {
+	mu.Lock()
+	defer mu.Unlock()
 	ledgerErr := Ledger(logger, ldg, accounts, r)
 	if ledgerErr != nil {
 		if _, ok := ledgerErr.(ledger.Error); !ok {

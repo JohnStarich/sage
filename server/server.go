@@ -17,21 +17,10 @@ import (
 
 const (
 	syncInterval = 4 * time.Hour
+	syncKey      = "syncFunc"
 )
 
 func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules, logger *zap.Logger) error {
-	engine := gin.New()
-
-	engine.Use(
-		ginzap.Ginzap(logger, time.RFC3339, true),
-		ginzap.RecoveryWithZap(logger, true),
-	)
-
-	setupRoutes(engine.Group("/v1"))
-
-	done := make(chan bool, 1)
-	errs := make(chan error, 2)
-
 	runSync := func() error {
 		err := sync.Sync(logger, ledgerFileName, ldg, accounts, r)
 		if err == nil {
@@ -40,6 +29,18 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 		}
 		return errors.Wrap(err, "Error syncing ledger")
 	}
+
+	engine := gin.New()
+	engine.Use(
+		ginzap.Ginzap(logger, time.RFC3339, true),
+		ginzap.RecoveryWithZap(logger, true),
+		func(c *gin.Context) { c.Set(syncKey, runSync) },
+	)
+
+	setupRoutes(engine.Group("/v1"))
+
+	done := make(chan bool, 1)
+	errs := make(chan error, 2)
 
 	go func() {
 		// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
@@ -80,5 +81,15 @@ func setupRoutes(router gin.IRouter) {
 		c.JSON(http.StatusOK, map[string]string{
 			"version": consts.Version,
 		})
+	})
+
+	router.POST("/sync", func(c *gin.Context) {
+		runSync := c.MustGet(syncKey).(func() error)
+		err := runSync()
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		c.Status(http.StatusOK)
 	})
 }
