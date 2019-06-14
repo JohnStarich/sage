@@ -37,7 +37,8 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 	engine := gin.New()
 	engine.Use(
 		ginzap.Ginzap(logger, time.RFC3339, true),
-		ginzap.RecoveryWithZap(logger, true),
+		//ginzap.RecoveryWithZap(logger, true), // TODO restore recovery when https://github.com/gin-contrib/zap/pull/10 is merged
+		recovery(logger, true),
 		func(c *gin.Context) {
 			c.Set(syncKey, runSync)
 			c.Set(loggerKey, logger)
