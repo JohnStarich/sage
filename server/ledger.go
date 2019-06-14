@@ -25,6 +25,10 @@ func getTransactions(c *gin.Context) {
 
 func getBalances(c *gin.Context) {
 	ledger := c.MustGet(ledgerKey).(*ledger.Ledger)
-	balances := ledger.Balances()
-	c.JSON(http.StatusOK, balances)
+	start, end, balances := ledger.Balances()
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"start":    start,
+		"end":      end,
+		"balances": balances,
+	})
 }

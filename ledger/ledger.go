@@ -198,12 +198,41 @@ func (l *Ledger) WriteJSON(w io.Writer) {
 	enc.Encode(l.transactions)
 }
 
-func (l *Ledger) Balances() map[string]decimal.Decimal {
-	balances := make(map[string]decimal.Decimal)
+func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal.Decimal) {
+	if len(l.transactions) == 0 {
+		return
+	}
+	balances = make(map[string][]decimal.Decimal)
+	start, end = l.transactions[0].Date, l.transactions[0].Date
 	for _, txn := range l.transactions {
-		for _, p := range txn.Postings {
-			balances[p.Account] = balances[p.Account].Add(p.Amount)
+		if txn.Date.Before(start) {
+			start = txn.Date
+		}
+		if txn.Date.After(end) {
+			end = txn.Date
 		}
 	}
-	return balances
+
+	const granularity = 10
+	interval := end.Sub(start) / (granularity - 1) // subtract 1 to handle txns on end date
+
+	for _, txn := range l.transactions {
+		index := txn.Date.Sub(start) / interval
+		for _, p := range txn.Postings {
+			if _, ok := balances[p.Account]; !ok {
+				balances[p.Account] = make([]decimal.Decimal, granularity)
+			}
+			balances[p.Account][index] = balances[p.Account][index].Add(p.Amount)
+		}
+	}
+
+	// convert to cumulative sum
+	for _, amounts := range balances {
+		for i := range amounts {
+			if i != 0 {
+				amounts[i] = amounts[i].Add(amounts[i-1])
+			}
+		}
+	}
+	return
 }
