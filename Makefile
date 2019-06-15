@@ -52,6 +52,7 @@ out:
 # Try to create easily-scripted file names for download
 $(SUPPORTED_ARCH): GOOS = $(@D)
 $(SUPPORTED_ARCH): GOARCH = $(@F)
+$(SUPPORTED_ARCH): CGO_ENABLED = 0
 windows/%: EXT = .exe
 %/386: ARCH = i386
 %/amd64: ARCH = x86_64
