@@ -8,7 +8,7 @@ ifdef TRAVIS_TAG
 VERSION ?= ${TRAVIS_TAG}
 endif
 VERSION ?= $(shell git rev-parse --verify HEAD)
-VERSION_FLAGS := -ldflags='-X github.com/johnstarich/sage/consts.Version=${VERSION}'
+VERSION_FLAGS := -ldflags='-s -w -X github.com/johnstarich/sage/consts.Version=${VERSION}'
 
 .PHONY: all
 all: fmt vet test build
