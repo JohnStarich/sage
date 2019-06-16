@@ -1,0 +1,21 @@
+.amount {
+  letter-spacing: -0.05em;
+  font-family: "Courier New", Courier, "Lucida Sans Typewriter", "Lucida Typewriter", monospace;
+  font-weight: 700;
+}
+
+.amount .amount-prefix {
+  margin-right: 0.2em;
+}
+
+.amount .amount-thousands {
+  margin-left: -0.15em;
+}
+
+.amount .amount-sign {
+  margin-right: 0.1em;
+}
+
+.amount.amount-negative {
+  color: red;
+}

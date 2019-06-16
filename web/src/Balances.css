@@ -1,0 +1,21 @@
+.balances {
+  margin: 1em;
+}
+
+.balances tr:first-child {
+  vertical-align: top;
+  height: 2em;
+}
+
+.balances th:nth-child(2) {
+  text-align: right;
+}
+
+.balances td:nth-child(2) {
+  text-align: right;
+  padding-left: 2em;
+}
+
+.balances .account-revenue, .balances .account-assets {
+  font-weight: 600;
+}
