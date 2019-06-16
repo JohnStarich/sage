@@ -35,7 +35,7 @@ test:
 	./coverage.sh
 
 .PHONY: build
-build:
+build: static
 	go build ${VERSION_FLAGS}
 
 .PHONY: docker
@@ -56,8 +56,12 @@ $(SUPPORTED_ARCH): CGO_ENABLED = 0
 windows/%: EXT = .exe
 %/386: ARCH = i386
 %/amd64: ARCH = x86_64
-$(SUPPORTED_ARCH): clean out
+$(SUPPORTED_ARCH): clean out static
 	go build -v ${VERSION_FLAGS} -o out/sage-${VERSION}-${GOOS}-${ARCH}${EXT}
 
 .PHONY: dist
 dist: $(SUPPORTED_ARCH)
+
+.PHONY: static
+static:
+	go generate ./server

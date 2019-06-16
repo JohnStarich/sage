@@ -1,3 +1,5 @@
+//go:generate go-bindata -pkg server -fs -prefix "../web/" ../web/
+
 package server
 
 import (
@@ -39,6 +41,12 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 		ginzap.Ginzap(logger, time.RFC3339, true),
 		//ginzap.RecoveryWithZap(logger, true), // TODO restore recovery when https://github.com/gin-contrib/zap/pull/10 is merged
 		recovery(logger, true),
+	)
+	engine.GET("/", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/web") })
+	engine.StaticFS("/web", AssetFile())
+
+	api := engine.Group("/api/v1")
+	api.Use(
 		func(c *gin.Context) {
 			c.Set(syncKey, runSync)
 			c.Set(loggerKey, logger)
@@ -47,8 +55,7 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 			c.Set(rulesKey, r)
 		},
 	)
-
-	setupRoutes(engine.Group("/v1"))
+	setupAPI(api)
 
 	done := make(chan bool, 1)
 	errs := make(chan error, 2)
@@ -87,7 +94,7 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 	return <-errs
 }
 
-func setupRoutes(router gin.IRouter) {
+func setupAPI(router gin.IRouter) {
 	router.GET("/version", func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]string{
 			"version": consts.Version,
