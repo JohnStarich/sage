@@ -10,10 +10,11 @@ type CreditCard struct {
 	baseAccount
 }
 
-func NewCreditCard(id string, institution Institution) Account {
+func NewCreditCard(id, description string, institution Institution) Account {
 	return CreditCard{
 		baseAccount: baseAccount{
 			id:          id,
+			description: description,
 			institution: institution,
 		},
 	}

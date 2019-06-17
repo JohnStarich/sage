@@ -12,10 +12,11 @@ func TestBaseAccount(t *testing.T) {
 	a := baseAccount{
 		id:          "some ID",
 		institution: inst,
+		description: "some description",
 	}
 
 	assert.Equal(t, "some ID", a.ID())
-	assert.Equal(t, "", a.Description(), "Not implemented so should be ''")
+	assert.Equal(t, "some description", a.Description())
 	assert.Equal(t, inst, a.Institution())
 }
 
@@ -35,18 +36,20 @@ func TestLedgerAccountName(t *testing.T) {
 			description: "credit cards are liability accounts",
 			account: NewCreditCard(
 				"super cash back",
+				"some description",
 				institution{description: "Some Credit Card Co"},
 			),
-			expectedName: "liabilities:Some Credit Card Co:" + redactPrefix("super cash back"),
+			expectedName: "liabilities:Some Credit Card Co:some description",
 		},
 		{
 			description: "banks are asset accounts",
 			account: NewSavingsAccount(
 				"blah account",
 				"routing no",
+				"blah account description",
 				institution{description: "The Boring Bank"},
 			),
-			expectedName: "assets:The Boring Bank:" + redactPrefix("blah account"),
+			expectedName: "assets:The Boring Bank:blah account description",
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {

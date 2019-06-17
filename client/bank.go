@@ -34,19 +34,20 @@ const (
 	savingsType  = "SAVINGS"
 )
 
-func NewCheckingAccount(id, bankID string, institution Institution) Account {
-	return Checking{bankAccount: newBankAccount(id, bankID, institution)}
+func NewCheckingAccount(id, bankID, description string, institution Institution) Account {
+	return Checking{bankAccount: newBankAccount(id, bankID, description, institution)}
 }
 
-func NewSavingsAccount(id, bankID string, institution Institution) Account {
-	return Savings{bankAccount: newBankAccount(id, bankID, institution)}
+func NewSavingsAccount(id, bankID, description string, institution Institution) Account {
+	return Savings{bankAccount: newBankAccount(id, bankID, description, institution)}
 }
 
-func newBankAccount(id, bankID string, institution Institution) bankAccount {
+func newBankAccount(id, bankID, description string, institution Institution) bankAccount {
 	return bankAccount{
 		bankID: bankID,
 		baseAccount: baseAccount{
 			id:          id,
+			description: description,
 			institution: institution,
 		},
 	}

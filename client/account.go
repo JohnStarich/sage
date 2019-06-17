@@ -7,6 +7,10 @@ import (
 	"github.com/aclindsa/ofxgo"
 )
 
+const (
+	RedactSuffixLength = 4
+)
+
 type Account interface {
 	ID() string
 	Description() string
@@ -17,6 +21,7 @@ type Account interface {
 
 type baseAccount struct {
 	id          string
+	description string
 	institution Institution
 }
 
@@ -29,8 +34,10 @@ func (b baseAccount) ID() string {
 }
 
 func (b baseAccount) Description() string {
-	// TODO not implemented
-	return ""
+	if b.description != "" {
+		return b.description
+	}
+	return b.id
 }
 
 func LedgerAccountName(a Account) string {
@@ -53,10 +60,9 @@ func LedgerAccountName(a Account) string {
 }
 
 func redactPrefix(s string) string {
-	const suffixLen = 4
 	suffix := s
-	if len(s) > suffixLen {
-		suffix = s[len(s)-suffixLen:]
+	if len(s) > RedactSuffixLength {
+		suffix = s[len(s)-RedactSuffixLength:]
 	}
 	return "****" + suffix
 }

@@ -12,7 +12,7 @@ import (
 func TestGenerateCCStatement(t *testing.T) {
 	someID := "some ID"
 	someInstitution := institution{description: "some institution"}
-	creditCard := NewCreditCard(someID, someInstitution).(CreditCard)
+	creditCard := NewCreditCard(someID, "some description", someInstitution).(CreditCard)
 
 	for _, tc := range []struct {
 		description string

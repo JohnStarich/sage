@@ -28,13 +28,13 @@ func accountsFromOFXClientConfig(cfg credConfig) ([]Account, error) {
 	var errs credErrors
 
 	for ix, section := range cfg {
-		description := section["institution.description"] + ":" + section["description"]
+		instDescription := section["institution.description"] + ":" + section["description"]
 		mustGet := func(key string) string {
 			value := section[key]
 			if value == "" {
 				errs = append(
 					errs,
-					errors.Errorf("Missing required field '%s' for ofxclient account #%d '%s'", key, ix+1, description),
+					errors.Errorf("Missing required field '%s' for ofxclient account #%d '%s'", key, ix+1, instDescription),
 				)
 			}
 			return value
@@ -60,20 +60,22 @@ func accountsFromOFXClientConfig(cfg credConfig) ([]Account, error) {
 				accounts = append(accounts, NewCheckingAccount(
 					mustGet("number"),
 					mustGet("routing_number"),
+					section["description"],
 					inst,
 				))
 			case savingsType:
 				accounts = append(accounts, NewSavingsAccount(
 					mustGet("number"),
 					mustGet("routing_number"),
+					section["description"],
 					inst,
 				))
 			default:
-				errs = append(errs, errors.Errorf("Unknown account type '%s' for ofxclient account #%d '%s'", accountType, ix+1, description))
+				errs = append(errs, errors.Errorf("Unknown account type '%s' for ofxclient account #%d '%s'", accountType, ix+1, instDescription))
 			}
 		} else {
 			// credit card
-			accounts = append(accounts, NewCreditCard(mustGet("number"), inst))
+			accounts = append(accounts, NewCreditCard(mustGet("number"), section["description"], inst))
 		}
 	}
 

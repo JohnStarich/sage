@@ -2,8 +2,11 @@
   margin: 1em;
 }
 
-.balances tr:first-child {
+.balances tr {
   vertical-align: top;
+}
+
+.balances tr:first-child {
   height: 2em;
 }
 

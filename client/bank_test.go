@@ -22,8 +22,9 @@ func TestBankAccount(t *testing.T) {
 func TestNewCheckingAccount(t *testing.T) {
 	someID := "some ID"
 	someRoutingNumber := "some routing number"
+	someDescription := "some description"
 	someInstitution := institution{description: "some institution"}
-	a := NewCheckingAccount(someID, someRoutingNumber, someInstitution)
+	a := NewCheckingAccount(someID, someRoutingNumber, someDescription, someInstitution)
 	assert.IsType(t, Checking{}, a)
 	require.Implements(t, (*Bank)(nil), a)
 
@@ -35,8 +36,9 @@ func TestNewCheckingAccount(t *testing.T) {
 func TestNewSavingsAccount(t *testing.T) {
 	someID := "some ID"
 	someRoutingNumber := "some routing number"
+	someDescription := "some description"
 	someInstitution := institution{description: "some institution"}
-	a := NewSavingsAccount(someID, someRoutingNumber, someInstitution)
+	a := NewSavingsAccount(someID, someRoutingNumber, someDescription, someInstitution)
 	assert.IsType(t, Savings{}, a)
 	require.Implements(t, (*Bank)(nil), a)
 
@@ -54,9 +56,10 @@ func TestBankStatementFromAccountType(t *testing.T) {
 func TestGenerateBankStatement(t *testing.T) {
 	someID := "some ID"
 	someRoutingNumber := "some routing number"
+	someDescription := "some description"
 	someInstitution := institution{description: "some institution"}
-	savings := NewSavingsAccount(someID, someRoutingNumber, someInstitution).(Savings).bankAccount
-	checking := NewCheckingAccount(someID, someRoutingNumber, someInstitution).(Checking).bankAccount
+	savings := NewSavingsAccount(someID, someRoutingNumber, someDescription, someInstitution).(Savings).bankAccount
+	checking := NewCheckingAccount(someID, someRoutingNumber, someDescription, someInstitution).(Checking).bankAccount
 
 	for _, tc := range []struct {
 		description         string

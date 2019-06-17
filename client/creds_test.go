@@ -16,6 +16,7 @@ func TestAccountsFromOFXClientINI(t *testing.T) {
 	assert.Equal(t, []Account{
 		NewCreditCard(
 			"123456789",
+			"***1234",
 			NewInstitution("Some Cool Credit Card", "1234", "SOME", "https://ofx.neato.url/", "wowen", "some password", Config{
 				AppID:      "QWIN",
 				AppVersion: "2500",
@@ -26,7 +27,7 @@ func TestAccountsFromOFXClientINI(t *testing.T) {
 }
 
 func TestAccountsFromOFXClientConfig(t *testing.T) {
-	someDescription := "Some cool place"
+	someInstDescription := "Some cool place"
 	someFID := "some FID"
 	someOrg := "some org"
 	someURL := "some URL"
@@ -39,6 +40,7 @@ func TestAccountsFromOFXClientConfig(t *testing.T) {
 	}
 	someAccountNumber := "123456789"
 	someRoutingNumber := "987654321"
+	someDescription := "some description"
 	for _, tc := range []struct {
 		description      string
 		config           credConfig
@@ -49,7 +51,8 @@ func TestAccountsFromOFXClientConfig(t *testing.T) {
 			description: "checking account",
 			config: credConfig{
 				{
-					"institution.description":             someDescription,
+					"description":                         someDescription,
+					"institution.description":             someInstDescription,
 					"institution.id":                      someFID,
 					"institution.org":                     someOrg,
 					"institution.url":                     someURL,
@@ -67,7 +70,8 @@ func TestAccountsFromOFXClientConfig(t *testing.T) {
 				NewCheckingAccount(
 					someAccountNumber,
 					someRoutingNumber,
-					NewInstitution(someDescription, someFID, someOrg, someURL, someUsername, somePassword, someConfig),
+					someDescription,
+					NewInstitution(someInstDescription, someFID, someOrg, someURL, someUsername, somePassword, someConfig),
 				),
 			},
 		},
@@ -75,7 +79,8 @@ func TestAccountsFromOFXClientConfig(t *testing.T) {
 			description: "savings account",
 			config: credConfig{
 				{
-					"institution.description":             someDescription,
+					"description":                         someDescription,
+					"institution.description":             someInstDescription,
 					"institution.id":                      someFID,
 					"institution.org":                     someOrg,
 					"institution.url":                     someURL,
@@ -93,7 +98,8 @@ func TestAccountsFromOFXClientConfig(t *testing.T) {
 				NewSavingsAccount(
 					someAccountNumber,
 					someRoutingNumber,
-					NewInstitution(someDescription, someFID, someOrg, someURL, someUsername, somePassword, someConfig),
+					someDescription,
+					NewInstitution(someInstDescription, someFID, someOrg, someURL, someUsername, somePassword, someConfig),
 				),
 			},
 		},
@@ -101,7 +107,8 @@ func TestAccountsFromOFXClientConfig(t *testing.T) {
 			description: "credit card account",
 			config: credConfig{
 				{
-					"institution.description":             someDescription,
+					"description":                         someDescription,
+					"institution.description":             someInstDescription,
 					"institution.id":                      someFID,
 					"institution.org":                     someOrg,
 					"institution.url":                     someURL,
@@ -116,7 +123,8 @@ func TestAccountsFromOFXClientConfig(t *testing.T) {
 			expectedAccounts: []Account{
 				NewCreditCard(
 					someAccountNumber,
-					NewInstitution(someDescription, someFID, someOrg, someURL, someUsername, somePassword, someConfig),
+					someDescription,
+					NewInstitution(someInstDescription, someFID, someOrg, someURL, someUsername, somePassword, someConfig),
 				),
 			},
 		},
@@ -124,7 +132,8 @@ func TestAccountsFromOFXClientConfig(t *testing.T) {
 			description: "missing some fields",
 			config: credConfig{
 				{
-					"TYPO GOES HERE":                      someDescription,
+					"description":                         someDescription,
+					"TYPO GOES HERE":                      someInstDescription,
 					"institution.id":                      someFID,
 					"institution.org":                     someOrg,
 					"institution.url":                     someURL,
@@ -136,13 +145,14 @@ func TestAccountsFromOFXClientConfig(t *testing.T) {
 					"number":                              someAccountNumber,
 				},
 			},
-			expectedErr: "Failed to parse ofxclient.ini: \nMissing required field 'institution.description' for ofxclient account #1 ':'",
+			expectedErr: "Failed to parse ofxclient.ini: \nMissing required field 'institution.description' for ofxclient account #1 ':some description'",
 		},
 		{
-			description: "missing some fields",
+			description: "bad account type",
 			config: credConfig{
 				{
-					"institution.description":             someDescription,
+					"description":                         someDescription,
+					"institution.description":             someInstDescription,
 					"institution.id":                      someFID,
 					"institution.org":                     someOrg,
 					"institution.url":                     someURL,
@@ -155,7 +165,7 @@ func TestAccountsFromOFXClientConfig(t *testing.T) {
 					"account_type":                        "nah man",
 				},
 			},
-			expectedErr: "Failed to parse ofxclient.ini: \nUnknown account type 'nah man' for ofxclient account #1 'Some cool place:'",
+			expectedErr: "Failed to parse ofxclient.ini: \nUnknown account type 'nah man' for ofxclient account #1 'Some cool place:some description'",
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
