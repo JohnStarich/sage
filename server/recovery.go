@@ -1,6 +1,8 @@
 package server
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -24,6 +26,9 @@ func recovery(logger *zap.Logger, stack bool) gin.HandlerFunc {
 				ce.Entry.Stack = ""
 			}
 			ce.Write(fields...)
+			if !c.IsAborted() {
+				c.AbortWithStatus(http.StatusInternalServerError)
+			}
 		}()
 		c.Next()
 	}
