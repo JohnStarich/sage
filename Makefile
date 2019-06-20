@@ -11,7 +11,7 @@ VERSION ?= $(shell git rev-parse --verify HEAD)
 VERSION_FLAGS := -ldflags='-s -w -X github.com/johnstarich/sage/consts.Version=${VERSION}'
 
 # Ensure there's at least an empty bindata file when executing a target
-ENSURE_STUB := $(shell [[ -f ./server/bindata.go ]] || { mkdir -p web/build && go generate ./server; })
+ENSURE_STUB := $(shell [[ -f ./server/bindata.go ]] || { mkdir -p web/build && GO111MODULE=on go generate ./server; })
 
 .PHONY: all
 all: fmt vet test build
