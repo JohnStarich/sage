@@ -1,7 +1,10 @@
 FROM golang:1.12-alpine as builder
 
 RUN apk add --no-cache \
+            bash \
             git \
+            make \
+            npm \
             openssl
 
 ENV CGO_ENABLED=0
@@ -10,11 +13,11 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -o /sage -v .
+RUN make build
 
 FROM scratch
 
-COPY --from=builder /sage /
+COPY --from=builder /src/sage /
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 WORKDIR /data

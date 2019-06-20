@@ -11,7 +11,7 @@ VERSION ?= $(shell git rev-parse --verify HEAD)
 VERSION_FLAGS := -ldflags='-s -w -X github.com/johnstarich/sage/consts.Version=${VERSION}'
 
 # Ensure there's at least an empty bindata file when executing a target
-ENSURE_STUB := $(shell [[ -f ./server/bindata.go ]] || { cd server && GO111MODULE=on go run github.com/go-bindata/go-bindata/go-bindata -pkg server -fs /dev/null && go fmt ./bindata.go; })
+ENSURE_STUB := $(shell [[ -f ./server/bindata.go ]] || { mkdir -p web/build && go generate ./server; })
 
 .PHONY: all
 all: fmt vet test build
@@ -67,5 +67,6 @@ dist: $(SUPPORTED_ARCH)
 
 .PHONY: static
 static:
+	npm ci --prefix=web && npm run --prefix=web build
 	# Unset vars from upcoming targets
 	GOOS= GOARCH= go generate ./server

@@ -1,5 +1,5 @@
-//go:generate npm run --prefix=../web build
-//go:generate go-bindata -pkg server -fs -prefix "../web/build" ../web/build/...
+//go:generate go run github.com/go-bindata/go-bindata/go-bindata -pkg server -fs -prefix "../web/build" ../web/build/...
+//go:generate go fmt ./bindata.go
 
 package server
 
