@@ -51,11 +51,8 @@ func LedgerAccountName(a Account) string {
 		panic(fmt.Sprintf("Unknown account type: %T", a))
 	}
 
-	description := a.Institution().Description()
-	accountName := a.Description()
-	if accountName == "" {
-		accountName = redactPrefix(a.ID())
-	}
+	description := a.Institution().Description() // TODO use FID? not very plain-text accounting friendly
+	accountName := redactPrefix(a.ID())          // don't use account description - can lead to duplicate accounts
 	return fmt.Sprintf("%s:%s:%s", accountType, description, accountName)
 }
 

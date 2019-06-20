@@ -39,7 +39,7 @@ func TestLedgerAccountName(t *testing.T) {
 				"some description",
 				institution{description: "Some Credit Card Co"},
 			),
-			expectedName: "liabilities:Some Credit Card Co:some description",
+			expectedName: "liabilities:Some Credit Card Co:****back",
 		},
 		{
 			description: "banks are asset accounts",
@@ -49,7 +49,7 @@ func TestLedgerAccountName(t *testing.T) {
 				"blah account description",
 				institution{description: "The Boring Bank"},
 			),
-			expectedName: "assets:The Boring Bank:blah account description",
+			expectedName: "assets:The Boring Bank:****ount",
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
