@@ -64,4 +64,5 @@ dist: $(SUPPORTED_ARCH)
 
 .PHONY: static
 static:
-	go generate ./server
+	# Unset vars from upcoming targets
+	GOOS= GOARCH= go generate ./server
