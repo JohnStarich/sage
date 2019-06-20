@@ -1,0 +1,16 @@
+.transactions {
+  margin: 1em;
+}
+
+.transactions .transactions-large-width {
+  width: 50%;
+}
+
+.transactions .transactions-no-wrap {
+  width: 1px;
+  white-space: nowrap;
+}
+
+.transactions .transactions-categories {
+  text-transform: capitalize;
+}

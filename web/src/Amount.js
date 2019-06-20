@@ -12,7 +12,9 @@ export default function(props) {
   if (amount < 0) {
     sign = "-"
     integer = integer.slice(1)
-    className += " amount-negative"
+    if (props.highlightNegative) {
+      className += " amount-negative"
+    }
   }
   let newAmount = Array.from(integer)
     .reverse()

@@ -23,11 +23,11 @@ var (
 
 // Transaction is a strict(er) representation of a ledger transaction. The extra restrictions are used to verify correctness more easily.
 type Transaction struct {
-	Comment  string
+	Comment  string `json:",omitempty"`
 	Date     time.Time
 	Payee    string
 	Postings []Posting
-	Tags     map[string]string
+	Tags     map[string]string `json:",omitempty"`
 }
 
 type Transactions []Transaction

@@ -1,5 +1,6 @@
 .balances {
   margin: 1em;
+  max-width: 25em;
 }
 
 .balances tr {

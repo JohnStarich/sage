@@ -15,10 +15,10 @@ const (
 type Posting struct {
 	Account  string
 	Amount   decimal.Decimal
-	Balance  *decimal.Decimal
-	Comment  string
+	Balance  *decimal.Decimal `json:",omitempty"`
+	Comment  string           `json:",omitempty"`
 	Currency string
-	Tags     map[string]string
+	Tags     map[string]string `json:",omitempty"`
 }
 
 func NewPostingFromString(line string) (Posting, error) {
@@ -96,4 +96,8 @@ func (p Posting) FormatTable(accountLen, amountLen int) string {
 
 func (p Posting) String() string {
 	return p.FormatTable(1, 1)
+}
+
+func (p Posting) isOpeningBalance() bool {
+	return p.ID() == "Opening-Balance" || strings.HasPrefix(p.Account, "equity:Opening Balance")
 }

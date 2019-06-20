@@ -3,12 +3,14 @@ package server
 import (
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
 	"github.com/johnstarich/sage/ledger"
+	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 )
 
@@ -24,8 +26,34 @@ func syncLedger(c *gin.Context) {
 
 func getTransactions(c *gin.Context) {
 	ledger := c.MustGet(ledgerKey).(*ledger.Ledger)
-	c.Status(http.StatusOK)
-	ledger.WriteJSON(c.Writer)
+	var page, results int = 1, 10
+	if pageQuery, ok := c.GetQuery("page"); ok {
+		if parsedPage, err := strconv.ParseInt(pageQuery, 10, 64); err != nil {
+			c.Error(errors.Errorf("Invalid integer: %s", pageQuery))
+		} else if page < 1 {
+			c.Error(errors.New("Page must be a positive integer"))
+		} else {
+			page = int(parsedPage)
+		}
+	}
+	if resultsQuery, ok := c.GetQuery("results"); ok {
+		if parsedResults, err := strconv.ParseInt(resultsQuery, 10, 64); err != nil {
+			c.Error(errors.Errorf("Invalid integer: %s", resultsQuery))
+		} else if results < 1 {
+			c.Error(errors.New("Results must be a positive integer"))
+		} else {
+			results = int(parsedResults)
+		}
+	}
+	if len(c.Errors) > 0 {
+		errMsg := ""
+		for _, e := range c.Errors {
+			errMsg += e.Error() + "\n"
+		}
+		c.AbortWithError(http.StatusBadRequest, errors.New(errMsg))
+		return
+	}
+	ledger.WriteJSON(page, results, c.Writer)
 }
 
 type BalanceResponse struct {

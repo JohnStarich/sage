@@ -6,6 +6,7 @@ import Dropdown from 'react-bootstrap/Dropdown';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import Balances from './Balances';
+import Transactions from './Transactions';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         </Navbar.Collapse>
       </Navbar>
       <Balances />
+      <Transactions />
     </div>
   );
 }
