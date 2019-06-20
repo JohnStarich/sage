@@ -43,7 +43,10 @@ build: static
 
 .PHONY: docker
 docker:
-	docker build -t johnstarich/sage:${VERSION} .
+	docker build \
+		--build-arg VERSION=${VERSION} \
+		-t johnstarich/sage:${VERSION} \
+		.
 
 .PHONY: clean
 clean: out

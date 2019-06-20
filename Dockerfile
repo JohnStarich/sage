@@ -13,6 +13,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+ARG VERSION
 RUN make build
 
 FROM scratch
