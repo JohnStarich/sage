@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/johnstarich/sage/math"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 )
@@ -165,13 +166,6 @@ func serializeComment(comment string, tags map[string]string) string {
 	return comment
 }
 
-func max(a, b int) int {
-	if a < b {
-		return b
-	}
-	return a
-}
-
 func (t Transaction) ID() string {
 	return t.Tags[idTag]
 }
@@ -198,8 +192,8 @@ func (t Transaction) String() string {
 	postings := make([]string, 0, len(t.Postings))
 	accountLen, amountLen := 0, 0
 	for _, posting := range t.Postings {
-		accountLen = max(accountLen, len(posting.Account))
-		amountLen = max(amountLen, len(posting.Amount.String()))
+		accountLen = math.MaxInt(accountLen, len(posting.Account))
+		amountLen = math.MaxInt(amountLen, len(posting.Amount.String()))
 	}
 	for _, posting := range t.Postings {
 		postings = append(postings, posting.FormatTable(-accountLen, amountLen))

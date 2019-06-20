@@ -315,13 +315,6 @@ func TestParseTags(t *testing.T) {
 	}
 }
 
-func TestMax(t *testing.T) {
-	assert.Equal(t, 1, max(0, 1))
-	assert.Equal(t, 1, max(1, 0))
-	assert.Equal(t, 1, max(1, 1))
-	assert.Equal(t, -1, max(-2, -1))
-}
-
 func TestTransactionString(t *testing.T) {
 	prep := func(strs ...string) string {
 		return strings.Join(strs, "\n") + "\n"
