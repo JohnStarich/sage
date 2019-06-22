@@ -14,6 +14,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const (
+	accountTypesQuery = "accountTypes[]" // include [] suffix to support query param arrays
+)
+
 func syncLedger(c *gin.Context) {
 	runSync := c.MustGet(syncKey).(func() error)
 	err := runSync()
@@ -66,7 +70,7 @@ type AccountResponse struct {
 	Account     string
 	AccountType string
 	Balances    []decimal.Decimal
-	Institution string
+	Institution string `json:",omitempty"`
 }
 
 func getBalances(c *gin.Context) {
@@ -91,31 +95,56 @@ func getBalances(c *gin.Context) {
 		accountIDMap[instName][id] = clientAccount
 	}
 
+	accountTypes := map[string]bool{
+		"assets":      true,
+		"liabilities": true,
+	}
+	if accountTypesQueryArray := c.QueryArray(accountTypesQuery); len(accountTypesQueryArray) > 0 {
+		accountTypes = make(map[string]bool, len(accountTypesQueryArray))
+		for _, value := range accountTypesQueryArray {
+			accountTypes[value] = true
+		}
+	}
+
 	for accountName, balances := range balanceMap {
 		account := AccountResponse{
 			ID:       accountName,
 			Balances: balances,
 		}
 		components := strings.Split(accountName, ":")
-		if len(components) < 3 {
+		if len(components) == 0 {
 			continue
 		}
-		accountType, institutionName, accountID := components[0], components[1], strings.Join(components[2:], ":")
-		if accountType != "assets" && accountType != "liabilities" {
+		accountType := components[0]
+		if len(accountTypes) > 0 && !accountTypes[accountType] {
+			// filter by account type
 			continue
 		}
 
 		account.AccountType = accountType
-		account.Account = accountID
-		account.Institution = institutionName
+		switch accountType {
+		case "assets", "liabilities":
+			if len(components) < 3 {
+				// require accountType:institution:accountNumber format
+				continue
+			}
+			institutionName, accountID := components[1], strings.Join(components[2:], ":")
 
-		idSuffix := accountID
-		if len(idSuffix) > client.RedactSuffixLength {
-			idSuffix = idSuffix[len(idSuffix)-client.RedactSuffixLength:]
+			account.Account = accountID
+			account.Institution = institutionName
+
+			idSuffix := accountID
+			if len(idSuffix) > client.RedactSuffixLength {
+				idSuffix = idSuffix[len(idSuffix)-client.RedactSuffixLength:]
+			}
+			if clientAccount, ok := accountIDMap[institutionName][idSuffix]; ok {
+				account.Account = clientAccount.Description()
+			}
+		default:
+			account.ID = strings.Join(components[1:], ":")
+			account.Account = account.ID
 		}
-		if clientAccount, ok := accountIDMap[institutionName][idSuffix]; ok {
-			account.Account = clientAccount.Description()
-		}
+
 		resp.Accounts = append(resp.Accounts, account)
 	}
 	sort.Slice(resp.Accounts, func(a, b int) bool {
