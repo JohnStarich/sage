@@ -10,7 +10,8 @@
     "react-bootstrap-table-next": "^3.1.4",
     "react-bootstrap-table2-paginator": "^2.0.6",
     "react-dom": "^16.8.6",
-    "react-scripts": "3.0.1"
+    "react-scripts": "3.0.1",
+    "recharts": "^1.6.2"
   },
   "scripts": {
     "start": "react-scripts start",

@@ -2,6 +2,7 @@ import React from 'react';
 import './Amount.css';
 
 export default function(props) {
+  const TagName = props.tagName || 'span';
   let amount = props.amount
   if (typeof amount !== 'number') {
     return "NaN"
@@ -28,17 +29,17 @@ export default function(props) {
     .join("")
   let commaBlocks = newAmount.split(',')
   return (
-    <span className={className}>
-      <span className="amount-prefix">{props.prefix}</span>
-      <span className="amount-sign">{sign}</span>
+    <TagName className={className}>
+      <TagName className="amount-prefix">{props.prefix}</TagName>
+      <TagName className="amount-sign">{sign}</TagName>
       {commaBlocks[0]}
       {commaBlocks.slice(1).map((group, i) =>
-        <span key={i}>
-          <span className="amount-thousands">,</span>
+        <TagName key={i}>
+          <TagName className="amount-thousands">,</TagName>
           {group}
-        </span>
+        </TagName>
       )}
       {"."+fractional}
-    </span>
+    </TagName>
   )
 }

@@ -6,6 +6,7 @@ import Dropdown from 'react-bootstrap/Dropdown';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import Balances from './Balances';
+import Expenses from './Expenses';
 import Transactions from './Transactions';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
         </Navbar.Collapse>
       </Navbar>
       <Balances />
+      <Expenses />
       <Transactions />
     </div>
   );
