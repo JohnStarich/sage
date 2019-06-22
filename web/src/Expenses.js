@@ -49,8 +49,9 @@ export default class Expenses extends React.Component {
 
     let data = times.map((time, i) =>
       this.state.Accounts.reduce((accumulator, account) => {
+        let previous = i === 0 ? 0 : account.Balances[i - 1]
         // negate the balance since expense and revenue accounts are reversed
-        accumulator[account.Account] = - account.Balances[i]
+        accumulator[account.Account] = - (account.Balances[i] - previous)
         return accumulator
       }, { Date: new Date(time).toDateString() })
     )
