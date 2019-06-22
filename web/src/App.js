@@ -2,6 +2,9 @@ import React from 'react';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
+import Container from 'react-bootstrap/Container';
+import Col from 'react-bootstrap/Col';
+import Row from 'react-bootstrap/Row';
 import Dropdown from 'react-bootstrap/Dropdown';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
@@ -30,9 +33,15 @@ function App() {
           </Dropdown>
         </Navbar.Collapse>
       </Navbar>
-      <Balances />
-      <Expenses />
-      <Transactions />
+      <Container>
+        <Row>
+          <Col lg xl={5}><Balances /></Col>
+          <Col xl={7}><Expenses /></Col>
+        </Row>
+        <Row>
+          <Col><Transactions /></Col>
+        </Row>
+      </Container>
     </div>
   );
 }
