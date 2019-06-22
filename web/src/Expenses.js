@@ -12,6 +12,10 @@ const colors = [
   'blue',
   'magenta',
   'violet',
+  'teal',
+  'brown',
+  'coral',
+  'darkgoldenrod',
 ]
 
 export default class Expenses extends React.Component {
