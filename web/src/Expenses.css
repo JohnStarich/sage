@@ -1,0 +1,22 @@
+.expenses {
+  margin: 1em;
+  height: 25em;
+  min-height: 0;
+}
+
+.expenses .amount-tooltip {
+  background-color: #FCFCFC;
+  padding: 0.5em;
+  padding-left: 0;
+  padding-right: 1.5em;
+  border: 1px solid #EEE;
+  border-radius: 0.25em;
+}
+
+.expenses .amount-tooltip .label {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0.25em;
+  margin-bottom: 0.5em;
+  margin-left: 2em;
+}
