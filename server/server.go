@@ -20,7 +20,8 @@ import (
 
 const (
 	syncInterval = 4 * time.Hour
-	syncKey      = "syncFunc"
+	fullSyncKey  = "fullSyncFunc"
+	fileSyncKey  = "fileSyncFunc"
 	loggerKey    = "logger"
 	ledgerKey    = "ledger"
 	accountsKey  = "accounts"
@@ -28,13 +29,16 @@ const (
 )
 
 func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules, logger *zap.Logger) error {
-	runSync := func() error {
+	runFullSync := func() error {
 		err := sync.Sync(logger, ledgerFileName, ldg, accounts, r)
 		if err == nil {
 			logger.Info("Sync completed successfully")
 			return nil
 		}
 		return errors.Wrap(err, "Error syncing ledger")
+	}
+	fileSync := func() error {
+		return sync.File(ldg, ledgerFileName)
 	}
 
 	engine := gin.New()
@@ -49,7 +53,8 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 	api := engine.Group("/api/v1")
 	api.Use(
 		func(c *gin.Context) {
-			c.Set(syncKey, runSync)
+			c.Set(fullSyncKey, runFullSync)
+			c.Set(fileSyncKey, fileSync)
 			c.Set(loggerKey, logger)
 			c.Set(ledgerKey, ldg)
 			c.Set(accountsKey, accounts)
@@ -64,7 +69,7 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 	go func() {
 		// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
 		time.Sleep(2 * time.Second)
-		if err := runSync(); err != nil {
+		if err := runFullSync(); err != nil {
 			if _, ok := err.(ledger.Error); !ok {
 				// only stop sync loop if NOT a partial error
 				errs <- err
@@ -78,7 +83,7 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 			case <-done:
 				return
 			case <-ticker.C:
-				if err := runSync(); err != nil {
+				if err := runFullSync(); err != nil {
 					errs <- err
 					return
 				}
@@ -103,6 +108,9 @@ func setupAPI(router gin.IRouter) {
 	})
 
 	router.POST("/sync", syncLedger)
-	router.GET("/transactions", getTransactions)
 	router.GET("/balances", getBalances)
+	router.GET("/categories", getExpensesAccounts)
+
+	router.GET("/transactions", getTransactions)
+	router.PATCH("/transactions/:id", updateTransaction)
 }

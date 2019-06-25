@@ -19,7 +19,7 @@ const (
 )
 
 func syncLedger(c *gin.Context) {
-	runSync := c.MustGet(syncKey).(func() error)
+	runSync := c.MustGet(fullSyncKey).(func() error)
 	err := runSync()
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
@@ -151,4 +151,48 @@ func getBalances(c *gin.Context) {
 		return resp.Accounts[a].ID < resp.Accounts[b].ID
 	})
 	c.JSON(http.StatusOK, resp)
+}
+
+func getExpensesAccounts(c *gin.Context) {
+	ledger := c.MustGet(ledgerKey).(*ledger.Ledger)
+	_, _, balanceMap := ledger.Balances()
+	accounts := make([]string, 0, len(balanceMap)+1)
+	accounts = append(accounts, "uncategorized")
+	for account := range balanceMap {
+		if strings.HasPrefix(account, "expenses:") {
+			accounts = append(accounts, account)
+		}
+	}
+	sort.Strings(accounts)
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"Accounts": accounts,
+	})
+}
+
+func updateTransaction(c *gin.Context) {
+	ldg := c.MustGet(ledgerKey).(*ledger.Ledger)
+	syncFile := c.MustGet(fileSyncKey).(func() error)
+	id := c.Param("id")
+
+	var txn ledger.Transaction
+	if err := c.BindJSON(&txn); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	switch err := ldg.UpdateTransaction(id, txn).(type) {
+	case ledger.Error:
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	case nil: // skip
+	default:
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	if err := syncFile(); err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }

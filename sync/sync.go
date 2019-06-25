@@ -22,8 +22,6 @@ var (
 )
 
 func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules) error {
-	mu.Lock()
-	defer mu.Unlock()
 	ledgerErr := Ledger(logger, ldg, accounts, r)
 	if ledgerErr != nil {
 		if _, ok := ledgerErr.(ledger.Error); !ok {
@@ -37,6 +35,8 @@ func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, account
 }
 
 func Ledger(logger *zap.Logger, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules) error {
+	mu.Lock()
+	defer mu.Unlock()
 	return ledgerSync(logger, ldg, r, downloadTxns(accounts))
 }
 
@@ -85,6 +85,8 @@ func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, r rules.Rules, download 
 }
 
 func File(ldg *ledger.Ledger, fileName string) error {
+	mu.Lock()
+	defer mu.Unlock()
 	err := ioutil.WriteFile(fileName, []byte(ldg.String()), os.ModePerm)
 	return errors.Wrap(err, "Error writing ledger to disk")
 }

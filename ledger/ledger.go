@@ -261,3 +261,39 @@ func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal
 	}
 	return
 }
+
+func (l *Ledger) UpdateTransaction(id string, transaction Transaction) error {
+	if !l.idSet[id] {
+		return errors.New("Transaction not found by ID: " + id)
+	}
+	txnIndex := -1
+	for ix, txn := range l.transactions {
+		if txn.ID() == id {
+			txnIndex = ix
+			break
+		}
+		for _, p := range txn.Postings {
+			if p.ID() == id {
+				txnIndex = ix
+				break
+			}
+		}
+	}
+	if txnIndex == -1 {
+		panic("ID set out of sync with ledger transactions")
+	}
+
+	txnCopy := l.transactions[txnIndex]
+	if transaction.Comment != "" {
+		txnCopy.Comment = transaction.Comment
+	}
+	if len(transaction.Postings) > 0 {
+		txnCopy.Postings = transaction.Postings
+	}
+	if err := txnCopy.Validate(); err != nil {
+		return err
+	}
+
+	l.transactions[txnIndex] = txnCopy
+	return nil
+}
