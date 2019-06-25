@@ -6,6 +6,9 @@ import axios from 'axios';
 import BootstrapTable from 'react-bootstrap-table-next';
 import paginationFactory from 'react-bootstrap-table2-paginator';
 import Amount from './Amount';
+import Table from 'react-bootstrap/Table';
+import Form from 'react-bootstrap/Form';
+import { cleanCategory, CategoryPicker } from './Categories';
 
 
 const columns = [
@@ -21,56 +24,54 @@ const columns = [
     headerClasses: 'transactions-large-width',
   },
   {
-    dataField: 'Categories',
+    dataField: 'Postings',
     text: 'Categories',
-    classes: 'transactions-categories',
+    formatter: postings => {
+      let categories = postings.slice(1).map(p => cleanCategory(p.Account))
+      let className = "category"
+      if (categories.includes("uncategorized")) {
+        className += " uncategorized"
+      }
+      return <span className={className}>{categories.join(", ")}</span>
+    },
   },
   {
-    dataField: 'Amount',
+    dataField: 'SummaryAmount',
     text: 'Amount',
     align: 'right',
     headerAlign: 'right',
     formatter: (amount, txn) => {
-      return <Amount amount={Number(amount)} prefix={txn.Currency} />
+      return <Amount amount={amount} prefix={txn.SummaryCurrency} />
     },
   },
 ];
-
-const cleanCategory = account => {
-  let i = account.lastIndexOf(":")
-  if (i === -1) {
-    return account
-  }
-  return account.slice(i+1)
-}
 
 export default class Transactions extends React.Component {
   state = {
     transactions: [],
   }
 
-  setTransactions(transactions) {
+  prepTransactions(transactions) {
     if (! transactions) {
-      this.setState({ transactions: [] });
-      return
+      return []
     }
     transactions = transactions.map(t => {
       let id = t.Tags && t.Tags.id
       for (let i = 0; !id && i < t.Postings.length; i++) {
         id = t.Postings[i].Tags && t.Postings[i].Tags.id
       }
-      return {
+      return Object.assign({}, t, {
         ID: id,
-        Date: t.Date,
-        Payee: t.Payee,
-        Amount: t.Postings[0].Amount,
-        Currency: t.Postings[0].Currency,
-        Categories: t.Postings.slice(1)
-                      .map(p => cleanCategory(p.Account))
-                      .join(", "),
-      }
+        SummaryAmount: Number(t.Postings[0].Amount),
+        SummaryCurrency: t.Postings[0].Currency,
+        Postings: t.Postings.map(p =>
+          Object.assign({}, p, {
+            Amount: Number(p.Amount)
+          })
+        )
+      })
     }).reverse()
-    this.setState({ transactions })
+    return transactions
   }
 
   componentDidMount() {
@@ -85,8 +86,25 @@ export default class Transactions extends React.Component {
         if (res.status !== 200 ) {
           throw new Error("Error fetching transactions")
         }
-        this.setTransactions(res.data.Transactions)
-        this.setState({ count: res.data.Count })
+        let transactions = this.prepTransactions(res.data.Transactions)
+        this.setState({ count: res.data.Count, transactions })
+      })
+  }
+
+  updateTransaction = txn => {
+    let transactions = Array.from(this.state.transactions)
+    let txnIndex = transactions.findIndex(t => t.ID === txn.ID)
+    if (txnIndex === -1) {
+      throw Error(`Tried to update invalid transaction: ${txn}`)
+    }
+    let { Postings } = txn
+    axios.patch(`/api/v1/transactions/${txn.ID}`, { Postings })
+      .then(res => {
+        if (res.status !== 204 ) {
+          throw new Error("Error updating transaction")
+        }
+        transactions[txnIndex] = Object.assign({}, transactions[txnIndex], txn)
+        this.setState({ transactions })
       })
   }
 
@@ -96,9 +114,9 @@ export default class Transactions extends React.Component {
         <BootstrapTable
           bootstrap4
           bordered={false}
-          wrapperClasses='table-responsive'
           columns={ columns }
           data={ this.state.transactions }
+          expandRow={{ renderer: transactionRow(this.updateTransaction) }}
           keyField='ID'
           onTableChange={ this.handleTableChange }
           pagination={ paginationFactory({
@@ -106,8 +124,60 @@ export default class Transactions extends React.Component {
             totalSize: this.state.count,
           }) }
           remote
+          wrapperClasses='table-responsive'
           />
       </div>
+    )
+  }
+}
+
+function transactionRow(updateTransaction) {
+  return txn => {
+    let postings = txn.Postings.map((p, i) => {
+      if (i === 0) {
+        let account = p.Account;
+        let separatorIndex = account.indexOf(':')
+        account = separatorIndex !== -1 ? account.slice(separatorIndex + 1) : account
+        account = account.replace(/:/, " - ")
+        return Object.assign({}, p, { Account: account })
+      }
+      return p
+    })
+
+    const updatePosting = (index, newPosting) => {
+      let { ID, Postings } = txn
+      Postings = Array.from(Postings)
+      console.log("updating posting", index, newPosting)
+      Postings[index] = Object.assign({}, Postings[index], newPosting)
+      updateTransaction({ ID, Postings })
+    }
+
+    return (
+      <Form>
+        <Table className="postings" responsive borderless>
+          <tbody>
+            {postings.map((posting, i) =>
+              <tr key={posting.Account}>
+                <td>
+                  { i === 0
+                    ? <Form.Control type="text" value={posting.Account} disabled />
+                    : <CategoryPicker category={posting.Account} setCategory={c => updatePosting(i, { Account: c })} />
+                  }
+                </td>
+                <td>
+                  <Amount
+                    amount={posting.Amount}
+                    disabled={i === 0 || postings.length === 2}
+                    editable
+                    onChange={a => updatePosting(i, { Amount: a })}
+                    prefix={posting.Currency}
+                    />
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </Table>
+      </Form>
     )
   }
 }

@@ -19,3 +19,7 @@
 .amount.amount-negative {
   color: red;
 }
+
+input.amount {
+  text-align: right;
+}
