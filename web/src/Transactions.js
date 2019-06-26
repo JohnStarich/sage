@@ -149,7 +149,6 @@ function transactionRow(updateTransaction) {
     const updatePosting = (index, newPosting) => {
       let { ID, Postings } = txn
       Postings = Array.from(Postings)
-      console.log("updating posting", index, newPosting)
       Postings[index] = Object.assign({}, Postings[index], newPosting)
       updateTransaction({ ID, Postings })
     }
