@@ -11,8 +11,10 @@ import Navbar from 'react-bootstrap/Navbar';
 import Balances from './Balances';
 import Expenses from './Expenses';
 import Transactions from './Transactions';
+import Sync from './Sync';
 
 function App() {
+  const [syncTime, setSyncTime] = React.useState(new Date())
   return (
     <div className="App">
       <Navbar bg="dark" expand="sm" variant="dark" sticky="top">
@@ -22,6 +24,7 @@ function App() {
           <Nav className="mr-auto">
             <Nav.Link href="#">Activity</Nav.Link>
           </Nav>
+          <Sync className="mr-2" onSync={() => setSyncTime(new Date())} />
           <Dropdown bg="dark" alignRight>
             <Dropdown.Toggle>
               Account
@@ -35,11 +38,11 @@ function App() {
       </Navbar>
       <Container>
         <Row>
-          <Col lg xl={5}><Balances /></Col>
-          <Col xl={7}><Expenses /></Col>
+          <Col lg xl={5}><Balances syncTime={syncTime} /></Col>
+          <Col xl={7}><Expenses syncTime={syncTime} /></Col>
         </Row>
         <Row>
-          <Col><Transactions /></Col>
+          <Col><Transactions syncTime={syncTime} /></Col>
         </Row>
       </Container>
     </div>

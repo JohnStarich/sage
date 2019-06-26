@@ -46,39 +46,36 @@ const columns = [
   },
 ];
 
-export default class Transactions extends React.Component {
-  state = {
-    transactions: [],
+function prepTransactions(transactions) {
+  if (! transactions) {
+    return []
   }
-
-  prepTransactions(transactions) {
-    if (! transactions) {
-      return []
+  transactions = transactions.map(t => {
+    let id = t.Tags && t.Tags.id
+    for (let i = 0; !id && i < t.Postings.length; i++) {
+      id = t.Postings[i].Tags && t.Postings[i].Tags.id
     }
-    transactions = transactions.map(t => {
-      let id = t.Tags && t.Tags.id
-      for (let i = 0; !id && i < t.Postings.length; i++) {
-        id = t.Postings[i].Tags && t.Postings[i].Tags.id
-      }
-      return Object.assign({}, t, {
-        ID: id,
-        SummaryAmount: Number(t.Postings[0].Amount),
-        SummaryCurrency: t.Postings[0].Currency,
-        Postings: t.Postings.map(p =>
-          Object.assign({}, p, {
-            Amount: Number(p.Amount)
-          })
-        )
-      })
-    }).reverse()
-    return transactions
-  }
+    return Object.assign({}, t, {
+      ID: id,
+      SummaryAmount: Number(t.Postings[0].Amount),
+      SummaryCurrency: t.Postings[0].Currency,
+      Postings: t.Postings.map(p =>
+        Object.assign({}, p, {
+          Amount: Number(p.Amount)
+        })
+      )
+    })
+  }).reverse()
+  return transactions
+}
 
-  componentDidMount() {
-    this.handleTableChange(null, { page: 1 })
-  }
 
-  handleTableChange = (_, { page, sizePerPage = 10 }) => {
+export default function Transactions(props) {
+  const [transactions, setTransactions] = React.useState([])
+  const [count, setCount] = React.useState(1)
+  const [page, setPage] = React.useState(1)
+
+  const handleTableChange = (_, { page, sizePerPage = 10 }) => {
     axios.get('/api/v1/transactions', {
         params: { page, results: sizePerPage },
       })
@@ -86,14 +83,21 @@ export default class Transactions extends React.Component {
         if (res.status !== 200 ) {
           throw new Error("Error fetching transactions")
         }
-        let transactions = this.prepTransactions(res.data.Transactions)
-        this.setState({ count: res.data.Count, transactions })
+        let transactions = prepTransactions(res.data.Transactions)
+        setTransactions(transactions)
+        setCount(res.data.Count)
+        setPage(page)
       })
   }
 
-  updateTransaction = txn => {
-    let transactions = Array.from(this.state.transactions)
-    let txnIndex = transactions.findIndex(t => t.ID === txn.ID)
+  const { syncTime } = props;
+  React.useEffect(() => {
+    handleTableChange(null, { page })
+  }, [page, syncTime])
+
+  const updateTransaction = txn => {
+    let newTransactions = Array.from(transactions)
+    let txnIndex = newTransactions.findIndex(t => t.ID === txn.ID)
     if (txnIndex === -1) {
       throw Error(`Tried to update invalid transaction: ${txn}`)
     }
@@ -103,32 +107,30 @@ export default class Transactions extends React.Component {
         if (res.status !== 204 ) {
           throw new Error("Error updating transaction")
         }
-        transactions[txnIndex] = Object.assign({}, transactions[txnIndex], txn)
-        this.setState({ transactions })
+        newTransactions[txnIndex] = Object.assign({}, newTransactions[txnIndex], txn)
+        setTransactions(newTransactions)
       })
   }
 
-  render() {
-    return (
-      <div className="transactions">
-        <BootstrapTable
-          bootstrap4
-          bordered={false}
-          columns={ columns }
-          data={ this.state.transactions }
-          expandRow={{ renderer: transactionRow(this.updateTransaction) }}
-          keyField='ID'
-          onTableChange={ this.handleTableChange }
-          pagination={ paginationFactory({
-            page: this.state.page,
-            totalSize: this.state.count,
-          }) }
-          remote
-          wrapperClasses='table-responsive'
-          />
-      </div>
-    )
-  }
+  return (
+    <div className="transactions">
+      <BootstrapTable
+        bootstrap4
+        bordered={false}
+        columns={ columns }
+        data={ transactions }
+        expandRow={{ renderer: transactionRow(updateTransaction) }}
+        keyField='ID'
+        onTableChange={ handleTableChange }
+        pagination={ paginationFactory({
+          page: page,
+          totalSize: count,
+        }) }
+        remote
+        wrapperClasses='table-responsive'
+        />
+    </div>
+  )
 }
 
 function transactionRow(updateTransaction) {

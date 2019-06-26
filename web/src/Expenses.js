@@ -14,10 +14,11 @@ import Amount from './Amount';
 import Colors from './Colors';
 import './Expenses.css';
 
-export default class Expenses extends React.Component {
-  state = {}
+export default function Expenses(props) {
+  const { syncTime } = props
+  const [payload, setPayload] = React.useState({})
 
-  componentDidMount() {
+  React.useEffect(() => {
     axios.get('/api/v1/balances', {
         params: {
           accountTypes: ['expenses', 'revenue'],
@@ -31,42 +32,40 @@ export default class Expenses extends React.Component {
           account.Balances = account.Balances.map(Number)
           return account
         })
-        this.setState(res.data)
+        setPayload(Object.assign({}, res.data))
       })
-  }
+  }, [syncTime])
 
-  render() {
-    const noData = <div>No expense data to display</div>
-    if (! this.state.Accounts) {
-      return noData
-    }
-    let payload = Object.assign({}, this.state)
-    payload.Accounts = reduceCategories(payload.Accounts)
-    payload.Accounts = payload.Accounts
-        .map(removeCumulative)
-        .map(negateBalances)
-    payload.Accounts = sortAccountsByActivity(payload.Accounts)
-    let data = convertAccountsToChartData(payload)
-    if (data === null) {
-      return noData
-    }
-    return (
-      <div className="expenses">
-        <ResponsiveContainer width="100%">
-          <BarChart data={data} stackOffset="sign" margin={{ left: 50 }}>
-            {payload.Accounts.map((a, i) =>
-              <Bar key={a.ID} dataKey={a.Account} stackId="1" fill={Colors[i % Colors.length]} />
-            )}
-            <XAxis dataKey="Date" />
-            <YAxis tick={<AmountTick />} />
-            <ReferenceLine y={0} />
-            <Tooltip content={<AmountTooltip />} />
-            <Legend />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    );
+  const noData = <div>No expense data to display</div>
+  if (! payload.Accounts) {
+    return noData
   }
+  let payloadCopy = Object.assign({}, payload)
+  payloadCopy.Accounts = reduceCategories(payloadCopy.Accounts)
+  payloadCopy.Accounts = payloadCopy.Accounts
+      .map(removeCumulative)
+      .map(negateBalances)
+  payloadCopy.Accounts = sortAccountsByActivity(payloadCopy.Accounts)
+  let data = convertAccountsToChartData(payloadCopy)
+  if (data === null) {
+    return noData
+  }
+  return (
+    <div className="expenses">
+      <ResponsiveContainer width="100%">
+        <BarChart data={data} stackOffset="sign" margin={{ left: 50 }}>
+          {payloadCopy.Accounts.map((a, i) =>
+            <Bar key={a.ID} dataKey={a.Account} stackId="1" fill={Colors[i % Colors.length]} />
+          )}
+          <XAxis dataKey="Date" />
+          <YAxis tick={<AmountTick />} />
+          <ReferenceLine y={0} />
+          <Tooltip content={<AmountTooltip />} />
+          <Legend />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
 }
 
 const AmountTooltip = ({ active, payload, label }) => {
