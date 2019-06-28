@@ -1,13 +1,15 @@
 import 'react-bootstrap-table-next/dist/react-bootstrap-table2.min.css';
 import './Transactions.css';
 
-import React from 'react';
-import axios from 'axios';
 import BootstrapTable from 'react-bootstrap-table-next';
-import paginationFactory from 'react-bootstrap-table2-paginator';
-import Amount from './Amount';
-import Table from 'react-bootstrap/Table';
 import Form from 'react-bootstrap/Form';
+import React from 'react';
+import Table from 'react-bootstrap/Table';
+import ToolkitProvider, { Search } from 'react-bootstrap-table2-toolkit';
+import axios from 'axios';
+import paginationFactory from 'react-bootstrap-table2-paginator';
+
+import Amount from './Amount';
 import { cleanCategory, CategoryPicker } from './Categories';
 
 
@@ -74,10 +76,16 @@ export default function Transactions(props) {
   const [transactions, setTransactions] = React.useState([])
   const [count, setCount] = React.useState(1)
   const [page, setPage] = React.useState(1)
+  const [search, setSearch] = React.useState("")
 
-  const handleTableChange = (_, { page, sizePerPage = 10 }) => {
+  const handleTableChange = (_, { page, sizePerPage = 10, searchText = search }) => {
+    if (search !== searchText) {
+      page = 1
+      setPage(1)
+      setSearch(searchText)
+    }
     axios.get('/api/v1/transactions', {
-        params: { page, results: sizePerPage },
+        params: { page, results: sizePerPage, search: searchText },
       })
       .then(res => {
         if (res.status !== 200 ) {
@@ -93,7 +101,7 @@ export default function Transactions(props) {
   const { syncTime } = props;
   React.useEffect(() => {
     handleTableChange(null, { page })
-  }, [page, syncTime])
+  }, [syncTime]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateTransaction = txn => {
     let newTransactions = Array.from(transactions)
@@ -114,21 +122,37 @@ export default function Transactions(props) {
 
   return (
     <div className="transactions">
-      <BootstrapTable
-        bootstrap4
-        bordered={false}
-        columns={ columns }
+      <ToolkitProvider
+        keyField="ID"
         data={ transactions }
-        expandRow={{ renderer: transactionRow(updateTransaction) }}
-        keyField='ID'
-        onTableChange={ handleTableChange }
-        pagination={ paginationFactory({
-          page: page,
-          totalSize: count,
-        }) }
-        remote
-        wrapperClasses='table-responsive'
-        />
+        columns={ columns }
+        search
+        >
+        {toolkitprops =>
+          <div key="0">
+          <Search.SearchBar
+            { ...toolkitprops.searchProps }
+            delay={1000}
+            className="search"
+            tabIndex="0"
+            />
+          <BootstrapTable
+            { ...toolkitprops.baseProps }
+            bootstrap4
+            bordered={false}
+            expandRow={{ renderer: transactionRow(updateTransaction) }}
+            noDataIndication="No transactions found"
+            onTableChange={ handleTableChange }
+            pagination={ paginationFactory({
+              page: page,
+              totalSize: count,
+            }) }
+            remote
+            wrapperClasses='table-responsive'
+            />
+          </div>
+        }
+      </ToolkitProvider>
     </div>
   )
 }

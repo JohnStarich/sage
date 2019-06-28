@@ -214,3 +214,33 @@ func (txns Transactions) Sort() {
 		return txns[a].Date.Before(txns[b].Date)
 	})
 }
+
+func (t Transaction) matches(search string) int {
+	payee := strings.ToLower(t.Payee)
+	comment := strings.ToLower(t.Comment)
+	date := strings.ToLower(t.Date.Format("Monday 2 January 2006"))
+	postings := make([]string, 0, len(t.Postings))
+	for _, p := range t.Postings {
+		postings = append(postings, strings.ToLower(p.Account))
+	}
+
+	score := 0
+
+	for _, token := range strings.Split(strings.ToLower(search), " ") {
+		if strings.Contains(payee, token) {
+			score++
+		}
+		if strings.Contains(comment, token) {
+			score++
+		}
+		if strings.Contains(date, token) {
+			score++
+		}
+		for _, p := range postings {
+			if strings.Contains(p, token) {
+				score++
+			}
+		}
+	}
+	return score
+}

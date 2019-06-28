@@ -3,12 +3,10 @@ package ledger
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"io"
 	"strings"
 	"time"
 
-	"github.com/johnstarich/sage/math"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 )
@@ -190,37 +188,6 @@ func (l *Ledger) AddTransactions(txns []Transaction) error {
 	l.idSet = idSet
 	l.transactions = newTransactions
 	return err
-}
-
-func (l *Ledger) WriteJSON(page, results int, w io.Writer) {
-	txns := l.transactions
-	if page < 1 || results < 1 {
-		panic("Page and results must >= 1")
-	}
-	if page == 1 && len(txns) > 0 {
-		for _, p := range l.transactions[0].Postings {
-			if p.isOpeningBalance() {
-				txns = l.transactions[1:]
-				break
-			}
-		}
-	}
-	size := len(txns)
-	if i := size - page*results; i >= 0 {
-		txns = txns[i:math.MinInt(i+results, size)]
-	} else {
-		txns = nil
-	}
-
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "    ")
-	enc.Encode(map[string]interface{}{
-		"Count":        size,
-		"Page":         page,
-		"Results":      results,
-		"Transactions": txns,
-	})
 }
 
 func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal.Decimal) {

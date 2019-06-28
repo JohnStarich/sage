@@ -57,7 +57,7 @@ func getTransactions(c *gin.Context) {
 		c.AbortWithError(http.StatusBadRequest, errors.New(errMsg))
 		return
 	}
-	ledger.WriteJSON(page, results, c.Writer)
+	c.JSON(http.StatusOK, ledger.Query(c.Query("search"), page, results))
 }
 
 type BalanceResponse struct {
