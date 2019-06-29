@@ -49,7 +49,7 @@ func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, r rules.Rules, download 
 	// TODO use smart first date selection on a per-account basis
 	const syncBuffer = 2 * days
 	duration := now.Sub(ldg.LastTransactionTime())
-	duration -= syncBuffer
+	duration += syncBuffer
 
 	const maxDownloadDuration = 30 * days
 	beforeStart := now.Add(-duration)
