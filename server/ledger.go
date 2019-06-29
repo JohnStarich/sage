@@ -153,13 +153,13 @@ func getBalances(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-func getExpensesAccounts(c *gin.Context) {
+func getExpenseAndRevenueAccounts(c *gin.Context) {
 	ledger := c.MustGet(ledgerKey).(*ledger.Ledger)
 	_, _, balanceMap := ledger.Balances()
 	accounts := make([]string, 0, len(balanceMap)+1)
 	accounts = append(accounts, "uncategorized")
 	for account := range balanceMap {
-		if strings.HasPrefix(account, "expenses:") {
+		if strings.HasPrefix(account, "expenses:") || strings.HasPrefix(account, "revenue:") {
 			accounts = append(accounts, account)
 		}
 	}
