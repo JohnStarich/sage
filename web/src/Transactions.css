@@ -37,6 +37,10 @@
   padding-left: 2em;
 }
 
+.transactions .amount.revenue {
+  color: #009900;
+}
+
 .transactions .search {
   width: 25em;
 }

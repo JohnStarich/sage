@@ -9,8 +9,13 @@ export default function(props) {
     return "NaN"
   }
   let className = "amount"
-  if (amount < 0 && props.highlightNegative) {
+  if (amount < 0) {
     className += " amount-negative"
+  } else {
+    className += " amount-positive"
+  }
+  if (props.className) {
+    className += " " + props.className
   }
 
   if (props.editable) {

@@ -29,7 +29,6 @@ export default function Balances(props) {
                 <td>
                   <Amount
                     amount={Number(account.Balances[account.Balances.length - 1])}
-                    highlightNegative
                     prefix="$"
                     />
                 </td>

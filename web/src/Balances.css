@@ -27,3 +27,8 @@
 .balances .account-revenue, .balances .account-assets {
   font-weight: 600;
 }
+
+.balances .amount.amount-negative {
+  color: red;
+}
+

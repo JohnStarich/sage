@@ -43,7 +43,15 @@ const columns = [
     align: 'right',
     headerAlign: 'right',
     formatter: (amount, txn) => {
-      return <Amount amount={amount} prefix={txn.SummaryCurrency} />
+      let className = null
+      if (txn.Postings.length === 2) {
+        const account = txn.Postings[1].Account
+        const separatorIndex = account.indexOf(':')
+        if (separatorIndex !== -1 && account.slice(0, separatorIndex) === "revenue") {
+          className = "revenue"
+        }
+      }
+      return <Amount className={className} amount={amount} prefix={txn.SummaryCurrency} />
     },
   },
 ];
