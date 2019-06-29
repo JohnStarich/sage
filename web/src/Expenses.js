@@ -154,7 +154,7 @@ function reduceCategories(accounts) {
       if (account.Account === name || account.Account.startsWith(name+':')) {
         if (newAccounts[name] === undefined) {
           account.Account = name
-          newAccounts[name] = account
+          newAccounts[name] = Object.assign({}, account)
         } else {
           newAccounts[name].Balances =
             newAccounts[name].Balances
