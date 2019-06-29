@@ -16,7 +16,9 @@ import './Expenses.css';
 
 export default function Expenses(props) {
   const { syncTime } = props
-  const [payload, setPayload] = React.useState({})
+  const [accounts, setAccounts] = React.useState(null)
+  const [start, setStart] = React.useState(null)
+  const [end, setEnd] = React.useState(null)
 
   React.useEffect(() => {
     axios.get('/api/v1/balances', {
@@ -28,25 +30,23 @@ export default function Expenses(props) {
         if (res.status !== 200 ) {
           throw new Error("Error fetching balances")
         }
-        res.data.Accounts = res.data.Accounts.map(account => {
+        setAccounts(res.data.Accounts.map(account => {
           account.Balances = account.Balances.map(Number)
           return account
-        })
-        setPayload(Object.assign({}, res.data))
+        }))
+        setStart(res.data.Start)
+        setEnd(res.data.End)
       })
   }, [syncTime])
 
   const noData = <div>No expense data to display</div>
-  if (! payload.Accounts) {
+  if (! accounts) {
     return noData
   }
-  let payloadCopy = Object.assign({}, payload)
-  payloadCopy.Accounts = reduceCategories(payloadCopy.Accounts)
-  payloadCopy.Accounts = payloadCopy.Accounts
-      .map(removeCumulative)
-      .map(negateBalances)
-  payloadCopy.Accounts = sortAccountsByActivity(payloadCopy.Accounts)
-  let data = convertAccountsToChartData(payloadCopy)
+  let accountsCopy = reduceCategories(accounts)
+  accountsCopy = accountsCopy.map(removeCumulative).map(negateBalances)
+  accountsCopy = sortAccountsByActivity(accountsCopy)
+  let data = convertAccountsToChartData({ start, end, accounts: accountsCopy })
   if (data === null) {
     return noData
   }
@@ -54,7 +54,7 @@ export default function Expenses(props) {
     <div className="expenses">
       <ResponsiveContainer width="100%">
         <BarChart data={data} stackOffset="sign" margin={{ left: 50 }}>
-          {payloadCopy.Accounts.map((a, i) =>
+          {accountsCopy.map((a, i) =>
             <Bar key={a.ID} dataKey={a.Account} stackId="1" fill={Colors[i % Colors.length]} />
           )}
           <XAxis dataKey="Date" />
@@ -108,21 +108,21 @@ const AmountTick = tick => {
   )
 }
 
-function convertAccountsToChartData(payload) {
-  let start = new Date(payload.Start).getTime()
-  let end = new Date(payload.End).getTime()
-  if (! payload.Accounts || end < start) {
+function convertAccountsToChartData({ start, end, accounts }) {
+  let startTime = new Date(start).getTime()
+  let endTime = new Date(end).getTime()
+  if (! accounts || endTime < startTime) {
     return null
   }
-  let interval = (end - start) / payload.Accounts[0].Balances.length
+  let interval = (endTime - startTime) / accounts[0].Balances.length
   let times = []
-  for (let i = start; i < end; i += interval) {
+  for (let i = startTime; i < endTime; i += interval) {
     times.push(new Date(i));
   }
 
   // convert from series of balances and times into large data point objects
   return times.map((time, i) =>
-    payload.Accounts.reduce((accumulator, account) => {
+    accounts.reduce((accumulator, account) => {
       accumulator[account.Account] = account.Balances[i]
       return accumulator
     }, { Date: new Date(time).toDateString() })
