@@ -36,7 +36,7 @@ function App() {
           </Dropdown>
         </Navbar.Collapse>
       </Navbar>
-      <Container>
+      <Container className="content">
         <Row>
           <Col lg xl={5}><Balances syncTime={syncTime} /></Col>
           <Col xl={7}><Expenses syncTime={syncTime} /></Col>
