@@ -28,6 +28,7 @@ const (
 	rulesKey     = "rules"
 )
 
+// Run starts the server
 func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules, logger *zap.Logger) error {
 	runFullSync := func() error {
 		err := sync.Sync(logger, ledgerFileName, ldg, accounts, r)
@@ -48,7 +49,11 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 		recovery(logger, true),
 	)
 	engine.GET("/", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/web") })
-	engine.StaticFS("/web", AssetFile())
+	engine.StaticFS("/web", newDefaultRouteFS(
+		"/index.html",
+		AssetFile(),
+		"/static/",
+	))
 
 	api := engine.Group("/api/v1")
 	api.Use(
