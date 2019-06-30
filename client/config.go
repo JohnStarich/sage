@@ -1,9 +1,10 @@
 package client
 
+// Config contains financial institution connection details
 type Config struct {
 	AppID      string
 	AppVersion string
-	ClientID   string
+	ClientID   string `json:",omitempty"`
 	OFXVersion string
-	NoIndent   bool
+	NoIndent   bool `json:",omitempty"`
 }

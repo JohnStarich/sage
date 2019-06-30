@@ -1,11 +1,14 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+var _ json.Marshaler = baseAccount{}
 
 func TestBaseAccount(t *testing.T) {
 	inst := &institution{}

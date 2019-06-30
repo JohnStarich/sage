@@ -6,10 +6,12 @@ import (
 	"github.com/aclindsa/ofxgo"
 )
 
+// CreditCard represents a credit card account
 type CreditCard struct {
 	baseAccount
 }
 
+// NewCreditCard creates an account from credit card details
 func NewCreditCard(id, description string, institution Institution) Account {
 	return CreditCard{
 		baseAccount: baseAccount{

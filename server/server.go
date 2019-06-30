@@ -113,6 +113,7 @@ func setupAPI(router gin.IRouter) {
 	})
 
 	router.POST("/sync", syncLedger)
+	router.GET("/accounts", getAccounts)
 	router.GET("/balances", getBalances)
 	router.GET("/categories", getExpenseAndRevenueAccounts)
 

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -8,9 +9,11 @@ import (
 )
 
 const (
+	// RedactSuffixLength the number of characters that remain unredacted at the end of a string
 	RedactSuffixLength = 4
 )
 
+// Account identifies an account at a financial institution
 type Account interface {
 	ID() string
 	Description() string
@@ -40,6 +43,19 @@ func (b baseAccount) Description() string {
 	return b.id
 }
 
+func (b baseAccount) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		ID          string
+		Description string
+		Institution Institution
+	}{
+		b.id,
+		b.description,
+		b.institution,
+	})
+}
+
+// LedgerAccountName returns a suitable account name for a ledger file
 func LedgerAccountName(a Account) string {
 	var accountType string
 	switch a.(type) {

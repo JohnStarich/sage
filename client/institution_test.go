@@ -1,10 +1,13 @@
 package client
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+var _ json.Marshaler = institution{}
 
 func TestInstitution(t *testing.T) {
 	c := Config{AppID: "some app ID"}
@@ -22,7 +25,7 @@ func TestInstitution(t *testing.T) {
 	assert.Equal(t, "some org", i.Org())
 	assert.Equal(t, "1234", i.FID())
 	assert.Equal(t, "some user", i.Username())
-	assert.Equal(t, "some password", i.Password())
+	assert.Equal(t, Password("some password"), i.Password())
 	assert.Equal(t, "Some important place", i.Description())
 	assert.Equal(t, c, i.Config())
 }

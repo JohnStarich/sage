@@ -1,11 +1,13 @@
 package client
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/aclindsa/ofxgo"
 )
 
+// Bank is an Account plus the Bank's routing number or 'Bank ID'. Common interface for Savings and Checking
 type Bank interface {
 	Account
 
@@ -21,10 +23,12 @@ func (b bankAccount) BankID() string {
 	return b.bankID
 }
 
+// Checking represents a checking bank account
 type Checking struct {
 	bankAccount
 }
 
+// Savings represents a savings bank account
 type Savings struct {
 	bankAccount
 }
@@ -34,10 +38,12 @@ const (
 	savingsType  = "SAVINGS"
 )
 
+// NewCheckingAccount creates an account from checking details
 func NewCheckingAccount(id, bankID, description string, institution Institution) Account {
 	return Checking{bankAccount: newBankAccount(id, bankID, description, institution)}
 }
 
+// NewSavingsAccount creates an account from savings details
 func NewSavingsAccount(id, bankID, description string, institution Institution) Account {
 	return Savings{bankAccount: newBankAccount(id, bankID, description, institution)}
 }
@@ -95,4 +101,18 @@ func (c Checking) Statement(start, end time.Time) (ofxgo.Request, error) {
 
 func (s Savings) Statement(start, end time.Time) (ofxgo.Request, error) {
 	return s.statementFromAccountType(start, end, savingsType)
+}
+
+func (b bankAccount) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Description   string
+		ID            string
+		RoutingNumber string
+		Institution   Institution
+	}{
+		b.description,
+		b.id,
+		b.bankID,
+		b.institution,
+	})
 }

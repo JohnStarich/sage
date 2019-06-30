@@ -1,12 +1,15 @@
 package client
 
+import "encoding/json"
+
+// Institution represents the connection and identification details for a financial institution
 type Institution interface {
 	Description() string
 	FID() string
 	Org() string
 	URL() string
 	Username() string
-	Password() string
+	Password() Password
 
 	Config() Config
 }
@@ -17,11 +20,12 @@ type institution struct {
 	org         string
 	url         string
 	username    string
-	password    string
+	password    Password
 
 	config Config
 }
 
+// NewInstitution creates an institution
 func NewInstitution(
 	description,
 	fid,
@@ -35,7 +39,7 @@ func NewInstitution(
 		description: description,
 		fid:         fid,
 		org:         org,
-		password:    password,
+		password:    Password(password),
 		url:         url,
 		username:    username,
 	}
@@ -57,7 +61,7 @@ func (i institution) Username() string {
 	return i.username
 }
 
-func (i institution) Password() string {
+func (i institution) Password() Password {
 	return i.password
 }
 
@@ -67,4 +71,22 @@ func (i institution) Description() string {
 
 func (i institution) Config() Config {
 	return i.config
+}
+
+func (i institution) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Description string
+		FID         string
+		Org         string
+		URL         string
+		Username    string
+		Config
+	}{
+		i.description,
+		i.fid,
+		i.org,
+		i.url,
+		i.username,
+		i.config,
+	})
 }
