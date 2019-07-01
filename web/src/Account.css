@@ -1,0 +1,12 @@
+.account {
+  max-width: 40em;
+  margin-top: 4em;
+}
+
+.account .row {
+  margin-bottom: 1em;
+}
+
+.account form > .form-group {
+  margin-bottom: 2.6em;
+}

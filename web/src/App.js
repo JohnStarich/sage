@@ -8,11 +8,12 @@ import Navbar from 'react-bootstrap/Navbar';
 import Nav from 'react-bootstrap/Nav';
 import Sync from './Sync';
 import Activity from './Activity';
+import Accounts from './Accounts';
 
 function App() {
   const [syncTime, setSyncTime] = React.useState(new Date())
   return (
-    <Router>
+    <Router basename="/web">
       <Navbar className="main-nav" bg="dark" expand="sm" variant="dark" sticky="top">
         <NavLink exact to="/"><Navbar.Brand>Sage</Navbar.Brand></NavLink>
         <Navbar.Toggle />
@@ -34,7 +35,7 @@ function App() {
       </Navbar>
       
       <Route path="/" exact component={() => <Activity syncTime={syncTime} />} />
-      <Route path="/accounts" component={() => null} />
+      <Route path="/accounts" component={Accounts} />
       <Route path="/categories" component={() => null} />
     </Router>
   );

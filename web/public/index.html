@@ -6,6 +6,7 @@
       default-src 'self';
       script-src 'self'<%= process.env.NODE_ENV === 'development' && " 'unsafe-inline'" || "" %>;
       style-src 'self' 'unsafe-inline';
+      img-src 'self' data:;<% // Remove data: after https://github.com/twbs/bootstrap/issues/25394 is fixed %>
     " />
     <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

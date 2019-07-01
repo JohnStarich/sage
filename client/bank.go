@@ -23,6 +23,22 @@ func (b bankAccount) BankID() string {
 	return b.bankID
 }
 
+func (b bankAccount) marshalJSON(accountType string) ([]byte, error) {
+	return json.Marshal(struct {
+		Description   string
+		ID            string
+		AccountType   string
+		RoutingNumber string
+		Institution   Institution
+	}{
+		AccountType:   accountType,
+		Description:   b.description,
+		ID:            b.id,
+		Institution:   b.institution,
+		RoutingNumber: b.bankID,
+	})
+}
+
 // Checking represents a checking bank account
 type Checking struct {
 	bankAccount
@@ -103,16 +119,10 @@ func (s Savings) Statement(start, end time.Time) (ofxgo.Request, error) {
 	return s.statementFromAccountType(start, end, savingsType)
 }
 
-func (b bankAccount) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		Description   string
-		ID            string
-		RoutingNumber string
-		Institution   Institution
-	}{
-		b.description,
-		b.id,
-		b.bankID,
-		b.institution,
-	})
+func (c Checking) MarshalJSON() ([]byte, error) {
+	return c.bankAccount.marshalJSON(checkingType)
+}
+
+func (s Savings) MarshalJSON() ([]byte, error) {
+	return s.bankAccount.marshalJSON(savingsType)
 }

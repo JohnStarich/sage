@@ -1,0 +1,19 @@
+.radio-group .form-check {
+  margin: 0.25em 0;
+}
+
+.radio-group .form-check label {
+  border-radius: 0.5em;
+  cursor: pointer;
+  margin-right: 0.5em;
+  padding: 0.2em 0.75em;
+}
+
+.radio-group input {
+  display: none;
+}
+
+.radio-group input:checked + label {
+  color: white;
+  background-color: #6c757d;
+}
