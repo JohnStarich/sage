@@ -12,11 +12,14 @@ import RadioGroup from './RadioGroup';
 
 export default function Account(props) {
   const { account, editable } = props
-  const [isBank, setIsBank] = React.useState(account && account.RoutingNumber && account.RoutingNumber !== "")
+  const [isBank, setIsBank] = React.useState(null)
   const [validated, setValidated] = React.useState(false)
 
   if (! account) {
     return null
+  }
+  if (isBank === null) {
+    setIsBank(account && account.RoutingNumber && account.RoutingNumber !== "")
   }
 
   const labelWidth = 4
