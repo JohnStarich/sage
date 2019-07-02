@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/aclindsa/ofxgo"
@@ -25,6 +24,7 @@ type sageClient struct {
 	*rate.Limiter
 }
 
+// New creates a new ofxgo Client with the given connection info
 func New(url string, config Config) (ofxgo.Client, error) {
 	return newClient(url, config, getLoggerFromEnv, ofxgo.GetClient)
 }
@@ -50,6 +50,7 @@ func newClient(
 		}
 		basicClient.SpecVersion = ofxVersion
 	}
+	basicClient.CarriageReturn = true
 	s.Client = getClient(url, basicClient)
 	s.Limiter = rate.NewLimiter(rate.Inf, 0)
 	if _, ok := s.Client.(*ofxgo.DiscoverCardClient); ok {
@@ -123,39 +124,11 @@ func doInstrumentedRequest(
 type requestMarshaler func(*ofxgo.Request) (*bytes.Buffer, error)
 
 func newRequestMarshaler(c ofxgo.Client) requestMarshaler {
-	requestReplacer := strings.NewReplacer(
-		"</DTCLIENT>", "",
-		"</DTSTART>", "",
-		"</DTEND>", "",
-		"</INCLUDE>", "",
-		"</USERID>", "",
-		"</USERPASS>", "",
-		"</LANGUAGE>", "",
-		"</ORG>", "",
-		"</FID>", "",
-		"</APPID>", "",
-		"</APPVER>", "",
-		"</TRNUID>", "",
-		"</BANKID>", "",
-		"</ACCTID>", "",
-		"</ACCTTYPE>", "",
-	)
 	return func(req *ofxgo.Request) (*bytes.Buffer, error) {
 		req.SetClientFields(c)
 
 		b, err := req.Marshal()
-		if err != nil {
-			return nil, errors.Wrap(err, "Failed to marshal request")
-		}
-
-		data := b.String()
-		// fix for institutions that require Windows-like line endings
-		data = strings.Replace(data, "\n", "\r\n", -1)
-		if c.OfxVersion().String()[0] == '1' {
-			// fix closing tag issue for OFX 102 and USAA
-			data = requestReplacer.Replace(data)
-		}
-		return bytes.NewBufferString(data), nil
+		return b, errors.Wrap(err, "Failed to marshal request")
 	}
 }
 

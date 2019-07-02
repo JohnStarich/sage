@@ -280,9 +280,10 @@ func TestDoInstrumentedRequest(t *testing.T) {
 
 func TestNewRequestMarshaler(t *testing.T) {
 	c := &ofxgo.BasicClient{
-		AppID:    "myofx",
-		AppVer:   "1000",
-		NoIndent: true,
+		AppID:          "myofx",
+		AppVer:         "1000",
+		NoIndent:       true,
+		CarriageReturn: true,
 	}
 	marshal := newRequestMarshaler(c)
 

@@ -1,8 +1,7 @@
 module github.com/johnstarich/sage
 
 require (
-	github.com/aclindsa/ofxgo v0.1.1-0.20190306115030-f41286cac7db
-	github.com/aclindsa/xml v0.0.0-20181012010330-207ec7fb7420 // indirect
+	github.com/aclindsa/ofxgo v0.1.1-0.20190701101117-ebf7f5b757ed
 	github.com/gin-contrib/zap v0.0.0-20190528085758-3cc18cd8fce3
 	github.com/gin-gonic/gin v1.4.0
 	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect

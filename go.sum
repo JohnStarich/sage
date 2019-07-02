@@ -1,8 +1,7 @@
-github.com/aclindsa/ofxgo v0.1.1-0.20190306115030-f41286cac7db h1:y+QksyBz2RBvXlrwZ8+t7153d/uqZU2eE8rA0nb8yI8=
-github.com/aclindsa/ofxgo v0.1.1-0.20190306115030-f41286cac7db/go.mod h1:+MzFqIvSQD9KSoMgdbAvJCVybmhqUsreFVRgJU0Xn58=
-github.com/aclindsa/xml v0.0.0-20171002130543-5d4402bb4a20/go.mod h1:DiEHtTD+e6zS3+R95F05Bfbcsfv13wZTi2M4LfAFLBE=
-github.com/aclindsa/xml v0.0.0-20181012010330-207ec7fb7420 h1:2DWA5P73rgwM+lIpeursQMzhQ3d18Ar3009L1Wy3QA0=
-github.com/aclindsa/xml v0.0.0-20181012010330-207ec7fb7420/go.mod h1:DiEHtTD+e6zS3+R95F05Bfbcsfv13wZTi2M4LfAFLBE=
+github.com/aclindsa/ofxgo v0.1.1-0.20190701101117-ebf7f5b757ed h1:Y0/eMf511Xk3PcQ1ru3lHoV9ZPs/iVilUBHHh3Q2Dsc=
+github.com/aclindsa/ofxgo v0.1.1-0.20190701101117-ebf7f5b757ed/go.mod h1:/26AoDGcjx7WpD0UnbgtVOIttL0z/o4L+zAhF4jozAI=
+github.com/aclindsa/xml v0.0.0-20190701095008-453d2c6090c2 h1:ICeGSGrc6fd81VtQ3nZ2h7GEOKxWYwRxjW0v0d/mgu4=
+github.com/aclindsa/xml v0.0.0-20190701095008-453d2c6090c2/go.mod h1:GjqOUT8xlg5+T19lFv6yAGNrtMKkZ839Gt4e16mBXlY=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
