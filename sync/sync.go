@@ -21,8 +21,10 @@ var (
 	mu sync.Mutex // basic protection against concurrent sync operations
 )
 
-func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules) error {
-	ledgerErr := Ledger(logger, ldg, accounts, r)
+// Sync runs a Ledger sync, followed by a File sync
+// If a partial failure occurs during Ledger sync, runs File sync anyway
+func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) error {
+	ledgerErr := Ledger(logger, ldg, accountStore, r)
 	if ledgerErr != nil {
 		if _, ok := ledgerErr.(ledger.Error); !ok {
 			return ledgerErr
@@ -34,10 +36,11 @@ func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, account
 	return ledgerErr
 }
 
-func Ledger(logger *zap.Logger, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules) error {
+// Ledger fetches transactions for each account and categorizes them based on rules
+func Ledger(logger *zap.Logger, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) error {
 	mu.Lock()
 	defer mu.Unlock()
-	return ledgerSync(logger, ldg, r, downloadTxns(accounts))
+	return ledgerSync(logger, ldg, r, downloadTxns(accountStore))
 }
 
 func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, r rules.Rules, download func(start, end time.Time) ([]ledger.Transaction, error)) error {
@@ -66,6 +69,7 @@ func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, r rules.Rules, download 
 		allTxns = append(allTxns, txns...)
 		downloadedTime = end
 	}
+	logger.Info("Download succeeded!")
 
 	// throw out extra transactions that were included by the institution responses
 	filteredTxns := make([]ledger.Transaction, 0, len(allTxns))
@@ -81,9 +85,15 @@ func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, r rules.Rules, download 
 		r.Apply(&allTxns[i])
 	}
 
-	return ldg.AddTransactions(allTxns)
+	if err := ldg.AddTransactions(allTxns); err != nil {
+		logger.Warn("Failed to add transactions to ledger", zap.Error(err))
+		return err
+	}
+	logger.Info("Ledger successfully updated")
+	return nil
 }
 
+// File writes the given ledger to disk in "ledger" format
 func File(ldg *ledger.Ledger, fileName string) error {
 	mu.Lock()
 	defer mu.Unlock()
@@ -91,17 +101,20 @@ func File(ldg *ledger.Ledger, fileName string) error {
 	return errors.Wrap(err, "Error writing ledger to disk")
 }
 
-func downloadTxns(accounts []client.Account) func(start, end time.Time) ([]ledger.Transaction, error) {
+func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) ([]ledger.Transaction, error) {
 	return func(start, end time.Time) ([]ledger.Transaction, error) {
 		var txns []ledger.Transaction
-		for _, account := range accounts {
-			accountTxns, err := client.Transactions(account, start, end)
+		var err error
+		accountStore.Iterate(func(account client.Account) bool {
+			var accountTxns []ledger.Transaction
+			accountTxns, err = client.Transactions(account, start, end)
 			if err != nil {
-				return nil, err
+				return false
 			}
 			txns = append(txns, accountTxns...)
-		}
-		return txns, nil
+			return true
+		})
+		return txns, err
 	}
 }
 

@@ -14,7 +14,6 @@ import (
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/sync"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -29,19 +28,7 @@ const (
 )
 
 // Run starts the server
-func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules, logger *zap.Logger) error {
-	runFullSync := func() error {
-		err := sync.Sync(logger, ledgerFileName, ldg, accounts, r)
-		if err == nil {
-			logger.Info("Sync completed successfully")
-			return nil
-		}
-		return errors.Wrap(err, "Error syncing ledger")
-	}
-	fileSync := func() error {
-		return sync.File(ldg, ledgerFileName)
-	}
-
+func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules, logger *zap.Logger) error {
 	engine := gin.New()
 	engine.Use(
 		ginzap.Ginzap(logger, time.RFC3339, true),
@@ -58,45 +45,41 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 	api := engine.Group("/api/v1")
 	api.Use(
 		func(c *gin.Context) {
-			c.Set(fullSyncKey, runFullSync)
-			c.Set(fileSyncKey, fileSync)
 			c.Set(loggerKey, logger)
-			c.Set(ledgerKey, ldg)
-			c.Set(accountsKey, accounts)
-			c.Set(rulesKey, r)
 		},
 	)
-	setupAPI(api)
+	setupAPI(api, ledgerFileName, ldg, accountStore, r)
 
 	done := make(chan bool, 1)
 	errs := make(chan error, 2)
 
-	/*
-		go func() {
-			// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
-			time.Sleep(2 * time.Second)
-			if err := runFullSync(); err != nil {
-				if _, ok := err.(ledger.Error); !ok {
-					// only stop sync loop if NOT a partial error
+	go func() {
+		// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
+		time.Sleep(2 * time.Second)
+		runSync := func() error {
+			return sync.Sync(logger, ledgerFileName, ldg, accountStore, r)
+		}
+		if err := runSync(); err != nil {
+			if _, ok := err.(ledger.Error); !ok {
+				// only stop sync loop if NOT a partial error
+				errs <- err
+				return
+			}
+		}
+		ticker := time.NewTicker(syncInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				if err := runSync(); err != nil {
 					errs <- err
 					return
 				}
 			}
-			ticker := time.NewTicker(syncInterval)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-done:
-					return
-				case <-ticker.C:
-					if err := runFullSync(); err != nil {
-						errs <- err
-						return
-					}
-				}
-			}
-		}()
-	*/
+		}
+	}()
 
 	go func() {
 		logger.Info("Starting server", zap.String("addr", addr))
@@ -107,19 +90,19 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 	return <-errs
 }
 
-func setupAPI(router gin.IRouter) {
+func setupAPI(router gin.IRouter, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) {
 	router.GET("/version", func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]string{
 			"version": consts.Version,
 		})
 	})
 
-	router.POST("/sync", syncLedger)
-	router.GET("/accounts", getAccounts)
-	router.GET("/accounts/:id", getAccount)
-	router.GET("/balances", getBalances)
-	router.GET("/categories", getExpenseAndRevenueAccounts)
+	router.POST("/sync", syncLedger(ledgerFileName, ldg, accountStore, r))
+	router.GET("/accounts", getAccounts(accountStore))
+	router.GET("/accounts/:id", getAccount(accountStore))
+	router.GET("/balances", getBalances(ldg, accountStore))
+	router.GET("/categories", getExpenseAndRevenueAccounts(ldg))
 
-	router.GET("/transactions", getTransactions)
-	router.PATCH("/transactions/:id", updateTransaction)
+	router.GET("/transactions", getTransactions(ldg))
+	router.PATCH("/transactions/:id", updateTransaction(ledgerFileName, ldg))
 }

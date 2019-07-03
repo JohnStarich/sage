@@ -7,23 +7,24 @@ import (
 	"github.com/johnstarich/sage/client"
 )
 
-func getAccount(c *gin.Context) {
-	accounts := c.MustGet(accountsKey).([]client.Account)
-	accountID := c.Param("id")
-	for _, account := range accounts {
-		if account.ID() == accountID {
-			c.JSON(http.StatusOK, map[string]interface{}{
-				"Account": account,
-			})
+func getAccount(accountStore *client.AccountStore) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		accountID := c.Param("id")
+		account, exists := accountStore.Find(accountID)
+		if !exists {
+			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"Account": account,
+		})
 	}
-	c.AbortWithStatus(http.StatusNotFound)
 }
 
-func getAccounts(c *gin.Context) {
-	accounts := c.MustGet(accountsKey).([]client.Account)
-	c.JSON(http.StatusOK, map[string]interface{}{
-		"Accounts": accounts,
-	})
+func getAccounts(accountStore *client.AccountStore) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"Accounts": accountStore,
+		})
+	}
 }

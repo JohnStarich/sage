@@ -44,7 +44,7 @@ func loadRules(fileName string) (rules.Rules, error) {
 	return r, nil
 }
 
-func start(isServer bool, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Account, r rules.Rules) error {
+func start(isServer bool, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) error {
 	logger, err := zap.NewProduction()
 	if os.Getenv("DEVELOPMENT") == "true" {
 		logger, err = zap.NewDevelopment()
@@ -54,10 +54,10 @@ func start(isServer bool, ledgerFileName string, ldg *ledger.Ledger, accounts []
 	}
 
 	if !isServer {
-		return sync.Sync(logger, ledgerFileName, ldg, accounts, r)
+		return sync.Sync(logger, ledgerFileName, ldg, accountStore, r)
 	}
 	gin.SetMode(gin.ReleaseMode)
-	return server.Run("0.0.0.0:8080", ledgerFileName, ldg, accounts, r, logger)
+	return server.Run("0.0.0.0:8080", ledgerFileName, ldg, accountStore, r, logger)
 }
 
 func usage(flagSet *flag.FlagSet) string {
@@ -122,7 +122,11 @@ func handleErrors() (usageErr bool, err error) {
 	if len(accounts) == 0 {
 		return false, errors.New("No accounts found in client ini file")
 	}
-	return false, start(*enableServer, *ledgerFileName, ldg, accounts, r)
+	accountStore, err := client.NewAccountStore(accounts)
+	if err != nil {
+		return false, err
+	}
+	return false, start(*enableServer, *ledgerFileName, ldg, accountStore, r)
 }
 
 func main() {
