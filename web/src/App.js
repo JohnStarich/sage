@@ -3,17 +3,30 @@ import { BrowserRouter as Router, Route, Link, NavLink } from "react-router-dom"
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
-import Dropdown from 'react-bootstrap/Dropdown';
-import Navbar from 'react-bootstrap/Navbar';
-import Nav from 'react-bootstrap/Nav';
-import Sync from './Sync';
-import Activity from './Activity';
 import Accounts from './Accounts';
+import Activity from './Activity';
+import Breadcrumb from 'react-bootstrap/Breadcrumb';
+import Dropdown from 'react-bootstrap/Dropdown';
+import Nav from 'react-bootstrap/Nav';
+import Navbar from 'react-bootstrap/Navbar';
+import Sync from './Sync';
+import { Crumb, Breadcrumbs } from './Breadcrumb';
 
 function App() {
-  const [syncTime, setSyncTime] = React.useState(new Date())
   return (
     <Router basename="/web">
+      <Route path="/" component={AppContent} />
+    </Router>
+  );
+}
+
+export default App;
+
+function AppContent({ match }) {
+  const [syncTime, setSyncTime] = React.useState(new Date())
+  return (
+    <>
+      <Crumb title="Sage" match={match} />
       <Navbar className="main-nav" bg="dark" expand="sm" variant="dark" sticky="top">
         <NavLink exact to="/"><Navbar.Brand>Sage</Navbar.Brand></NavLink>
         <Navbar.Toggle />
@@ -33,12 +46,14 @@ function App() {
           </Dropdown>
         </Navbar.Collapse>
       </Navbar>
-      
-      <Route path="/" exact component={() => <Activity syncTime={syncTime} />} />
-      <Route path="/accounts" component={Accounts} />
-      <Route path="/categories" component={() => null} />
-    </Router>
-  );
-}
 
-export default App;
+      <Breadcrumbs as={Breadcrumb} skip={1} render={({ title, match }) =>
+          <NavLink className="breadcrumb-item" to={match.url} exact>{title}</NavLink>
+        }>
+        <Route path="/" exact component={() => <Activity syncTime={syncTime} />} />
+        <Route path="/accounts" component={Accounts} />
+        <Route path="/categories" component={() => null} />
+      </Breadcrumbs>
+    </>
+  )
+}
