@@ -71,30 +71,32 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accounts []client.Acco
 	done := make(chan bool, 1)
 	errs := make(chan error, 2)
 
-	go func() {
-		// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
-		time.Sleep(2 * time.Second)
-		if err := runFullSync(); err != nil {
-			if _, ok := err.(ledger.Error); !ok {
-				// only stop sync loop if NOT a partial error
-				errs <- err
-				return
-			}
-		}
-		ticker := time.NewTicker(syncInterval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-done:
-				return
-			case <-ticker.C:
-				if err := runFullSync(); err != nil {
+	/*
+		go func() {
+			// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
+			time.Sleep(2 * time.Second)
+			if err := runFullSync(); err != nil {
+				if _, ok := err.(ledger.Error); !ok {
+					// only stop sync loop if NOT a partial error
 					errs <- err
 					return
 				}
 			}
-		}
-	}()
+			ticker := time.NewTicker(syncInterval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					if err := runFullSync(); err != nil {
+						errs <- err
+						return
+					}
+				}
+			}
+		}()
+	*/
 
 	go func() {
 		logger.Info("Starting server", zap.String("addr", addr))

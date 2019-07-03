@@ -1,11 +1,12 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Link, NavLink } from "react-router-dom";
+import { BrowserRouter as Router, Route, Switch, Link, NavLink } from "react-router-dom";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
 import Accounts from './Accounts';
 import Activity from './Activity';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
+import Container from 'react-bootstrap/Container';
 import Dropdown from 'react-bootstrap/Dropdown';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
@@ -47,13 +48,19 @@ function AppContent({ match }) {
         </Navbar.Collapse>
       </Navbar>
 
-      <Breadcrumbs as={Breadcrumb} skip={1} render={({ title, match }) =>
-          <NavLink className="breadcrumb-item" to={match.url} exact>{title}</NavLink>
-        }>
+      <Switch>
         <Route path="/" exact component={() => <Activity syncTime={syncTime} />} />
-        <Route path="/accounts" component={Accounts} />
-        <Route path="/categories" component={() => null} />
-      </Breadcrumbs>
+        <Route>
+          <Breadcrumbs as={Breadcrumb} skip={1} render={({ title, match }) =>
+              <NavLink className="breadcrumb-item" to={match.url} exact>{title}</NavLink>
+            }>
+            <Container>
+              <Route path="/accounts" component={Accounts} />
+              <Route path="/categories" component={() => null} />
+            </Container>
+          </Breadcrumbs>
+        </Route>
+      </Switch>
     </>
   )
 }
