@@ -1,5 +1,6 @@
 import React from 'react';
 import axios from 'axios';
+import { Redirect } from 'react-router-dom';
 import './Account.css';
 
 import Button from 'react-bootstrap/Button';
@@ -11,9 +12,10 @@ import RadioGroup from './RadioGroup';
 
 
 export default function Account(props) {
-  const { account, editable } = props
+  const { account, editable, updated } = props
   const [isBank, setIsBank] = React.useState(null)
   const [validated, setValidated] = React.useState(false)
+  const [redirect, setRedirect] = React.useState(null)
 
   if (! account) {
     return null
@@ -39,6 +41,7 @@ export default function Account(props) {
   }
   return (
     <Container className="account">
+      {redirect}
       <Form
         noValidate
         validated={validated}
@@ -47,7 +50,21 @@ export default function Account(props) {
           e.stopPropagation()
           const form = e.currentTarget
           if (form.checkValidity() !== false) {
-            updateAccount(account.ID, form)
+            const newAccount = accountFromForm(account.ID, form)
+            updateAccount(account.ID, newAccount)
+              .then(res => {
+                setRedirect(<Redirect to="/accounts" />)
+                if (updated) {
+                  updated(account.ID, newAccount)
+                }
+              })
+              .catch(e => {
+                // this case should be impossible due to client-side validation
+                if (e.response.status !== 400) {
+                  throw e
+                }
+                alert(e.response.data.Error)
+              })
           }
           setValidated(true)
         }}
@@ -183,7 +200,7 @@ function formIDFactory(accountID) {
   return name => `account-${accountID}-${name}`
 }
 
-function updateAccount(originalAccountID, form) {
+function accountFromForm(originalAccountID, form) {
   const makeID = formIDFactory(originalAccountID)
   const valueFromID = name => {
     const elem = document.getElementById(makeID(name))
@@ -198,7 +215,7 @@ function updateAccount(originalAccountID, form) {
     }
     return null
   }
-  let newAccount = {
+  return {
     ID: valueFromID("id"),
     Description: valueFromID("description"),
     RoutingNumber: valueFromID("routingNumber"),
@@ -214,15 +231,10 @@ function updateAccount(originalAccountID, form) {
       OFXVersion: valueFromID("institutionOFXVersion"),
       Username: valueFromID("institutionUsername"),
       Password: valueFromID("institutionPassword"),
-    },
+    }
   }
-  console.log(newAccount)
+}
 
-  return axios.put(`/api/v1/accounts/${originalAccountID}`, newAccount)
-    .then(res => {
-      if (res.status !== 200 ) {
-        throw new Error("Error fetching accounts")
-      }
-      return res.data
-    })
+function updateAccount(originalAccountID, account) {
+  return axios.put(`/api/v1/accounts/${originalAccountID}`, account)
 }

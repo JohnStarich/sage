@@ -17,6 +17,16 @@ export default function Accounts({ match }) {
       })
   }, [])
 
+  const accountUpdated = (originalAccountID, account) => {
+    let newAccounts = Array.from(accounts)
+    for (let i in newAccounts) {
+      if (newAccounts[i].ID === originalAccountID) {
+        newAccounts[i] = account
+      }
+    }
+    setAccounts(newAccounts)
+  }
+
   return (
     <>
       <Crumb title="Accounts" match={match} />
@@ -27,26 +37,24 @@ export default function Accounts({ match }) {
           )}
         </ul>
       } />
-      <Route path={`${match.path}/:id`} component={AccountView} />
+      <Route path={`${match.path}/:id`} component={props => <AccountView updated={accountUpdated} {...props} />} />
     </>
   )
 }
 
-function AccountView({ match }) {
+function AccountView({ updated, match }) {
   const [account, setAccount] = React.useState(null)
   React.useEffect(() => {
     axios.get(`/api/v1/accounts/${match.params.id}`)
       .then(res => {
-        if (res.status !== 200 ) {
-          throw new Error("Error fetching account with ID " + match.params.id)
-        }
         setAccount(res.data.Account)
       })
   }, [match.params.id])
+
   return (
     <>
       <Crumb title={account ? account.Description : 'Loading...'} match={match} />
-      <Account account={account} editable />
+      <Account account={account} editable updated={updated} />
     </>
   )
 }
