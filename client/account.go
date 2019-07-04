@@ -37,10 +37,7 @@ func (b baseAccount) ID() string {
 }
 
 func (b baseAccount) Description() string {
-	if b.description != "" {
-		return b.description
-	}
-	return b.id
+	return b.description
 }
 
 type baseAccountJSONUnmarshal struct {
@@ -68,9 +65,9 @@ func (b *baseAccount) UnmarshalJSON(buf []byte) error {
 
 func (b baseAccount) MarshalJSON() ([]byte, error) {
 	return json.Marshal(baseAccountJSONMarshal{
-		b.id,
-		b.description,
-		b.institution,
+		ID:          b.id,
+		Description: b.description,
+		Institution: b.institution,
 	})
 }
 
