@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -14,6 +15,7 @@ import (
 type Ledger struct {
 	transactions Transactions
 	idSet        map[string]bool
+	mu           sync.RWMutex
 }
 
 func New(transactions []Transaction) (*Ledger, error) {
@@ -65,6 +67,8 @@ func makeIDSet(transactions []Transaction) (idSet map[string]bool, uniqueTxns []
 }
 
 func (l *Ledger) String() string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	var buf bytes.Buffer
 	for _, txn := range l.transactions {
 		buf.WriteString(txn.String())
@@ -74,6 +78,8 @@ func (l *Ledger) String() string {
 }
 
 func (l *Ledger) Validate() error {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	if len(l.transactions) == 0 {
 		return nil
 	}
@@ -157,6 +163,8 @@ func duplicateTransactionError(id string) error {
 
 // LastTransactionTime returns the last transactions Date field. Returns 0 if there are no transactions
 func (l *Ledger) LastTransactionTime() time.Time {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	if len(l.transactions) == 0 {
 		var t time.Time
 		return t
@@ -168,6 +176,8 @@ func (l *Ledger) LastTransactionTime() time.Time {
 // Returns an error if the ledger fails validation (i.e. fail balance assertions).
 // In the event of an error, attempts to add all valid transactions up to the error.
 func (l *Ledger) AddTransactions(txns []Transaction) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	idSet, newTransactions, _ := makeIDSet(append(l.transactions, txns...))
 	Transactions(newTransactions).Sort()
 	testLedger := &Ledger{
@@ -191,6 +201,8 @@ func (l *Ledger) AddTransactions(txns []Transaction) error {
 }
 
 func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal.Decimal) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	if len(l.transactions) == 0 {
 		return
 	}
@@ -230,6 +242,8 @@ func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal
 }
 
 func (l *Ledger) UpdateTransaction(id string, transaction Transaction) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if !l.idSet[id] {
 		return errors.New("Transaction not found by ID: " + id)
 	}

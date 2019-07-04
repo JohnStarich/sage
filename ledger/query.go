@@ -19,10 +19,12 @@ type transactionScore struct {
 }
 
 func (l *Ledger) Query(search string, page, results int) QueryResult {
-	txns := l.transactions
 	if page < 1 || results < 1 {
 		panic("Page and results must >= 1")
 	}
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	txns := l.transactions
 	if len(txns) > 0 {
 		for _, p := range l.transactions[0].Postings {
 			if p.isOpeningBalance() {
