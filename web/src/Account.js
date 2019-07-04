@@ -212,6 +212,8 @@ function updateAccount(originalAccountID, form) {
       AppID: valueFromID("institutionAppID"),
       AppVersion: valueFromID("institutionAppVersion"),
       OFXVersion: valueFromID("institutionOFXVersion"),
+      Username: valueFromID("institutionUsername"),
+      Password: valueFromID("institutionPassword"),
     },
   }
   console.log(newAccount)
