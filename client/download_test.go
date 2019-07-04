@@ -299,7 +299,7 @@ func TestFetchTransactions(t *testing.T) {
 						fid:      "some FID",
 						org:      "some org",
 						username: "some username",
-						password: "some password",
+						password: NewPassword("some password"),
 
 						config: Config{
 							ClientID: "some client ID",

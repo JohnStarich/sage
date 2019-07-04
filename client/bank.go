@@ -23,14 +23,36 @@ func (b bankAccount) BankID() string {
 	return b.bankID
 }
 
+type bankAccountJSONUnmarshal struct {
+	Description   string
+	ID            string
+	AccountType   string
+	RoutingNumber string
+	Institution   institution
+}
+
+type bankAccountJSONMarshal struct {
+	Description   string
+	ID            string
+	AccountType   string
+	RoutingNumber string
+	Institution   Institution
+}
+
+func (b *bankAccount) UnmarshalJSON(buf []byte) error {
+	var account bankAccountJSONUnmarshal
+	if err := json.Unmarshal(buf, &account); err != nil {
+		return err
+	}
+	b.id = account.ID
+	b.description = account.Description
+	b.bankID = account.RoutingNumber
+	b.institution = account.Institution
+	return nil
+}
+
 func (b bankAccount) marshalJSON(accountType string) ([]byte, error) {
-	return json.Marshal(struct {
-		Description   string
-		ID            string
-		AccountType   string
-		RoutingNumber string
-		Institution   Institution
-	}{
+	return json.Marshal(bankAccountJSONMarshal{
 		AccountType:   accountType,
 		Description:   b.description,
 		ID:            b.id,
@@ -53,6 +75,14 @@ const (
 	checkingType = "CHECKING"
 	savingsType  = "SAVINGS"
 )
+
+func IsChecking(s string) bool {
+	return s == checkingType
+}
+
+func IsSavings(s string) bool {
+	return s == savingsType
+}
 
 // NewCheckingAccount creates an account from checking details
 func NewCheckingAccount(id, bankID, description string, institution Institution) Account {

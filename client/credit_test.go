@@ -12,7 +12,7 @@ import (
 func TestGenerateCCStatement(t *testing.T) {
 	someID := "some ID"
 	someInstitution := institution{description: "some institution"}
-	creditCard := NewCreditCard(someID, "some description", someInstitution).(CreditCard)
+	creditCard := NewCreditCard(someID, "some description", someInstitution).(*CreditCard)
 
 	for _, tc := range []struct {
 		description string
@@ -62,7 +62,7 @@ func TestGenerateCCStatement(t *testing.T) {
 }
 
 func TestCreditCardStatement(t *testing.T) {
-	req, err := CreditCard{}.Statement(someStartTime, someEndTime)
+	req, err := (&CreditCard{}).Statement(someStartTime, someEndTime)
 	require.NoError(t, err)
 	require.Len(t, req.CreditCard, 1)
 	assert.IsType(t, &ofxgo.CCStatementRequest{}, req.CreditCard[0])

@@ -39,7 +39,7 @@ func NewInstitution(
 		description: description,
 		fid:         fid,
 		org:         org,
-		password:    Password(password),
+		password:    NewPassword(password),
 		url:         url,
 		username:    username,
 	}
@@ -73,20 +73,38 @@ func (i institution) Config() Config {
 	return i.config
 }
 
+type institutionJSON struct {
+	Description string
+	FID         string
+	Org         string
+	URL         string
+	Username    string
+	Password    Password
+	Config
+}
+
+func (i *institution) UnmarshalJSON(b []byte) error {
+	var inst institutionJSON
+	if err := json.Unmarshal(b, &inst); err != nil {
+		return err
+	}
+	i.description = inst.Description
+	i.fid = inst.FID
+	i.org = inst.Org
+	i.url = inst.URL
+	i.username = inst.Username
+	i.password = inst.Password
+	i.config = inst.Config
+	return nil
+}
+
 func (i institution) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		Description string
-		FID         string
-		Org         string
-		URL         string
-		Username    string
-		Config
-	}{
-		i.description,
-		i.fid,
-		i.org,
-		i.url,
-		i.username,
-		i.config,
+	return json.Marshal(institutionJSON{
+		Description: i.description,
+		FID:         i.fid,
+		Org:         i.org,
+		URL:         i.url,
+		Username:    i.username,
+		Config:      i.config,
 	})
 }

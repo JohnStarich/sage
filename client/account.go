@@ -43,12 +43,31 @@ func (b baseAccount) Description() string {
 	return b.id
 }
 
+type baseAccountJSONUnmarshal struct {
+	ID          string
+	Description string
+	Institution institution // use struct for unmarshaling
+}
+
+type baseAccountJSONMarshal struct {
+	ID          string
+	Description string
+	Institution Institution // use interface for marshaling
+}
+
+func (b *baseAccount) UnmarshalJSON(buf []byte) error {
+	var account baseAccountJSONUnmarshal
+	if err := json.Unmarshal(buf, &account); err != nil {
+		return err
+	}
+	b.id = account.ID
+	b.description = account.Description
+	b.institution = account.Institution
+	return nil
+}
+
 func (b baseAccount) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		ID          string
-		Description string
-		Institution Institution
-	}{
+	return json.Marshal(baseAccountJSONMarshal{
 		b.id,
 		b.description,
 		b.institution,
@@ -59,7 +78,7 @@ func (b baseAccount) MarshalJSON() ([]byte, error) {
 func LedgerAccountName(a Account) string {
 	var accountType string
 	switch a.(type) {
-	case CreditCard:
+	case *CreditCard:
 		accountType = "liabilities"
 	case Bank:
 		accountType = "assets"

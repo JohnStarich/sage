@@ -13,7 +13,7 @@ type CreditCard struct {
 
 // NewCreditCard creates an account from credit card details
 func NewCreditCard(id, description string, institution Institution) Account {
-	return CreditCard{
+	return &CreditCard{
 		baseAccount: baseAccount{
 			id:          id,
 			description: description,
@@ -22,12 +22,12 @@ func NewCreditCard(id, description string, institution Institution) Account {
 	}
 }
 
-func (cc CreditCard) Statement(start, end time.Time) (ofxgo.Request, error) {
+func (cc *CreditCard) Statement(start, end time.Time) (ofxgo.Request, error) {
 	return generateCCStatement(cc, start, end, ofxgo.RandomUID)
 }
 
 func generateCCStatement(
-	cc CreditCard,
+	cc *CreditCard,
 	start, end time.Time,
 	getUID func() (*ofxgo.UID, error),
 ) (ofxgo.Request, error) {

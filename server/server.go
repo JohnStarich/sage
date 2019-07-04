@@ -13,7 +13,6 @@ import (
 	"github.com/johnstarich/sage/consts"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
-	"github.com/johnstarich/sage/sync"
 	"go.uber.org/zap"
 )
 
@@ -57,7 +56,8 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.A
 		// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
 		time.Sleep(2 * time.Second)
 		runSync := func() error {
-			return sync.Sync(logger, ledgerFileName, ldg, accountStore, r)
+			//return sync.Sync(logger, ledgerFileName, ldg, accountStore, r)
+			return nil
 		}
 		if err := runSync(); err != nil {
 			if _, ok := err.(ledger.Error); !ok {
@@ -98,10 +98,12 @@ func setupAPI(router gin.IRouter, ledgerFileName string, ldg *ledger.Ledger, acc
 	})
 
 	router.POST("/sync", syncLedger(ledgerFileName, ldg, accountStore, r))
-	router.GET("/accounts", getAccounts(accountStore))
-	router.GET("/accounts/:id", getAccount(accountStore))
 	router.GET("/balances", getBalances(ldg, accountStore))
 	router.GET("/categories", getExpenseAndRevenueAccounts(ldg))
+
+	router.GET("/accounts", getAccounts(accountStore))
+	router.GET("/accounts/:id", getAccount(accountStore))
+	router.PUT("/accounts/:id", updateAccount(accountStore))
 
 	router.GET("/transactions", getTransactions(ldg))
 	router.PATCH("/transactions/:id", updateTransaction(ledgerFileName, ldg))

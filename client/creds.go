@@ -3,10 +3,13 @@ package client
 import (
 	"github.com/pkg/errors"
 	"gopkg.in/ini.v1"
+
+	sageErrors "github.com/johnstarich/sage/errors"
 )
 
 type credConfig []map[string]string
 
+// AccountsFromOFXClientINI builds a slice of accounts from the given OFX client INI file
 func AccountsFromOFXClientINI(fileName string) ([]Account, error) {
 	var cfg credConfig
 	iniFile, err := ini.Load(fileName)
@@ -25,7 +28,7 @@ func AccountsFromOFXClientINI(fileName string) ([]Account, error) {
 
 func accountsFromOFXClientConfig(cfg credConfig) ([]Account, error) {
 	var accounts []Account
-	var errs credErrors
+	var errs sageErrors.Errors
 
 	for ix, section := range cfg {
 		instDescription := section["institution.description"] + ":" + section["description"]

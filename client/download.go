@@ -52,7 +52,7 @@ func fetchTransactions(
 		Org:       ofxgo.String(institution.Org()),
 		Fid:       ofxgo.String(institution.FID()),
 		UserID:    ofxgo.String(institution.Username()),
-		UserPass:  ofxgo.String(institution.Password()),
+		UserPass:  ofxgo.String(*institution.Password().string),
 	}
 
 	response, err := doRequest(&query)
