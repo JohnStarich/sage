@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"sort"
+	"sync"
 
 	"github.com/pkg/errors"
 )
@@ -10,6 +11,7 @@ import (
 // AccountStore enables manipulation of accounts in memory
 type AccountStore struct {
 	accounts map[string]Account
+	mu       sync.RWMutex
 }
 
 // NewAccountStore creates an account store from the given accounts, must not contain duplicate account IDs
@@ -22,17 +24,21 @@ func NewAccountStore(accounts []Account) (*AccountStore, error) {
 		}
 		accountMap[id] = account
 	}
-	return &AccountStore{accountMap}, nil
+	return &AccountStore{accounts: accountMap}, nil
 }
 
 // Find returns the account with the given ID if it exists, otherwise found is false
 func (s *AccountStore) Find(id string) (account Account, found bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	account, found = s.accounts[id]
 	return
 }
 
 // Update replaces the account with a matching ID, fails if the account does not exist
 func (s *AccountStore) Update(id string, account Account) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if _, exists := s.accounts[id]; !exists {
 		return errors.New("Account not found by ID: " + id)
 	}
@@ -43,6 +49,8 @@ func (s *AccountStore) Update(id string, account Account) error {
 // Add pushes a new account into the store, fails if the account ID is already in use
 func (s *AccountStore) Add(account Account) error {
 	id := account.ID()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if _, exists := s.accounts[id]; exists {
 		return errors.New("Account already exists with that ID: " + id)
 	}
@@ -52,6 +60,8 @@ func (s *AccountStore) Add(account Account) error {
 
 // Remove deletes the account from the store by ID
 func (s *AccountStore) Remove(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if _, exists := s.accounts[id]; !exists {
 		return errors.New("Account not found by ID: " + id)
 	}
@@ -62,6 +72,8 @@ func (s *AccountStore) Remove(id string) error {
 // Iterate ranges over the accounts in the store, running f on each one until it returns false
 // Returns the last return value from f
 func (s *AccountStore) Iterate(f func(Account) (keepGoing bool)) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	for _, account := range s.accounts {
 		if !f(account) {
 			return false
@@ -73,6 +85,8 @@ func (s *AccountStore) Iterate(f func(Account) (keepGoing bool)) bool {
 // MarshalJSON marshals into a sorted list of accounts
 func (s *AccountStore) MarshalJSON() ([]byte, error) {
 	accountIDs := make([]string, 0, len(s.accounts))
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	for id := range s.accounts {
 		accountIDs = append(accountIDs, id)
 	}
