@@ -84,16 +84,34 @@ func (s *AccountStore) Iterate(f func(Account) (keepGoing bool)) bool {
 
 // MarshalJSON marshals into a sorted list of accounts
 func (s *AccountStore) MarshalJSON() ([]byte, error) {
-	accountIDs := make([]string, 0, len(s.accounts))
+	return s.marshalJSON(false)
+}
+
+func (s *AccountStore) marshalJSON(encodePasswords bool) ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	accountIDs := make([]string, 0, len(s.accounts))
 	for id := range s.accounts {
 		accountIDs = append(accountIDs, id)
 	}
 	sort.Strings(accountIDs)
-	accounts := make([]Account, 0, len(s.accounts))
+	accounts := make([]json.RawMessage, 0, len(s.accounts))
 	for _, id := range accountIDs {
-		accounts = append(accounts, s.accounts[id])
+		var data json.RawMessage
+		var err error
+		if impl, ok := s.accounts[id].(PasswordMarshaler); encodePasswords && ok {
+			data, err = impl.MarshalWithPassword()
+		} else {
+			data, err = json.Marshal(s.accounts[id])
+		}
+		if err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, data)
 	}
 	return json.Marshal(accounts)
+}
+
+func (s *AccountStore) MarshalWithPassword() ([]byte, error) {
+	return s.marshalJSON(true)
 }

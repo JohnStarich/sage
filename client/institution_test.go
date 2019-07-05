@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var _ json.Marshaler = institution{}
+var _ json.Marshaler = baseInstitution{}
 
 func TestInstitution(t *testing.T) {
 	c := Config{AppID: "some app ID"}

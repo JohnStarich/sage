@@ -294,7 +294,7 @@ func TestFetchTransactions(t *testing.T) {
 
 			account := mockAccount{
 				baseAccount: baseAccount{
-					institution: institution{
+					institution: baseInstitution{
 						url:      "some URL",
 						fid:      "some FID",
 						org:      "some org",
@@ -458,7 +458,7 @@ func TestMakeUniqueTxnID(t *testing.T) {
 			account := mockAccount{
 				baseAccount: baseAccount{
 					id:          tc.accountID,
-					institution: institution{fid: tc.fid},
+					institution: baseInstitution{fid: tc.fid},
 				},
 			}
 			assert.Equal(t, tc.expectedID, makeUniqueTxnID(account)(tc.txnID))

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/johnstarich/sage/client"
 	sageErrors "github.com/johnstarich/sage/errors"
+	"github.com/johnstarich/sage/sync"
 	"github.com/pkg/errors"
 )
 
@@ -42,7 +43,7 @@ func (b bankLike) isBank() bool {
 	return b.RoutingNumber != ""
 }
 
-func updateAccount(accountStore *client.AccountStore) gin.HandlerFunc {
+func updateAccount(accountsFileName string, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID := c.Param("id")
 		currentAccount, exists := accountStore.Find(accountID)
@@ -129,6 +130,6 @@ func updateAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 		}
 
 		accountStore.Update(accountID, account)
-		// TODO sync to disk
+		sync.Accounts(accountsFileName, accountStore)
 	}
 }

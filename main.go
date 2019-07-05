@@ -44,7 +44,7 @@ func loadRules(fileName string) (rules.Rules, error) {
 	return r, nil
 }
 
-func start(isServer bool, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) error {
+func start(isServer bool, ledgerFileName string, ldg *ledger.Ledger, accountsFileName string, accountStore *client.AccountStore, r rules.Rules) error {
 	logger, err := zap.NewProduction()
 	if os.Getenv("DEVELOPMENT") == "true" {
 		logger, err = zap.NewDevelopment()
@@ -57,7 +57,7 @@ func start(isServer bool, ledgerFileName string, ldg *ledger.Ledger, accountStor
 		return sync.Sync(logger, ledgerFileName, ldg, accountStore, r)
 	}
 	gin.SetMode(gin.ReleaseMode)
-	return server.Run("0.0.0.0:8080", ledgerFileName, ldg, accountStore, r, logger)
+	return server.Run("0.0.0.0:8080", ledgerFileName, ldg, accountsFileName, accountStore, r, logger)
 }
 
 func usage(flagSet *flag.FlagSet) string {
@@ -92,6 +92,7 @@ func handleErrors() (usageErr bool, err error) {
 	rulesFileName := flagSet.String("rules", "", "Required: Path to an hledger CSV import rules file")
 	ledgerFileName := flagSet.String("ledger", "", "Required: Path to a ledger file")
 	ofxClientFileName := flagSet.String("ofxclient", "", "Required: Path to an ofxclient ini file, includes connection information for institutions")
+	accountsFileName := flagSet.String("accounts", "", "Required: Path to an accounts file, includes connection information for institutions")
 	requestVersion := flagSet.Bool("version", false, "Print the version and exit")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return true, err
@@ -126,7 +127,7 @@ func handleErrors() (usageErr bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	return false, start(*enableServer, *ledgerFileName, ldg, accountStore, r)
+	return false, start(*enableServer, *ledgerFileName, ldg, *accountsFileName, accountStore, r)
 }
 
 func main() {

@@ -23,40 +23,41 @@ func (b bankAccount) BankID() string {
 	return b.bankID
 }
 
-type bankAccountJSONUnmarshal struct {
+type bankAccountJSON struct {
 	Description   string
 	ID            string
 	AccountType   string
 	RoutingNumber string
-	Institution   institution
-}
-
-type bankAccountJSONMarshal struct {
-	Description   string
-	ID            string
-	AccountType   string
-	RoutingNumber string
-	Institution   Institution
+	Institution   json.RawMessage
 }
 
 func (b *bankAccount) UnmarshalJSON(buf []byte) error {
-	var account bankAccountJSONUnmarshal
+	var account bankAccountJSON
 	if err := json.Unmarshal(buf, &account); err != nil {
 		return err
 	}
 	b.id = account.ID
 	b.description = account.Description
 	b.bankID = account.RoutingNumber
-	b.institution = account.Institution
-	return nil
+	return json.Unmarshal([]byte(account.Institution), &b.institution)
 }
 
-func (b bankAccount) marshalJSON(accountType string) ([]byte, error) {
-	return json.Marshal(bankAccountJSONMarshal{
+func (b bankAccount) marshalJSON(accountType string, withPassword bool) ([]byte, error) {
+	var instData json.RawMessage
+	var err error
+	if withPassword {
+		instData, err = b.institution.MarshalWithPassword()
+	} else {
+		instData, err = json.Marshal(b.institution)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(bankAccountJSON{
 		AccountType:   accountType,
 		Description:   b.description,
 		ID:            b.id,
-		Institution:   b.institution,
+		Institution:   instData,
 		RoutingNumber: b.bankID,
 	})
 }
@@ -76,10 +77,12 @@ const (
 	savingsType  = "SAVINGS"
 )
 
+// IsChecking returns true if the given account type is a checking account
 func IsChecking(s string) bool {
 	return s == checkingType
 }
 
+// IsSavings returns true if the given account type is a savings account
 func IsSavings(s string) bool {
 	return s == savingsType
 }
@@ -100,7 +103,7 @@ func newBankAccount(id, bankID, description string, institution Institution) ban
 		baseAccount: baseAccount{
 			id:          id,
 			description: description,
-			institution: institution,
+			institution: newBaseFromInterface(institution),
 		},
 	}
 }
@@ -141,18 +144,32 @@ func generateBankStatement(
 	}, nil
 }
 
+// Statement fetches a statement for a checking account
 func (c Checking) Statement(start, end time.Time) (ofxgo.Request, error) {
 	return c.statementFromAccountType(start, end, checkingType)
 }
 
+// Statement fetches a statement for a savings account
 func (s Savings) Statement(start, end time.Time) (ofxgo.Request, error) {
 	return s.statementFromAccountType(start, end, savingsType)
 }
 
+// MarshalJSON marshals a checking account
 func (c Checking) MarshalJSON() ([]byte, error) {
-	return c.bankAccount.marshalJSON(checkingType)
+	return c.bankAccount.marshalJSON(checkingType, false)
 }
 
+// MarshalWithPassword marshals a checking account and includes the password
+func (c Checking) MarshalWithPassword() ([]byte, error) {
+	return c.bankAccount.marshalJSON(checkingType, true)
+}
+
+// MarshalJSON marshals a savings account
 func (s Savings) MarshalJSON() ([]byte, error) {
-	return s.bankAccount.marshalJSON(savingsType)
+	return s.bankAccount.marshalJSON(savingsType, false)
+}
+
+// MarshalWithPassword marshals a savings account and includes the password
+func (s Savings) MarshalWithPassword() ([]byte, error) {
+	return s.bankAccount.marshalJSON(savingsType, true)
 }

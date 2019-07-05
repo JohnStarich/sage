@@ -9,18 +9,18 @@ type Institution interface {
 	Org() string
 	URL() string
 	Username() string
-	Password() Password
+	Password() *Password
 
 	Config() Config
 }
 
-type institution struct {
+type baseInstitution struct {
 	description string
 	fid         string
 	org         string
 	url         string
 	username    string
-	password    Password
+	password    *Password
 
 	config Config
 }
@@ -34,7 +34,7 @@ func NewInstitution(
 	username, password string,
 	config Config,
 ) Institution {
-	return institution{
+	return baseInstitution{
 		config:      config,
 		description: description,
 		fid:         fid,
@@ -45,46 +45,62 @@ func NewInstitution(
 	}
 }
 
-func (i institution) URL() string {
+func newBaseFromInterface(inst Institution) baseInstitution {
+	var pass *Password
+	if interfacePass := inst.Password(); interfacePass != nil {
+		pass = NewPassword(interfacePass.passwordString())
+	}
+	return baseInstitution{
+		config:      inst.Config(),
+		description: inst.Description(),
+		fid:         inst.FID(),
+		org:         inst.Org(),
+		password:    pass,
+		url:         inst.URL(),
+		username:    inst.Username(),
+	}
+}
+
+func (i baseInstitution) URL() string {
 	return i.url
 }
 
-func (i institution) Org() string {
+func (i baseInstitution) Org() string {
 	return i.org
 }
 
-func (i institution) FID() string {
+func (i baseInstitution) FID() string {
 	return i.fid
 }
 
-func (i institution) Username() string {
+func (i baseInstitution) Username() string {
 	return i.username
 }
 
-func (i institution) Password() Password {
+func (i baseInstitution) Password() *Password {
 	return i.password
 }
 
-func (i institution) Description() string {
+func (i baseInstitution) Description() string {
 	return i.description
 }
 
-func (i institution) Config() Config {
+func (i baseInstitution) Config() Config {
 	return i.config
 }
 
-type institutionJSON struct {
+type baseInstitutionJSON struct {
 	Description string
 	FID         string
 	Org         string
 	URL         string
 	Username    string
-	Password    Password
+	Password    string
 	Config
 }
 
-func (i *institution) UnmarshalJSON(b []byte) error {
-	var inst institutionJSON
+func (i *baseInstitution) UnmarshalJSON(b []byte) error {
+	var inst baseInstitutionJSON
 	if err := json.Unmarshal(b, &inst); err != nil {
 		return err
 	}
@@ -93,18 +109,29 @@ func (i *institution) UnmarshalJSON(b []byte) error {
 	i.org = inst.Org
 	i.url = inst.URL
 	i.username = inst.Username
-	i.password = inst.Password
+	i.password = NewPassword(inst.Password)
 	i.config = inst.Config
 	return nil
 }
 
-func (i institution) MarshalJSON() ([]byte, error) {
-	return json.Marshal(institutionJSON{
+func (i baseInstitution) prepMarshal() baseInstitutionJSON {
+	return baseInstitutionJSON{
 		Description: i.description,
 		FID:         i.fid,
 		Org:         i.org,
 		URL:         i.url,
 		Username:    i.username,
 		Config:      i.config,
-	})
+		// no password
+	}
+}
+
+func (i baseInstitution) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.prepMarshal())
+}
+
+func (i baseInstitution) MarshalWithPassword() ([]byte, error) {
+	data := i.prepMarshal()
+	data.Password = i.password.passwordString()
+	return json.Marshal(data)
 }

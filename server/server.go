@@ -27,7 +27,7 @@ const (
 )
 
 // Run starts the server
-func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules, logger *zap.Logger) error {
+func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accountsFileName string, accountStore *client.AccountStore, r rules.Rules, logger *zap.Logger) error {
 	engine := gin.New()
 	engine.Use(
 		ginzap.Ginzap(logger, time.RFC3339, true),
@@ -47,7 +47,7 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.A
 			c.Set(loggerKey, logger)
 		},
 	)
-	setupAPI(api, ledgerFileName, ldg, accountStore, r)
+	setupAPI(api, ledgerFileName, ldg, accountsFileName, accountStore, r)
 
 	done := make(chan bool, 1)
 	errs := make(chan error, 2)
@@ -90,7 +90,7 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.A
 	return <-errs
 }
 
-func setupAPI(router gin.IRouter, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) {
+func setupAPI(router gin.IRouter, ledgerFileName string, ldg *ledger.Ledger, accountsFileName string, accountStore *client.AccountStore, r rules.Rules) {
 	router.GET("/version", func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]string{
 			"version": consts.Version,
@@ -103,7 +103,7 @@ func setupAPI(router gin.IRouter, ledgerFileName string, ldg *ledger.Ledger, acc
 
 	router.GET("/accounts", getAccounts(accountStore))
 	router.GET("/accounts/:id", getAccount(accountStore))
-	router.PUT("/accounts/:id", updateAccount(accountStore))
+	router.PUT("/accounts/:id", updateAccount(accountsFileName, accountStore))
 
 	router.GET("/transactions", getTransactions(ldg))
 	router.PATCH("/transactions/:id", updateTransaction(ledgerFileName, ldg))

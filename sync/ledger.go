@@ -18,11 +18,11 @@ const (
 )
 
 var (
-	mu sync.Mutex // basic protection against concurrent sync operations
+	ledgerMu sync.Mutex // basic protection against concurrent sync operations
 )
 
-// Sync runs a Ledger sync, followed by a File sync
-// If a partial failure occurs during Ledger sync, runs File sync anyway
+// Sync runs a Ledger sync, followed by a LedgerFile sync
+// If a partial failure occurs during Ledger sync, runs LedgerFile sync anyway
 func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) error {
 	ledgerErr := Ledger(logger, ldg, accountStore, r)
 	if ledgerErr != nil {
@@ -30,7 +30,7 @@ func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, account
 			return ledgerErr
 		}
 	}
-	if err := File(ldg, ledgerFileName); err != nil {
+	if err := LedgerFile(ldg, ledgerFileName); err != nil {
 		return err
 	}
 	return ledgerErr
@@ -38,8 +38,8 @@ func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, account
 
 // Ledger fetches transactions for each account and categorizes them based on rules
 func Ledger(logger *zap.Logger, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) error {
-	mu.Lock()
-	defer mu.Unlock()
+	ledgerMu.Lock()
+	defer ledgerMu.Unlock()
 	return ledgerSync(logger, ldg, r, downloadTxns(accountStore))
 }
 
@@ -93,10 +93,10 @@ func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, r rules.Rules, download 
 	return nil
 }
 
-// File writes the given ledger to disk in "ledger" format
-func File(ldg *ledger.Ledger, fileName string) error {
-	mu.Lock()
-	defer mu.Unlock()
+// LedgerFile writes the given ledger to disk in "ledger" format
+func LedgerFile(ldg *ledger.Ledger, fileName string) error {
+	ledgerMu.Lock()
+	defer ledgerMu.Unlock()
 	err := ioutil.WriteFile(fileName, []byte(ldg.String()), os.ModePerm)
 	return errors.Wrap(err, "Error writing ledger to disk")
 }

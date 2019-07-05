@@ -25,7 +25,7 @@ type Account interface {
 type baseAccount struct {
 	id          string
 	description string
-	institution Institution
+	institution baseInstitution
 }
 
 func (b baseAccount) Institution() Institution {
@@ -40,35 +40,46 @@ func (b baseAccount) Description() string {
 	return b.description
 }
 
-type baseAccountJSONUnmarshal struct {
+type baseAccountJSON struct {
 	ID          string
 	Description string
-	Institution institution // use struct for unmarshaling
-}
-
-type baseAccountJSONMarshal struct {
-	ID          string
-	Description string
-	Institution Institution // use interface for marshaling
+	Institution json.RawMessage
 }
 
 func (b *baseAccount) UnmarshalJSON(buf []byte) error {
-	var account baseAccountJSONUnmarshal
+	var account baseAccountJSON
 	if err := json.Unmarshal(buf, &account); err != nil {
 		return err
 	}
 	b.id = account.ID
 	b.description = account.Description
-	b.institution = account.Institution
-	return nil
+	return json.Unmarshal([]byte(account.Institution), &b.institution)
 }
 
 func (b baseAccount) MarshalJSON() ([]byte, error) {
-	return json.Marshal(baseAccountJSONMarshal{
+	return b.marshalJSON(false)
+}
+
+func (b baseAccount) marshalJSON(withPassword bool) ([]byte, error) {
+	var instData json.RawMessage
+	var err error
+	if withPassword {
+		instData, err = b.institution.MarshalWithPassword()
+	} else {
+		instData, err = json.Marshal(b.institution)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(baseAccountJSON{
 		ID:          b.id,
 		Description: b.description,
-		Institution: b.institution,
+		Institution: instData,
 	})
+}
+
+func (b baseAccount) MarshalWithPassword() ([]byte, error) {
+	return b.marshalJSON(true)
 }
 
 // LedgerAccountName returns a suitable account name for a ledger file

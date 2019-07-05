@@ -17,7 +17,7 @@ func NewCreditCard(id, description string, institution Institution) Account {
 		baseAccount: baseAccount{
 			id:          id,
 			description: description,
-			institution: institution,
+			institution: newBaseFromInterface(institution),
 		},
 	}
 }

@@ -198,7 +198,7 @@ func updateTransaction(ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFun
 			return
 		}
 
-		if err := sync.File(ldg, ledgerFileName); err != nil {
+		if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}

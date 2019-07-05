@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ json.Marshaler = Password{}
+var _ json.Marshaler = &Password{}
 var _ json.Unmarshaler = &Password{}
 
 func TestPasswordMarshalsToNothing(t *testing.T) {
@@ -21,11 +21,11 @@ func TestPasswordUnmarshals(t *testing.T) {
 	var p Password
 	err := json.Unmarshal([]byte(`"hey there"`), &p)
 	require.NoError(t, err)
-	assert.Equal(t, NewPassword("hey there"), p)
+	assert.Equal(t, NewPassword("hey there"), &p)
 
 	someStruct := struct {
 		Username string
-		Password Password
+		Password *Password
 	}{}
 	err = json.Unmarshal([]byte(`{"Username":"username", "Password":"password"}`), &someStruct)
 	require.NoError(t, err)

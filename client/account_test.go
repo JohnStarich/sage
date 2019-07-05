@@ -11,7 +11,7 @@ import (
 var _ json.Marshaler = baseAccount{}
 
 func TestBaseAccount(t *testing.T) {
-	inst := &institution{}
+	inst := baseInstitution{}
 	a := baseAccount{
 		id:          "some ID",
 		institution: inst,
@@ -40,7 +40,7 @@ func TestLedgerAccountName(t *testing.T) {
 			account: NewCreditCard(
 				"super cash back",
 				"some description",
-				institution{description: "Some Credit Card Co"},
+				baseInstitution{description: "Some Credit Card Co"},
 			),
 			expectedName: "liabilities:Some Credit Card Co:****back",
 		},
@@ -50,7 +50,7 @@ func TestLedgerAccountName(t *testing.T) {
 				"blah account",
 				"routing no",
 				"blah account description",
-				institution{description: "The Boring Bank"},
+				baseInstitution{description: "The Boring Bank"},
 			),
 			expectedName: "assets:The Boring Bank:****ount",
 		},

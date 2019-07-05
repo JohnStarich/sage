@@ -8,7 +8,7 @@ import (
 )
 
 func TestClientCache(t *testing.T) {
-	inst := institution{url: "some URL"}
+	inst := baseInstitution{url: "some URL"}
 	client, err := clientForInstitution(inst)
 	require.NoError(t, err)
 
@@ -16,6 +16,6 @@ func TestClientCache(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, client == client2, "The client must be the same pointer")
 
-	_, err = clientForInstitution(institution{config: Config{OFXVersion: "not a real version"}})
+	_, err = clientForInstitution(baseInstitution{config: Config{OFXVersion: "not a real version"}})
 	assert.Error(t, err)
 }
