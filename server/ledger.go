@@ -33,7 +33,7 @@ func syncLedger(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.
 	}
 }
 
-func getTransactions(ldg *ledger.Ledger) gin.HandlerFunc {
+func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var page, results int = 1, 10
 		if pageQuery, ok := c.GetQuery("page"); ok {
@@ -62,7 +62,15 @@ func getTransactions(ldg *ledger.Ledger) gin.HandlerFunc {
 			c.AbortWithError(http.StatusBadRequest, errors.New(errMsg))
 			return
 		}
-		c.JSON(http.StatusOK, ldg.Query(c.Query("search"), page, results))
+		query := ldg.Query(c.Query("search"), page, results)
+		// attempt to make asset and liability accounts more descriptive
+		accountIDMap := newAccountIDMap(accountStore)
+		for i := range query.Transactions {
+			if clientAccount, ok := accountIDMap.Find(query.Transactions[i].Postings[0].Account); ok {
+				query.Transactions[i].Postings[0].Account = clientAccount.Description()
+			}
+		}
+		c.JSON(http.StatusOK, query)
 	}
 }
 
@@ -81,6 +89,50 @@ type AccountResponse struct {
 	Institution string `json:",omitempty"`
 }
 
+type txnToAccountMap map[string]map[string]client.Account
+
+// newAccountIDMap returns a mapping from an institution's description, then account ID suffix (without '*'s), and finally to the source account
+func newAccountIDMap(accountStore *client.AccountStore) txnToAccountMap {
+	// inst name -> account ID suffix -> account
+	accountIDMap := make(txnToAccountMap)
+	accountStore.Iterate(func(clientAccount client.Account) bool {
+		instName := clientAccount.Institution().Description()
+		id := clientAccount.ID()
+		if len(id) > client.RedactSuffixLength {
+			id = id[len(id)-client.RedactSuffixLength:]
+		}
+		if accountIDMap[instName] == nil {
+			accountIDMap[instName] = make(map[string]client.Account)
+		}
+		accountIDMap[instName][id] = clientAccount
+		return true
+	})
+	return accountIDMap
+}
+
+func (t txnToAccountMap) Find(accountName string) (account client.Account, found bool) {
+	components := strings.Split(accountName, ":")
+	if len(components) == 0 {
+		return nil, false
+	}
+	accountType := components[0]
+	if accountType != "assets" && accountType != "liabilities" {
+		return nil, false
+	}
+	if len(components) < 3 {
+		// require accountType:institution:accountNumber format
+		return nil, false
+	}
+	institutionName, accountID := components[1], strings.Join(components[2:], ":")
+
+	idSuffix := accountID
+	if len(idSuffix) > client.RedactSuffixLength {
+		idSuffix = idSuffix[len(idSuffix)-client.RedactSuffixLength:]
+	}
+	clientAccount, found := t[institutionName][idSuffix]
+	return clientAccount, found
+}
+
 func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start, end, balanceMap := ldg.Balances()
@@ -88,22 +140,11 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 			Start: start,
 			End:   end,
 		}
-		// inst name -> account ID suffix -> account
-		accountIDMap := make(map[string]map[string]client.Account)
-		accountStore.Iterate(func(clientAccount client.Account) bool {
-			instName := clientAccount.Institution().Description()
-			id := clientAccount.ID()
-			if len(id) > client.RedactSuffixLength {
-				id = id[len(id)-client.RedactSuffixLength:]
-			}
-			if accountIDMap[instName] == nil {
-				accountIDMap[instName] = make(map[string]client.Account)
-			}
-			accountIDMap[instName][id] = clientAccount
-			return true
-		})
+		accountIDMap := newAccountIDMap(accountStore)
 
 		accountTypes := map[string]bool{
+			// return assets and liabilities by default
+			// useful for a simple balance table
 			"assets":      true,
 			"liabilities": true,
 		}
@@ -141,11 +182,7 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 				account.Account = accountID
 				account.Institution = institutionName
 
-				idSuffix := accountID
-				if len(idSuffix) > client.RedactSuffixLength {
-					idSuffix = idSuffix[len(idSuffix)-client.RedactSuffixLength:]
-				}
-				if clientAccount, ok := accountIDMap[institutionName][idSuffix]; ok {
+				if clientAccount, found := accountIDMap.Find(accountName); found {
 					account.Account = clientAccount.Description()
 				}
 			default:
