@@ -250,9 +250,6 @@ func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal
 // UpdateTransaction replaces a transaction where ID is 'id' with 'transaction'
 // The new transaction must be valid
 func (l *Ledger) UpdateTransaction(id string, transaction Transaction) error {
-	if err := transaction.Validate(); err != nil {
-		return err
-	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if !l.idSet[id] {
