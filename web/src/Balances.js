@@ -25,7 +25,7 @@ export default function Balances(props) {
           <tr><th>Account</th><th>Balance</th></tr>
           {payload.Accounts && payload.Accounts.map(account =>
               <tr key={account.ID}>
-                <td>{account.Institution} - {account.Account}</td>
+                <td>{account.Account}</td>
                 <td>
                   <Amount
                     amount={Number(account.Balances[account.Balances.length - 1])}
