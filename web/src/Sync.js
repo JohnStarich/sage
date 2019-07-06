@@ -7,12 +7,7 @@ import './Sync.css';
 
 function runSync() {
   return axios.post('/api/v1/sync')
-    .then(res => {
-      if (res.status !== 200 ) {
-        throw new Error("Error fetching balances")
-      }
-      return res.data
-    })
+    .then(res => res.data)
 }
 
 export default function Sync(props) {

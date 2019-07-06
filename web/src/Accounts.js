@@ -9,12 +9,7 @@ export default function Accounts({ match }) {
   const [accounts, setAccounts] = React.useState([])
   React.useEffect(() => {
     axios.get('/api/v1/accounts')
-      .then(res => {
-        if (res.status !== 200 ) {
-          throw new Error("Error fetching accounts")
-        }
-        setAccounts(res.data.Accounts)
-      })
+      .then(res => setAccounts(res.data.Accounts))
   }, [])
 
   const accountUpdated = (originalAccountID, account) => {

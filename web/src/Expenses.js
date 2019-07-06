@@ -27,9 +27,6 @@ export default function Expenses(props) {
         },
       })
       .then(res => {
-        if (res.status !== 200 ) {
-          throw new Error("Error fetching balances")
-        }
         setAccounts(res.data.Accounts.map(account => {
           account.Balances = account.Balances.map(Number)
           return account

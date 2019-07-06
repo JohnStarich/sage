@@ -10,12 +10,7 @@ export default function Balances(props) {
 
   React.useEffect(() => {
     axios.get('/api/v1/balances')
-      .then(res => {
-        if (res.status !== 200 ) {
-          throw new Error("Error fetching balances")
-        }
-        setPayload(Object.assign({}, res.data))
-      })
+      .then(res => setPayload(Object.assign({}, res.data)))
   }, [syncTime])
 
   return (

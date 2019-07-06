@@ -96,9 +96,6 @@ export default function Transactions(props) {
         params: { page, results: sizePerPage, search: searchText },
       })
       .then(res => {
-        if (res.status !== 200 ) {
-          throw new Error("Error fetching transactions")
-        }
         let transactions = prepTransactions(res.data.Transactions)
         setTransactions(transactions)
         setCount(res.data.Count)
@@ -120,9 +117,6 @@ export default function Transactions(props) {
     let { Postings } = txn
     axios.patch(`/api/v1/transactions/${txn.ID}`, { Postings })
       .then(res => {
-        if (res.status !== 204 ) {
-          throw new Error("Error updating transaction")
-        }
         newTransactions[txnIndex] = Object.assign({}, newTransactions[txnIndex], txn)
         setTransactions(newTransactions)
       })

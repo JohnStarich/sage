@@ -17,12 +17,7 @@ let categoriesPromise = null
 const Categories = () => {
   if (categoriesPromise === null) {
     categoriesPromise = axios.get('/api/v1/categories')
-      .then(res => {
-        if (res.status !== 200 ) {
-          throw new Error("Error fetching transactions")
-        }
-        return res.data.Accounts
-      })
+      .then(res => res.data.Accounts)
       .then(accounts =>
         accounts.map(c => [c, c.replace(/:/g, ' > ')]))
   }
