@@ -19,6 +19,8 @@ import (
 
 const (
 	accountTypesQuery = "accountTypes[]" // include [] suffix to support query param arrays
+	// MaxResults is the maximum number of results from a paginated request
+	MaxResults = 50
 )
 
 func syncLedger(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) gin.HandlerFunc {
@@ -39,7 +41,7 @@ func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.
 		if pageQuery, ok := c.GetQuery("page"); ok {
 			if parsedPage, err := strconv.ParseInt(pageQuery, 10, 64); err != nil {
 				c.Error(errors.Errorf("Invalid integer: %s", pageQuery))
-			} else if page < 1 {
+			} else if parsedPage < 1 {
 				c.Error(errors.New("Page must be a positive integer"))
 			} else {
 				page = int(parsedPage)
@@ -48,8 +50,8 @@ func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.
 		if resultsQuery, ok := c.GetQuery("results"); ok {
 			if parsedResults, err := strconv.ParseInt(resultsQuery, 10, 64); err != nil {
 				c.Error(errors.Errorf("Invalid integer: %s", resultsQuery))
-			} else if results < 1 {
-				c.Error(errors.New("Results must be a positive integer"))
+			} else if parsedResults < 1 || parsedResults > MaxResults {
+				c.Error(errors.Errorf("Results must be a positive integer no more than %d", MaxResults))
 			} else {
 				results = int(parsedResults)
 			}
