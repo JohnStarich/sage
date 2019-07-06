@@ -10,6 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var _ PasswordMarshaler = Checking{}
+var _ PasswordMarshaler = Savings{}
+
 var (
 	someEndTime   = time.Now()
 	someStartTime = someEndTime.Add(-5 * time.Minute)

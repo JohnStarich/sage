@@ -9,6 +9,7 @@ import (
 )
 
 var _ json.Marshaler = baseAccount{}
+var _ PasswordMarshaler = baseAccount{}
 
 func TestBaseAccount(t *testing.T) {
 	inst := baseInstitution{}

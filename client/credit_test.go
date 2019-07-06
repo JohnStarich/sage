@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var _ PasswordMarshaler = &CreditCard{}
+
 func TestGenerateCCStatement(t *testing.T) {
 	someID := "some ID"
 	someInstitution := baseInstitution{description: "some institution"}
