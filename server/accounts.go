@@ -1,6 +1,7 @@
 package server
 
 import (
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -11,6 +12,57 @@ import (
 	"github.com/johnstarich/sage/sync"
 	"github.com/pkg/errors"
 )
+
+func validateAccount(account client.Account) sageErrors.Errors {
+	var errs sageErrors.Errors
+	check := func(condition bool, msg string) bool {
+		if condition {
+			errs = append(errs, errors.New(msg))
+		}
+		return condition
+	}
+
+	check(account.ID() == "", "Account ID is required")
+	check(account.Description() == "", "Account description is required")
+	inst := account.Institution()
+	if check(inst == nil, "Institution is required") {
+		return errs
+	}
+
+	check(inst.Description() == "", "Institution description is required")
+	check(inst.FID() == "", "Institution FID is required")
+	check(inst.Org() == "", "Institution Org is required")
+	check(inst.URL() == "", "Institution URL is required")
+	check(inst.Username() == "", "Institution username is required")
+
+	switch impl := account.(type) {
+	case client.Bank:
+		check(impl.BankID() == "", "Bank ID is required")
+	}
+	return errs
+}
+
+func abortWithClientError(c *gin.Context, status int, err error) {
+	c.AbortWithStatusJSON(status, map[string]string{
+		"Error": err.Error(),
+	})
+}
+
+func readAndValidateAccount(r io.ReadCloser) (client.Account, error) {
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	account, err := client.UnmarshalBuiltinAccount(b)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validateAccount(account); err != nil {
+		return nil, err
+	}
+	return account, nil
+}
 
 func getAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -43,67 +95,19 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore, l
 			return
 		}
 
-		var errs sageErrors.Errors
-		abortWithErrors := func() {
-			c.AbortWithStatusJSON(http.StatusBadRequest, map[string]string{
-				"Error": "New account data is malformed: " + errs.Error(),
-			})
-		}
-
-		b, err := ioutil.ReadAll(c.Request.Body)
+		account, err := readAndValidateAccount(c.Request.Body)
 		if err != nil {
-			errs = append(errs, err)
-			abortWithErrors()
-			return
-		}
-		account, err := client.UnmarshalBuiltinAccount(b)
-		if err != nil {
-			errs = append(errs, err)
-			abortWithErrors()
+			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
 
-		check := func(condition bool, msg string) bool {
-			if condition {
-				errs = append(errs, errors.New(msg))
-			}
-			return condition
-		}
-
-		check(account.ID() == "", "Account ID is required")
-		check(account.Description() == "", "Account description is required")
-		inst := account.Institution()
-		if check(inst == nil, "Institution is required") {
-			abortWithErrors()
-			return
-		}
-
-		check(inst.Description() == "", "Institution description is required")
-		check(inst.FID() == "", "Institution FID is required")
-		check(inst.Org() == "", "Institution Org is required")
-		check(inst.URL() == "", "Institution URL is required")
-		check(inst.Username() == "", "Institution username is required")
-
-		switch impl := account.(type) {
-		case client.Bank:
-			check(impl.BankID() == "", "Bank ID is required")
-		}
-
-		if len(errs) > 0 {
-			abortWithErrors()
-			return
-		}
-
-		if inst.Password().IsEmpty() {
+		if pass := account.Institution().Password(); pass.IsEmpty() {
 			// if no password provided, use existing password
-			inst.Password().Set(currentAccount.Institution().Password())
+			pass.Set(currentAccount.Institution().Password())
 		}
 
-		err = accountStore.Update(accountID, account)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{
-				"Error": err.Error(),
-			})
+		if err := accountStore.Update(accountID, account); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -112,19 +116,56 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore, l
 		// TODO handle condition where account store was updated but ledger rename failed?
 		if oldAccountName != newAccountName {
 			if err := ldg.UpdateAccount(oldAccountName, newAccountName); err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{
-					"Error": err.Error(),
-				})
+				abortWithClientError(c, http.StatusInternalServerError, err)
 				return
 			}
 			if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{
-					"Error": err.Error(),
-				})
+				abortWithClientError(c, http.StatusInternalServerError, err)
 				return
 			}
 		}
 
-		sync.Accounts(accountsFileName, accountStore)
+		if err := sync.Accounts(accountsFileName, accountStore); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+	}
+}
+
+func addAccount(accountsFileName string, accountStore *client.AccountStore) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		account, err := readAndValidateAccount(c.Request.Body)
+		if err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+
+		if err := accountStore.Add(account); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+
+		if err := sync.Accounts(accountsFileName, accountStore); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func removeAccount(accountsFileName string, accountStore *client.AccountStore) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		accountID := c.Param("id")
+
+		if err := accountStore.Remove(accountID); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+
+		if err := sync.Accounts(accountsFileName, accountStore); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		c.Status(http.StatusNoContent)
 	}
 }
