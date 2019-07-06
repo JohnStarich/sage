@@ -44,6 +44,15 @@ func loadRules(fileName string) (rules.Rules, error) {
 	return r, nil
 }
 
+func loadAccounts(fileName string) (*client.AccountStore, error) {
+	accountsFile, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+	defer accountsFile.Close()
+	return client.NewAccountStoreFromReader(accountsFile)
+}
+
 func start(isServer bool, ledgerFileName string, ldg *ledger.Ledger, accountsFileName string, accountStore *client.AccountStore, r rules.Rules) error {
 	logger, err := zap.NewProduction()
 	if os.Getenv("DEVELOPMENT") == "true" {
@@ -91,7 +100,6 @@ func handleErrors() (usageErr bool, err error) {
 	enableServer := flagSet.Bool("server", false, "Syncs on an interval until terminated")
 	rulesFileName := flagSet.String("rules", "", "Required: Path to an hledger CSV import rules file")
 	ledgerFileName := flagSet.String("ledger", "", "Required: Path to a ledger file")
-	ofxClientFileName := flagSet.String("ofxclient", "", "Required: Path to an ofxclient ini file, includes connection information for institutions")
 	accountsFileName := flagSet.String("accounts", "", "Required: Path to an accounts file, includes connection information for institutions")
 	requestVersion := flagSet.Bool("version", false, "Print the version and exit")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
@@ -116,14 +124,7 @@ func handleErrors() (usageErr bool, err error) {
 		return false, err
 	}
 
-	accounts, err := client.AccountsFromOFXClientINI(*ofxClientFileName)
-	if err != nil {
-		return false, err
-	}
-	if len(accounts) == 0 {
-		return false, errors.New("No accounts found in client ini file")
-	}
-	accountStore, err := client.NewAccountStore(accounts)
+	accountStore, err := loadAccounts(*accountsFileName)
 	if err != nil {
 		return false, err
 	}

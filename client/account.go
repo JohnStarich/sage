@@ -3,9 +3,11 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aclindsa/ofxgo"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -105,4 +107,44 @@ func redactPrefix(s string) string {
 		suffix = s[len(s)-RedactSuffixLength:]
 	}
 	return "****" + suffix
+}
+
+type bankLike struct {
+	AccountType   string
+	RoutingNumber string
+}
+
+func (b bankLike) isBank() bool {
+	return b.RoutingNumber != ""
+}
+
+func UnmarshalBuiltinAccount(b []byte) (Account, error) {
+	maybeBank := bankLike{}
+	if err := json.Unmarshal(b, &maybeBank); err != nil {
+		return nil, err
+	}
+	maybeBank.AccountType = strings.ToUpper(maybeBank.AccountType)
+	if maybeBank.isBank() {
+		if IsChecking(maybeBank.AccountType) {
+			checkingAccount := &Checking{}
+			if err := json.Unmarshal(b, checkingAccount); err != nil {
+				return nil, err
+			}
+			return checkingAccount, nil
+		}
+		if IsSavings(maybeBank.AccountType) {
+			savingsAccount := &Savings{}
+			if err := json.Unmarshal(b, savingsAccount); err != nil {
+				return nil, err
+			}
+			return savingsAccount, nil
+		}
+		return nil, errors.New("Invalid bank AccountType: " + maybeBank.AccountType)
+	}
+
+	creditCard := &CreditCard{}
+	if err := json.Unmarshal(b, creditCard); err != nil {
+		return nil, err
+	}
+	return creditCard, nil
 }

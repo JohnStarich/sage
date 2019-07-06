@@ -1,11 +1,10 @@
 package server
 
 import (
+	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	"github.com/johnstarich/sage/client"
 	sageErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/sync"
@@ -34,15 +33,6 @@ func getAccounts(accountStore *client.AccountStore) gin.HandlerFunc {
 	}
 }
 
-type bankLike struct {
-	AccountType   string
-	RoutingNumber string
-}
-
-func (b bankLike) isBank() bool {
-	return b.RoutingNumber != ""
-}
-
 func updateAccount(accountsFileName string, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID := c.Param("id")
@@ -51,53 +41,32 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore) g
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
-		var account client.Account
-
-		maybeBank := bankLike{}
-		if err := c.ShouldBindBodyWith(&maybeBank, binding.JSON); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
-			return
-		}
-		maybeBank.AccountType = strings.ToUpper(maybeBank.AccountType)
-		if maybeBank.isBank() {
-			if client.IsChecking(maybeBank.AccountType) {
-				checkingAccount := &client.Checking{}
-				if err := c.ShouldBindBodyWith(checkingAccount, binding.JSON); err != nil {
-					c.AbortWithError(http.StatusBadRequest, err)
-					return
-				}
-				account = checkingAccount
-			} else if client.IsSavings(maybeBank.AccountType) {
-				savingsAccount := &client.Savings{}
-				if err := c.ShouldBindBodyWith(savingsAccount, binding.JSON); err != nil {
-					c.AbortWithError(http.StatusBadRequest, err)
-					return
-				}
-				account = savingsAccount
-			} else {
-				c.AbortWithError(http.StatusBadRequest, errors.New("Invalid bank AccountType"))
-				return
-			}
-		} else {
-			creditCard := &client.CreditCard{}
-			if err := c.ShouldBindBodyWith(creditCard, binding.JSON); err != nil {
-				c.AbortWithError(http.StatusBadRequest, err)
-				return
-			}
-			account = creditCard
-		}
 
 		var errs sageErrors.Errors
+		abortWithErrors := func() {
+			c.AbortWithStatusJSON(http.StatusBadRequest, map[string]string{
+				"Error": "New account data is malformed: " + errs.Error(),
+			})
+		}
+
+		b, err := ioutil.ReadAll(c.Request.Body)
+		if err != nil {
+			errs = append(errs, err)
+			abortWithErrors()
+			return
+		}
+		account, err := client.UnmarshalBuiltinAccount(b)
+		if err != nil {
+			errs = append(errs, err)
+			abortWithErrors()
+			return
+		}
+
 		check := func(condition bool, msg string) bool {
 			if condition {
 				errs = append(errs, errors.New(msg))
 			}
 			return condition
-		}
-		abortWithErrors := func() {
-			c.AbortWithStatusJSON(http.StatusBadRequest, map[string]string{
-				"Error": "New account data is malformed: " + errs.Error(),
-			})
 		}
 
 		check(account.ID() == "", "Account ID is required")
@@ -129,7 +98,13 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore) g
 			inst.Password().Set(currentAccount.Institution().Password())
 		}
 
-		accountStore.Update(accountID, account)
+		err = accountStore.Update(accountID, account)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{
+				"Error": err.Error(),
+			})
+			return
+		}
 		sync.Accounts(accountsFileName, accountStore)
 	}
 }

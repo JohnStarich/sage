@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/json"
+	"io"
 	"sort"
 	"sync"
 
@@ -16,6 +17,11 @@ type AccountStore struct {
 
 // NewAccountStore creates an account store from the given accounts, must not contain duplicate account IDs
 func NewAccountStore(accounts []Account) (*AccountStore, error) {
+	accountMap, err := newAccountsFromSlice(accounts)
+	return &AccountStore{accounts: accountMap}, err
+}
+
+func newAccountsFromSlice(accounts []Account) (map[string]Account, error) {
 	accountMap := make(map[string]Account)
 	for _, account := range accounts {
 		id := account.ID()
@@ -24,7 +30,15 @@ func NewAccountStore(accounts []Account) (*AccountStore, error) {
 		}
 		accountMap[id] = account
 	}
-	return &AccountStore{accounts: accountMap}, nil
+	return accountMap, nil
+}
+
+// NewAccountStoreFromReader returns a new account store loaded from the provided JSON-encoded reader
+func NewAccountStoreFromReader(r io.Reader) (*AccountStore, error) {
+	decoder := json.NewDecoder(r)
+	var accountStore AccountStore
+	err := decoder.Decode(&accountStore)
+	return &accountStore, err
 }
 
 // Find returns the account with the given ID if it exists, otherwise found is false
@@ -42,7 +56,14 @@ func (s *AccountStore) Update(id string, account Account) error {
 	if _, exists := s.accounts[id]; !exists {
 		return errors.New("Account not found by ID: " + id)
 	}
-	s.accounts[id] = account
+	newID := account.ID()
+	if id != newID {
+		if existingAccount, exists := s.accounts[newID]; exists {
+			return errors.New("Account already exists with that account ID: " + existingAccount.Description())
+		}
+		delete(s.accounts, id)
+	}
+	s.accounts[newID] = account
 	return nil
 }
 
@@ -82,6 +103,28 @@ func (s *AccountStore) Iterate(f func(Account) (keepGoing bool)) bool {
 	return true
 }
 
+// UnmarshalJSON unmarshals from a list of accounts
+func (s *AccountStore) UnmarshalJSON(b []byte) error {
+	var rawAccounts []json.RawMessage
+	if err := json.Unmarshal(b, &rawAccounts); err != nil {
+		return err
+	}
+	var accounts []Account
+	for _, rawAccount := range rawAccounts {
+		account, err := UnmarshalBuiltinAccount(rawAccount)
+		if err != nil {
+			return err
+		}
+		accounts = append(accounts, account)
+	}
+	accountMap, err := newAccountsFromSlice(accounts)
+	if err != nil {
+		return err
+	}
+	s.accounts = accountMap
+	return nil
+}
+
 // MarshalJSON marshals into a sorted list of accounts
 func (s *AccountStore) MarshalJSON() ([]byte, error) {
 	return s.marshalJSON(false)
@@ -112,6 +155,7 @@ func (s *AccountStore) marshalJSON(encodePasswords bool) ([]byte, error) {
 	return json.Marshal(accounts)
 }
 
+// MarshalWithPassword marshals into a sorted list of accounts with their passwords. Only use this when persisting the accounts, never pass this back through an API call
 func (s *AccountStore) MarshalWithPassword() ([]byte, error) {
 	return s.marshalJSON(true)
 }
