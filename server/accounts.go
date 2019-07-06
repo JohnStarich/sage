@@ -111,7 +111,7 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore, l
 		newAccountName := client.LedgerAccountName(account)
 		// TODO handle condition where account store was updated but ledger rename failed?
 		if oldAccountName != newAccountName {
-			if err := ldg.UpdateAccount1(oldAccountName, newAccountName); err != nil {
+			if err := ldg.UpdateAccount(oldAccountName, newAccountName); err != nil {
 				c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{
 					"Error": err.Error(),
 				})

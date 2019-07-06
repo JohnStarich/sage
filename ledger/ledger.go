@@ -290,16 +290,18 @@ func (l *Ledger) UpdateTransaction(id string, transaction Transaction) error {
 	return nil
 }
 
-// UpdateAccount1 changes all transactions' account1 matching oldAccount to newAccount
-func (l *Ledger) UpdateAccount1(oldAccount, newAccount string) error {
+// UpdateAccount changes all transactions' accounts matching oldAccount to newAccount
+func (l *Ledger) UpdateAccount(oldAccount, newAccount string) error {
 	if newAccount == "" {
 		return errors.New("New account name must not be empty")
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	for i := range l.transactions {
-		if l.transactions[i].Postings[0].Account == oldAccount {
-			l.transactions[i].Postings[0].Account = newAccount
+	for t := range l.transactions {
+		for p := range l.transactions[t].Postings {
+			if l.transactions[t].Postings[p].Account == oldAccount {
+				l.transactions[t].Postings[p].Account = newAccount
+			}
 		}
 	}
 	return nil
