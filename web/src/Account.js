@@ -17,16 +17,21 @@ export default function Account(props) {
   const [validated, setValidated] = React.useState(false)
   const [redirect, setRedirect] = React.useState(null)
 
-  if (! account) {
+  if (account === null) {
+    // prop was defined but hasn't loaded
     return null
   }
-  if (isBank === null) {
+  // account prop is either not set or has finished loading
+  if (account && isBank === null) {
     setIsBank(account && account.RoutingNumber && account.RoutingNumber !== "")
+    return null
   }
+
+  const id = account ? account.ID : 'new'
 
   const labelWidth = 4
   const inputWidth = 12 - labelWidth
-  const makeID = formIDFactory(account.ID)
+  const makeID = formIDFactory(id)
 
   const formControlDefaults = {
     disabled: ! editable,
@@ -50,12 +55,12 @@ export default function Account(props) {
           e.stopPropagation()
           const form = e.currentTarget
           if (form.checkValidity() !== false) {
-            const newAccount = accountFromForm(account.ID, form)
-            updateAccount(account.ID, newAccount)
+            const newAccount = accountFromForm(id, form)
+            updateAccount(account ? account.ID : null, newAccount)
               .then(res => {
                 setRedirect(<Redirect to="/accounts" />)
                 if (updated) {
-                  updated(account.ID, newAccount)
+                  updated(id, newAccount)
                 }
               })
               .catch(e => {
@@ -71,12 +76,12 @@ export default function Account(props) {
         >
         <Form.Group>
           <Row>
-            <Col><Form.Control id={makeID("description")} type="text" defaultValue={account.Description} {...formControlDefaults} required /></Col>
+            <Col><Form.Control id={makeID("description")} type="text" defaultValue={account ? account.Description : null} {...formControlDefaults} required /></Col>
           </Row>
           <Form.Group controlId={makeID("id")} as={Row}>
             <Form.Label column sm={labelWidth}>Account ID</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account.ID} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={account ? account.ID : null} {...formControlDefaults} required />
             </Col>
           </Form.Group>
 
@@ -92,12 +97,12 @@ export default function Account(props) {
               <Form.Group controlId={makeID("routingNumber")} as={Row}>
                 <Form.Label column sm={labelWidth}>Routing number</Form.Label>
                 <Col sm={inputWidth}>
-                  <Form.Control type="text" defaultValue={account.RoutingNumber} {...formControlDefaults} required />
+                  <Form.Control type="text" defaultValue={account ? account.RoutingNumber : null} {...formControlDefaults} required />
                 </Col>
               </Form.Group>
               <RadioGroup
                 choices={['Checking', 'Savings']}
-                defaultChoice={account.AccountType}
+                defaultChoice={account ? account.AccountType : null}
                 name={makeID("accountType")}
                 label="Account type"
                 smColumns={[labelWidth, inputWidth]}
@@ -111,35 +116,35 @@ export default function Account(props) {
           <Form.Group controlId={makeID("institutionDescription")} as={Row}>
             <Form.Label column sm={labelWidth}>Institution name</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account.Institution.Description} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={account ? account.Institution.Description : null} {...formControlDefaults} required />
             </Col>
           </Form.Group>
 
           <Form.Group controlId={makeID("institutionFID")} as={Row}>
             <Form.Label column sm={labelWidth}>FID</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account.Institution.FID} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={account ? account.Institution.FID : null} {...formControlDefaults} required />
             </Col>
           </Form.Group>
 
           <Form.Group controlId={makeID("institutionOrg")} as={Row}>
             <Form.Label column sm={labelWidth}>Org</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account.Institution.Org} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={account ? account.Institution.Org : null} {...formControlDefaults} required />
             </Col>
           </Form.Group>
 
           <Form.Group controlId={makeID("institutionURL")} as={Row}>
             <Form.Label column sm={labelWidth}>URL</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="url" defaultValue={account.Institution.URL} {...formControlDefaults} required />
+              <Form.Control type="url" defaultValue={account ? account.Institution.URL : null} {...formControlDefaults} required />
             </Col>
           </Form.Group>
 
           <Form.Group controlId={makeID("institutionUsername")} as={Row}>
             <Form.Label column sm={labelWidth}>Username</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account.Institution.Username} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={account ? account.Institution.Username : null} {...formControlDefaults} required />
               <Form.Control.Feedback type="invalid">
                 Please choose a username.
               </Form.Control.Feedback>
@@ -162,34 +167,34 @@ export default function Account(props) {
           <Form.Group controlId={makeID("institutionClientID")} as={Row}>
             <Form.Label column sm={labelWidth}>Client ID</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account.Institution.ClientID} {...formControlDefaults} placeholder="Optional" />
+              <Form.Control type="text" defaultValue={account ? account.Institution.ClientID : null} {...formControlDefaults} placeholder="Optional" />
             </Col>
           </Form.Group>
 
           <Form.Group controlId={makeID("institutionAppID")} as={Row}>
             <Form.Label column sm={labelWidth}>Client App ID</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account.Institution.AppID} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={account ? account.Institution.AppID : null} {...formControlDefaults} required />
             </Col>
           </Form.Group>
 
           <Form.Group controlId={makeID("institutionAppVersion")} as={Row}>
             <Form.Label column sm={labelWidth}>Client Version</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account.Institution.AppVersion} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={account ? account.Institution.AppVersion : null} {...formControlDefaults} required />
             </Col>
           </Form.Group>
 
           <Form.Group controlId={makeID("institutionOFXVersion")} as={Row}>
             <Form.Label column sm={labelWidth}>OFX Version</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account.Institution.OFXVersion} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={account ? account.Institution.OFXVersion : null} {...formControlDefaults} required />
             </Col>
           </Form.Group>
         </Form.Group>
 
         <Form.Row>
-          <Col><Button type="submit">Save</Button></Col>
+          <Col><Button type="submit">{account ? 'Save' : 'Create'}</Button></Col>
         </Form.Row>
       </Form>
     </Container>
@@ -236,5 +241,8 @@ function accountFromForm(originalAccountID, form) {
 }
 
 function updateAccount(originalAccountID, account) {
-  return axios.put(`/api/v1/accounts/${originalAccountID}`, account)
+  if (originalAccountID) {
+    return axios.put(`/api/v1/accounts/${originalAccountID}`, account)
+  }
+  return axios.post(`/api/v1/accounts`, account)
 }
