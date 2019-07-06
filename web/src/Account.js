@@ -137,7 +137,10 @@ export default function Account(props) {
           <Form.Group controlId={makeID("institutionURL")} as={Row}>
             <Form.Label column sm={labelWidth}>URL</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="url" defaultValue={account ? account.Institution.URL : null} {...formControlDefaults} required />
+              <Form.Control type="url" defaultValue={account ? account.Institution.URL : null} pattern="https://.*" {...formControlDefaults} required />
+              <Form.Control.Feedback type="invalid">
+                Provide a valid URL. <code>https://</code> is required.
+              </Form.Control.Feedback>
             </Col>
           </Form.Group>
 

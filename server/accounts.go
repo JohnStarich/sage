@@ -4,6 +4,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
@@ -39,6 +40,14 @@ func validateAccount(account client.Account) sageErrors.Errors {
 	case client.Bank:
 		check(impl.BankID() == "", "Bank ID is required")
 	}
+
+	u, err := url.Parse(inst.URL())
+	if err != nil {
+		errs = append(errs, errors.Wrap(err, "Institution URL is malformed"))
+	} else {
+		check(u.Scheme != "https", "Institution URL is required to use HTTPS")
+	}
+
 	return errs
 }
 
