@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
 	sageErrors "github.com/johnstarich/sage/errors"
+	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/sync"
 	"github.com/pkg/errors"
 )
@@ -33,7 +34,7 @@ func getAccounts(accountStore *client.AccountStore) gin.HandlerFunc {
 	}
 }
 
-func updateAccount(accountsFileName string, accountStore *client.AccountStore) gin.HandlerFunc {
+func updateAccount(accountsFileName string, accountStore *client.AccountStore, ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID := c.Param("id")
 		currentAccount, exists := accountStore.Find(accountID)
@@ -105,6 +106,25 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore) g
 			})
 			return
 		}
+
+		oldAccountName := client.LedgerAccountName(currentAccount)
+		newAccountName := client.LedgerAccountName(account)
+		// TODO handle condition where account store was updated but ledger rename failed?
+		if oldAccountName != newAccountName {
+			if err := ldg.UpdateAccount1(oldAccountName, newAccountName); err != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{
+					"Error": err.Error(),
+				})
+				return
+			}
+			if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{
+					"Error": err.Error(),
+				})
+				return
+			}
+		}
+
 		sync.Accounts(accountsFileName, accountStore)
 	}
 }

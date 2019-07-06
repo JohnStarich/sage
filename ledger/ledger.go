@@ -12,12 +12,15 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// Ledger tracks transactions from multiple institutions. Include error checking and validation for all ledger changes.
+// Serializes into a "plain-text accounting" ledger file.
 type Ledger struct {
 	transactions Transactions
 	idSet        map[string]bool
 	mu           sync.RWMutex
 }
 
+// New creates a ledger with the given transactions. Must not contain any duplicate IDs
 func New(transactions []Transaction) (*Ledger, error) {
 	idSet, _, duplicates := makeIDSet(transactions)
 	if len(duplicates) > 0 {
@@ -29,6 +32,7 @@ func New(transactions []Transaction) (*Ledger, error) {
 	}, nil
 }
 
+// NewFromReader creates a ledger from the given "plain-text accounting" ledger-encoded reader
 func NewFromReader(reader io.Reader) (*Ledger, error) {
 	var transactions []Transaction
 	scanner := bufio.NewScanner(reader)
@@ -77,6 +81,7 @@ func (l *Ledger) String() string {
 	return buf.String()
 }
 
+// Validate returns a descriptive error should anything be wrong with the current ledger's transactions
 func (l *Ledger) Validate() error {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -200,6 +205,7 @@ func (l *Ledger) AddTransactions(txns []Transaction) error {
 	return err
 }
 
+// Balances returns a cumulative balance sheet for all accounts over the given time period.
 func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal.Decimal) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -241,7 +247,12 @@ func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal
 	return
 }
 
+// UpdateTransaction replaces a transaction where ID is 'id' with 'transaction'
+// The new transaction must be valid
 func (l *Ledger) UpdateTransaction(id string, transaction Transaction) error {
+	if err := transaction.Validate(); err != nil {
+		return err
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if !l.idSet[id] {
@@ -276,5 +287,20 @@ func (l *Ledger) UpdateTransaction(id string, transaction Transaction) error {
 	}
 
 	l.transactions[txnIndex] = txnCopy
+	return nil
+}
+
+// UpdateAccount1 changes all transactions' account1 matching oldAccount to newAccount
+func (l *Ledger) UpdateAccount1(oldAccount, newAccount string) error {
+	if newAccount == "" {
+		return errors.New("New account name must not be empty")
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for i := range l.transactions {
+		if l.transactions[i].Postings[0].Account == oldAccount {
+			l.transactions[i].Postings[0].Account = newAccount
+		}
+	}
 	return nil
 }
