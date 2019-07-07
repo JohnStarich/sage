@@ -1,16 +1,14 @@
 import 'react-bootstrap-table-next/dist/react-bootstrap-table2.min.css';
 import './Transactions.css';
 
+import Amount from './Amount';
 import BootstrapTable from 'react-bootstrap-table-next';
-import Form from 'react-bootstrap/Form';
 import React from 'react';
-import Table from 'react-bootstrap/Table';
 import ToolkitProvider, { Search } from 'react-bootstrap-table2-toolkit';
+import Transaction from './Transaction';
 import axios from 'axios';
 import paginationFactory from 'react-bootstrap-table2-paginator';
-
-import Amount from './Amount';
-import { cleanCategory, CategoryPicker } from './Categories';
+import { cleanCategory } from './Categories';
 
 
 const columns = [
@@ -142,7 +140,7 @@ export default function Transactions(props) {
             { ...toolkitprops.baseProps }
             bootstrap4
             bordered={false}
-            expandRow={{ renderer: transactionRow(updateTransaction) }}
+            expandRow={{ renderer: Transaction(updateTransaction) }}
             noDataIndication="No transactions found"
             onTableChange={ handleTableChange }
             pagination={ paginationFactory({
@@ -157,54 +155,4 @@ export default function Transactions(props) {
       </ToolkitProvider>
     </div>
   )
-}
-
-function transactionRow(updateTransaction) {
-  return txn => {
-    let postings = txn.Postings.map((p, i) => {
-      if (i === 0) {
-        let account = p.Account;
-        let separatorIndex = account.indexOf(':')
-        account = separatorIndex !== -1 ? account.slice(separatorIndex + 1) : account
-        account = account.replace(/:/, " - ")
-        return Object.assign({}, p, { Account: account })
-      }
-      return p
-    })
-
-    const updatePosting = (index, newPosting) => {
-      let { ID, Postings } = txn
-      Postings = Array.from(Postings)
-      Postings[index] = Object.assign({}, Postings[index], newPosting)
-      updateTransaction({ ID, Postings })
-    }
-
-    return (
-      <Form>
-        <Table className="postings" responsive borderless>
-          <tbody>
-            {postings.map((posting, i) =>
-              <tr key={posting.Account}>
-                <td>
-                  { i === 0
-                    ? <Form.Control type="text" value={posting.Account} disabled />
-                    : <CategoryPicker category={posting.Account} setCategory={c => updatePosting(i, { Account: c })} />
-                  }
-                </td>
-                <td>
-                  <Amount
-                    amount={posting.Amount}
-                    disabled={i === 0 || postings.length === 2}
-                    editable
-                    onChange={a => updatePosting(i, { Amount: a })}
-                    prefix={posting.Currency}
-                    />
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </Table>
-      </Form>
-    )
-  }
 }
