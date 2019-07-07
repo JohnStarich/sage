@@ -74,17 +74,17 @@ export default function Account(props) {
 
   const testButtonData = {
     props: {
-      variant: 'primary',
+      variant: 'outline-secondary',
       onClick: testClicked,
     },
     text: 'Test',
   }
   if (verified !== null) {
     if (verified) {
-      testButtonData.props.variant = 'success'
+      testButtonData.props.variant = 'outline-success'
       testButtonData.text = 'Test Succeeded'
     } else {
-      testButtonData.props.variant = 'danger'
+      testButtonData.props.variant = 'outline-danger'
       testButtonData.text = 'Test Failed'
     }
   }
