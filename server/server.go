@@ -56,7 +56,7 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accountsFileName strin
 		// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
 		time.Sleep(2 * time.Second)
 		runSync := func() error {
-			//return sync.Sync(logger, ledgerFileName, ldg, accountStore, r)
+			return sync.Sync(logger, ledgerFileName, ldg, accountStore, r)
 			return nil
 		}
 		if err := runSync(); err != nil {
