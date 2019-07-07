@@ -23,10 +23,10 @@ const (
 	MaxResults = 50
 )
 
-func syncLedger(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) gin.HandlerFunc {
+func syncLedger(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger := c.MustGet(loggerKey).(*zap.Logger)
-		err := sync.Sync(logger, ledgerFileName, ldg, accountStore, r)
+		err := sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore)
 		if err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return

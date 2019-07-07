@@ -12,10 +12,10 @@ import (
 )
 
 type csvRule struct {
-	conditions []string // used for formatting purposes
+	Conditions []string // used for formatting purposes
 	matchLine  *regexp.Regexp
 
-	account1, account2 string
+	account1, Account2 string
 	comment            string
 }
 
@@ -25,10 +25,10 @@ func NewCSVRule(account1, account2, comment string, conditions ...string) (Rule,
 		return csvRule{}, err
 	}
 	return csvRule{
-		conditions: conditions,
+		Conditions: conditions,
 		matchLine:  pattern,
 		account1:   account1,
-		account2:   account2,
+		Account2:   account2,
 		comment:    comment,
 	}, nil
 }
@@ -57,8 +57,8 @@ func (c csvRule) Apply(txn *ledger.Transaction) {
 	if c.account1 != "" {
 		txn.Postings[0].Account = c.account1
 	}
-	if c.account2 != "" {
-		txn.Postings[1].Account = c.account2
+	if c.Account2 != "" {
+		txn.Postings[1].Account = c.Account2
 	}
 	if c.comment != "" {
 		comment := strings.Replace(c.comment, "%comment", txn.Postings[0].Comment, -1)
@@ -68,11 +68,11 @@ func (c csvRule) Apply(txn *ledger.Transaction) {
 
 func (c csvRule) String() string {
 	var buf strings.Builder
-	hasConditions := len(c.conditions) > 0
+	hasConditions := len(c.Conditions) > 0
 	if hasConditions {
 		buf.WriteString("if\n")
 	}
-	for _, cond := range c.conditions {
+	for _, cond := range c.Conditions {
 		buf.WriteString(cond)
 		buf.WriteRune('\n')
 	}
@@ -90,7 +90,7 @@ func (c csvRule) String() string {
 		buf.WriteRune('\n')
 	}
 	indent("account1", c.account1)
-	indent("account2", c.account2)
+	indent("account2", c.Account2)
 	indent("comment", c.comment)
 
 	return buf.String()

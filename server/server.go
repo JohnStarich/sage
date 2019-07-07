@@ -13,6 +13,7 @@ import (
 	"github.com/johnstarich/sage/consts"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
+	"github.com/johnstarich/sage/sync"
 	"go.uber.org/zap"
 )
 
@@ -27,7 +28,14 @@ const (
 )
 
 // Run starts the server
-func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accountsFileName string, accountStore *client.AccountStore, r rules.Rules, logger *zap.Logger) error {
+func Run(
+	autoSync bool,
+	addr string,
+	ledgerFileName string, ldg *ledger.Ledger,
+	accountsFileName string, accountStore *client.AccountStore,
+	rulesFileName string, rulesStore *rules.Store,
+	logger *zap.Logger,
+) error {
 	engine := gin.New()
 	engine.Use(
 		ginzap.Ginzap(logger, time.RFC3339, true),
@@ -47,17 +55,21 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accountsFileName strin
 			c.Set(loggerKey, logger)
 		},
 	)
-	setupAPI(api, ledgerFileName, ldg, accountsFileName, accountStore, r)
+	setupAPI(api, ledgerFileName, ldg, accountsFileName, accountStore, rulesFileName, rulesStore)
 
 	done := make(chan bool, 1)
 	errs := make(chan error, 2)
+
+	logger.Info("Starting server", zap.String("addr", addr))
+	if !autoSync {
+		return engine.Run(addr)
+	}
 
 	go func() {
 		// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
 		time.Sleep(2 * time.Second)
 		runSync := func() error {
-			return sync.Sync(logger, ledgerFileName, ldg, accountStore, r)
-			return nil
+			return sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore)
 		}
 		if err := runSync(); err != nil {
 			if _, ok := err.(ledger.Error); !ok {
@@ -82,7 +94,6 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accountsFileName strin
 	}()
 
 	go func() {
-		logger.Info("Starting server", zap.String("addr", addr))
 		errs <- engine.Run(addr)
 		done <- true
 	}()
@@ -90,14 +101,22 @@ func Run(addr, ledgerFileName string, ldg *ledger.Ledger, accountsFileName strin
 	return <-errs
 }
 
-func setupAPI(router gin.IRouter, ledgerFileName string, ldg *ledger.Ledger, accountsFileName string, accountStore *client.AccountStore, r rules.Rules) {
+func setupAPI(
+	router gin.IRouter,
+	ledgerFileName string,
+	ldg *ledger.Ledger,
+	accountsFileName string,
+	accountStore *client.AccountStore,
+	rulesFileName string,
+	rulesStore *rules.Store,
+) {
 	router.GET("/version", func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]string{
 			"version": consts.Version,
 		})
 	})
 
-	router.POST("/sync", syncLedger(ledgerFileName, ldg, accountStore, r))
+	router.POST("/sync", syncLedger(ledgerFileName, ldg, accountStore, rulesStore))
 	router.GET("/balances", getBalances(ldg, accountStore))
 	router.GET("/categories", getExpenseAndRevenueAccounts(ldg))
 
@@ -110,4 +129,7 @@ func setupAPI(router gin.IRouter, ledgerFileName string, ldg *ledger.Ledger, acc
 
 	router.GET("/transactions", getTransactions(ldg, accountStore))
 	router.PATCH("/transactions/:id", updateTransaction(ledgerFileName, ldg))
+
+	router.GET("/rules", getRules(rulesStore))
+	router.PUT("/rules", updateRules(rulesFileName, rulesStore))
 }

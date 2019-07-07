@@ -23,8 +23,8 @@ var (
 
 // Sync runs a Ledger sync, followed by a LedgerFile sync
 // If a partial failure occurs during Ledger sync, runs LedgerFile sync anyway
-func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) error {
-	ledgerErr := Ledger(logger, ldg, accountStore, r)
+func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) error {
+	ledgerErr := Ledger(logger, ldg, accountStore, rulesStore)
 	if ledgerErr != nil {
 		if _, ok := ledgerErr.(ledger.Error); !ok {
 			return ledgerErr
@@ -37,13 +37,13 @@ func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, account
 }
 
 // Ledger fetches transactions for each account and categorizes them based on rules
-func Ledger(logger *zap.Logger, ldg *ledger.Ledger, accountStore *client.AccountStore, r rules.Rules) error {
+func Ledger(logger *zap.Logger, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) error {
 	ledgerMu.Lock()
 	defer ledgerMu.Unlock()
-	return ledgerSync(logger, ldg, r, downloadTxns(accountStore))
+	return ledgerSync(logger, ldg, rulesStore, downloadTxns(accountStore))
 }
 
-func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, r rules.Rules, download func(start, end time.Time) ([]ledger.Transaction, error)) error {
+func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, rulesStore *rules.Store, download func(start, end time.Time) ([]ledger.Transaction, error)) error {
 	if err := ldg.Validate(); err != nil {
 		return errors.Wrap(err, "Existing ledger is not valid")
 	}
@@ -85,9 +85,7 @@ func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, r rules.Rules, download 
 	}
 	allTxns = filteredTxns
 
-	for i := range allTxns {
-		r.Apply(&allTxns[i])
-	}
+	rulesStore.ApplyAll(allTxns)
 
 	if err := ldg.AddTransactions(allTxns); err != nil {
 		logger.Warn("Failed to add transactions to ledger", zap.Error(err))

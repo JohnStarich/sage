@@ -38,10 +38,7 @@ func loadRules(fileName string) (rules.Rules, error) {
 	}
 	defer rulesFile.Close()
 	r, err := rules.NewCSVRulesFromReader(rulesFile)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error reading rules from file '%s'", fileName)
-	}
-	return r, nil
+	return r, errors.Wrapf(err, "Error reading rules from file '%s'", fileName)
 }
 
 func loadAccounts(fileName string) (*client.AccountStore, error) {
@@ -54,7 +51,12 @@ func loadAccounts(fileName string) (*client.AccountStore, error) {
 	return accountStore, errors.Wrap(err, "Error reading accounts from file")
 }
 
-func start(isServer bool, port uint16, ledgerFileName string, ldg *ledger.Ledger, accountsFileName string, accountStore *client.AccountStore, r rules.Rules) error {
+func start(
+	isServer bool, autoSync bool, port uint16,
+	ledgerFileName string, ldg *ledger.Ledger,
+	accountsFileName string, accountStore *client.AccountStore,
+	rulesFileName string, rulesStore *rules.Store,
+) error {
 	logger, err := zap.NewProduction()
 	if os.Getenv("DEVELOPMENT") == "true" {
 		logger, err = zap.NewDevelopment()
@@ -64,10 +66,10 @@ func start(isServer bool, port uint16, ledgerFileName string, ldg *ledger.Ledger
 	}
 
 	if !isServer {
-		return sync.Sync(logger, ledgerFileName, ldg, accountStore, r)
+		return sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore)
 	}
 	gin.SetMode(gin.ReleaseMode)
-	return server.Run(fmt.Sprintf("0.0.0.0:%d", port), ledgerFileName, ldg, accountsFileName, accountStore, r, logger)
+	return server.Run(autoSync, fmt.Sprintf("0.0.0.0:%d", port), ledgerFileName, ldg, accountsFileName, accountStore, rulesFileName, rulesStore, logger)
 }
 
 func usage(flagSet *flag.FlagSet) string {
@@ -100,6 +102,7 @@ func handleErrors() (usageErr bool, err error) {
 	flagSet := flag.NewFlagSet("sage", flag.ContinueOnError)
 	isServer := flagSet.Bool("server", false, "Starts the Sage http server and sync on an interval until terminated")
 	serverPort := flagSet.Uint("port", 0, "Sets the port the server listens on. Defaults to 8080. Implies -server")
+	noSyncLoop := flagSet.Bool("no-auto-sync", false, "Disables ledger auto-sync")
 	rulesFileName := flagSet.String("rules", "", "Required: Path to an hledger CSV import rules file")
 	ledgerFileName := flagSet.String("ledger", "", "Required: Path to a ledger file")
 	accountsFileName := flagSet.String("accounts", "", "Required: Path to an accounts file, includes connection information for institutions")
@@ -132,6 +135,7 @@ func handleErrors() (usageErr bool, err error) {
 	if err != nil {
 		return false, err
 	}
+	rulesStore := rules.NewStore(r)
 
 	ldg, err := loadLedger(*ledgerFileName)
 	if err != nil {
@@ -142,7 +146,7 @@ func handleErrors() (usageErr bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	return false, start(*isServer, port, *ledgerFileName, ldg, *accountsFileName, accountStore, r)
+	return false, start(*isServer, !*noSyncLoop, port, *ledgerFileName, ldg, *accountsFileName, accountStore, *rulesFileName, rulesStore)
 }
 
 func main() {
