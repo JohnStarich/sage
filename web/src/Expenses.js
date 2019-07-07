@@ -23,10 +23,13 @@ export default function Expenses(props) {
   React.useEffect(() => {
     axios.get('/api/v1/balances', {
         params: {
-          accountTypes: ['expenses', 'revenue'],
+          accountTypes: ['expenses', 'revenue', 'uncategorized'],
         },
       })
       .then(res => {
+        if (! res.data.Accounts) {
+          return
+        }
         setAccounts(res.data.Accounts.map(account => {
           account.Balances = account.Balances.map(Number)
           return account
@@ -111,6 +114,9 @@ function convertAccountsToChartData({ start, end, accounts }) {
   if (! accounts || endTime < startTime) {
     return null
   }
+  if (accounts.length === 0) {
+    throw new Error("Attempted to convert an empty list of accounts to chart data")
+  }
   let interval = (endTime - startTime) / accounts[0].Balances.length
   let times = []
   for (let i = startTime; i < endTime; i += interval) {
@@ -143,12 +149,14 @@ function negateBalances(account) {
 }
 
 function reduceCategories(accounts) {
-  let accountNames = accounts.map(a => a.Account)
+  let accountNames = accounts.map(a => a.Account ? a.Account : a.AccountType)
   accountNames = reduceCategoryNames(accountNames)
   let newAccounts = {}
   for (let account of accounts) {
     for (let name of accountNames) {
-      if (account.Account === name || account.Account.startsWith(name+':')) {
+      if (account.Account === name ||
+          (account.Account === "" && account.AccountType === name) ||
+          account.Account.startsWith(name+':')) {
         if (newAccounts[name] === undefined) {
           account.Account = name
           newAccounts[name] = Object.assign({}, account)
