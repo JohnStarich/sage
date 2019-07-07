@@ -36,9 +36,12 @@ func newAccountsFromSlice(accounts []Account) (map[string]Account, error) {
 // NewAccountStoreFromReader returns a new account store loaded from the provided JSON-encoded reader
 func NewAccountStoreFromReader(r io.Reader) (*AccountStore, error) {
 	decoder := json.NewDecoder(r)
-	var accountStore AccountStore
-	err := decoder.Decode(&accountStore)
-	return &accountStore, err
+	if decoder.More() {
+		var accountStore AccountStore
+		err := decoder.Decode(&accountStore)
+		return &accountStore, err
+	}
+	return NewAccountStore(nil)
 }
 
 // Find returns the account with the given ID if it exists, otherwise found is false
