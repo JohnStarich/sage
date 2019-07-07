@@ -1,3 +1,21 @@
+.accounts {
+  margin: 2em auto;
+  max-width: 28em;
+  align-content: center;
+}
+
+.accounts .col {
+  align-self: center;
+}
+
 .accounts button {
   margin: 0.5em 1em;
+}
+
+.accounts .account-buttons {
+  text-align: right;
+}
+
+.accounts .add-new {
+  margin-top: 1.5em;
 }

@@ -263,7 +263,7 @@ export default function Account(props) {
         </Form.Row>
         &nbsp;
         <Form.Row>
-          <Col><Button type="submit">{ account ? 'Save' : 'Create' }</Button></Col>
+          <Col><Button type="submit">{ account ? 'Save' : 'Add' }</Button></Col>
         </Form.Row>
       </Form>
     </Container>

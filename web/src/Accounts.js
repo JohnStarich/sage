@@ -4,8 +4,11 @@ import axios from 'axios';
 import './Accounts.css';
 
 import Account from './Account';
-import Crumb from './Breadcrumb';
 import Button from 'react-bootstrap/Button';
+import Col from 'react-bootstrap/Col';
+import Container from 'react-bootstrap/Container';
+import Crumb from './Breadcrumb';
+import Row from 'react-bootstrap/Row';
 
 export default function Accounts({ match }) {
   const [accounts, setAccounts] = React.useState([])
@@ -50,15 +53,20 @@ export default function Accounts({ match }) {
       <Crumb title="Accounts" match={match} />
       <Route exact path={match.path} render={() =>
         <>
-          <ul className="accounts">
+          <Container className="accounts">
             {accounts.map(a =>
-              <li key={a.ID}>
-                <Link to={`${match.url}/edit/${a.ID}`}>{a.Description}</Link>
-                <Button variant="danger" onClick={() => deleteAccount(a.ID)}>Delete</Button>
-              </li>
+              <Row key={a.ID}>
+                <Col>{a.Description}</Col>
+                <Col className="account-buttons">
+                  <Link to={`${match.url}/edit/${a.ID}`} className="btn btn-outline-secondary">Edit</Link>
+                  <Button variant="danger" onClick={() => deleteAccount(a.ID)}>Delete</Button>
+                </Col>
+              </Row>
             )}
-          </ul>
-          <Link to={`${match.url}/new`}>Add new account</Link>
+            <Row>
+              <Col><Link to={`${match.url}/new`} className="btn btn-primary add-new">Add new</Link></Col>
+            </Row>
+          </Container>
         </>
       } />
       <Route path={`${match.path}/edit/:id`} component={props => <AccountEditor updated={accountUpdated} {...props} />} />
