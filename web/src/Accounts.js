@@ -54,12 +54,15 @@ export default function Accounts({ match }) {
       <Route exact path={match.path} render={() =>
         <>
           <Container className="accounts">
+            <Row>
+              <Col><h2>Accounts</h2></Col>
+            </Row>
             {accounts.map(a =>
               <Row key={a.ID}>
                 <Col>{a.Description}</Col>
                 <Col className="account-buttons">
                   <Link to={`${match.url}/edit/${a.ID}`} className="btn btn-outline-secondary">Edit</Link>
-                  <Button variant="danger" onClick={() => deleteAccount(a.ID)}>Delete</Button>
+                  <Button variant="outline-danger" onClick={() => deleteAccount(a.ID)}>Delete</Button>
                 </Col>
               </Row>
             )}

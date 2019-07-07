@@ -4,6 +4,10 @@
   align-content: center;
 }
 
+.accounts h2 {
+  margin-bottom: 1em;
+}
+
 .accounts .col {
   align-self: center;
 }
