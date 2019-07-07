@@ -118,7 +118,7 @@ func (t txnToAccountMap) Find(accountName string) (account client.Account, found
 		return nil, false
 	}
 	accountType := components[0]
-	if accountType != "assets" && accountType != "liabilities" {
+	if accountType != client.AssetAccount && accountType != client.LiabilityAccount {
 		return nil, false
 	}
 	if len(components) < 3 {
@@ -147,8 +147,8 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 		accountTypes := map[string]bool{
 			// return assets and liabilities by default
 			// useful for a simple balance table
-			"assets":      true,
-			"liabilities": true,
+			client.AssetAccount:     true,
+			client.LiabilityAccount: true,
 		}
 		if accountTypesQueryArray := c.QueryArray(accountTypesQuery); len(accountTypesQueryArray) > 0 {
 			accountTypes = make(map[string]bool, len(accountTypesQueryArray))
@@ -174,7 +174,7 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 
 			account.AccountType = accountType
 			switch accountType {
-			case "assets", "liabilities":
+			case client.AssetAccount, client.LiabilityAccount:
 				if len(components) < 3 {
 					// require accountType:institution:accountNumber format
 					continue
@@ -205,9 +205,9 @@ func getExpenseAndRevenueAccounts(ldg *ledger.Ledger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		_, _, balanceMap := ldg.Balances()
 		accounts := make([]string, 0, len(balanceMap)+1)
-		accounts = append(accounts, "uncategorized")
+		accounts = append(accounts, client.Uncategorized)
 		for account := range balanceMap {
-			if strings.HasPrefix(account, "expenses:") || strings.HasPrefix(account, "revenue:") {
+			if strings.HasPrefix(account, client.ExpenseAccount+":") || strings.HasPrefix(account, client.RevenueAccount+":") {
 				accounts = append(accounts, account)
 			}
 		}

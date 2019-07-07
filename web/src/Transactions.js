@@ -47,7 +47,7 @@ const columns = [
       if (txn.Postings.length === 2) {
         const account = txn.Postings[1].Account
         const separatorIndex = account.indexOf(':')
-        if (separatorIndex !== -1 && account.slice(0, separatorIndex) === "revenue") {
+        if (separatorIndex !== -1 && account.slice(0, separatorIndex) === "revenues") {
           className = "revenue"
         }
       }

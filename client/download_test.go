@@ -408,7 +408,7 @@ func TestParseTransaction(t *testing.T) {
 				Payee: "Some transaction",
 				Postings: []ledger.Posting{
 					{Account: "assets:Bank 1", Currency: usd, Amount: decimal.NewFromFloat(1.25)},
-					{Account: "uncategorized", Currency: usd, Amount: decimal.NewFromFloat(-1.25)},
+					{Account: Uncategorized, Currency: usd, Amount: decimal.NewFromFloat(-1.25)},
 				},
 			},
 		},
@@ -425,7 +425,7 @@ func TestParseTransaction(t *testing.T) {
 				Payee: "Hey there",
 				Postings: []ledger.Posting{
 					{Account: "assets:Bank 1", Currency: usd, Amount: decimal.NewFromFloat(1.25)},
-					{Account: "uncategorized", Currency: usd, Amount: decimal.NewFromFloat(-1.25)},
+					{Account: Uncategorized, Currency: usd, Amount: decimal.NewFromFloat(-1.25)},
 				},
 			},
 		},

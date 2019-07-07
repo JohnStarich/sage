@@ -23,7 +23,7 @@ export default function Expenses(props) {
   React.useEffect(() => {
     axios.get('/api/v1/balances', {
         params: {
-          accountTypes: ['expenses', 'revenue', 'uncategorized'],
+          accountTypes: ['expenses', 'revenues', 'uncategorized'],
         },
       })
       .then(res => {

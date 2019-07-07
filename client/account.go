@@ -13,6 +13,12 @@ import (
 const (
 	// RedactSuffixLength the number of characters that remain unredacted at the end of a string
 	RedactSuffixLength = 4
+
+	// Ledger account types
+	AssetAccount     = "assets"
+	LiabilityAccount = "liabilities"
+	ExpenseAccount   = "expenses"
+	RevenueAccount   = "revenues"
 )
 
 // Account identifies an account at a financial institution
@@ -89,9 +95,9 @@ func LedgerAccountName(a Account) string {
 	var accountType string
 	switch a.(type) {
 	case *CreditCard:
-		accountType = "liabilities"
+		accountType = LiabilityAccount
 	case Bank:
-		accountType = "assets"
+		accountType = AssetAccount
 	default:
 		panic(fmt.Sprintf("Unknown account type: %T", a))
 	}

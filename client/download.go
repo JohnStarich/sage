@@ -12,6 +12,8 @@ import (
 )
 
 const (
+	Uncategorized = "uncategorized"
+
 	ofxAuthFailed = 15500
 )
 
@@ -160,7 +162,7 @@ func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeT
 				Tags:     map[string]string{"id": id},
 			},
 			{
-				Account:  "uncategorized",
+				Account:  Uncategorized,
 				Amount:   amount.Neg(),
 				Currency: currency,
 			},

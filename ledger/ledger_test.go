@@ -308,11 +308,11 @@ func TestLedgerValidate(t *testing.T) {
 				}},
 				{Postings: []Posting{
 					{Account: "account 2", Amount: *decFloat(1), Balance: decFloat(4.25)},
-					{Account: "revenue", Amount: *decFloat(-1)},
+					{Account: "revenues", Amount: *decFloat(-1)},
 				}},
 				{Postings: []Posting{
 					{Account: "account 3", Amount: *decFloat(-3), Balance: decFloat(-1.50)},
-					{Account: "revenue", Amount: *decFloat(3)},
+					{Account: "revenues", Amount: *decFloat(3)},
 				}},
 			},
 		},
