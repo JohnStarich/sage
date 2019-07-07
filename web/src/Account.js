@@ -8,6 +8,7 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
+import Spinner from 'react-bootstrap/Spinner';
 import RadioGroup from './RadioGroup';
 
 
@@ -16,6 +17,9 @@ export default function Account(props) {
   const [isBank, setIsBank] = React.useState(null)
   const [validated, setValidated] = React.useState(false)
   const [redirect, setRedirect] = React.useState(null)
+  const [verified, setVerified] = React.useState(null)
+  const [testFeedback, setTestFeedback] = React.useState(null)
+  const [testLoading, setTestLoading] = React.useState(false)
 
   if (account === null) {
     // prop was defined but hasn't loaded
@@ -44,10 +48,61 @@ export default function Account(props) {
       }
     },
   }
+
+  const testClicked = () => {
+    const form = document.getElementById(makeID("form"))
+    if (form.checkValidity() !== false) {
+      const newAccount = accountFromForm(id, form)
+      setTestLoading(true)
+      verifyAccount(newAccount)
+        .then(res => {
+          setVerified(true)
+          setTestFeedback(null)
+        })
+        .catch(e => {
+          // this case should be impossible due to client-side validation
+          setVerified(false)
+          if (!e.response.data || !e.response.data.Error) {
+            throw e
+          }
+          setTestFeedback(e.response.data.Error)
+        })
+        .finally(() => setTestLoading(false))
+    }
+    setValidated(true)
+  }
+
+  const testButtonData = {
+    props: {
+      variant: 'primary',
+      onClick: testClicked,
+    },
+    text: 'Test',
+  }
+  if (verified !== null) {
+    if (verified) {
+      testButtonData.props.variant = 'success'
+      testButtonData.text = 'Test Succeeded'
+    } else {
+      testButtonData.props.variant = 'danger'
+      testButtonData.text = 'Test Failed'
+    }
+  }
+  const testButton = (
+    <Button {...testButtonData.props}>
+      {testButtonData.text}
+      {testLoading
+        ? <Spinner animation="border" size="sm" className="account-test-spinner" />
+        : null
+      }
+    </Button>
+  )
+
   return (
     <Container className="account">
       {redirect}
       <Form
+        id={makeID("form")}
         noValidate
         validated={validated}
         onSubmit={e => {
@@ -160,8 +215,12 @@ export default function Account(props) {
               <Form.Control
                 type="text"
                 placeholder="••••••••"
+                required={! account}
                 {...formControlDefaults}
                 />
+              <Form.Control.Feedback type="invalid">
+                A password is required when adding a new account
+              </Form.Control.Feedback>
             </Col>
           </Form.Group>
         </Form.Group>
@@ -196,8 +255,15 @@ export default function Account(props) {
           </Form.Group>
         </Form.Group>
 
+        <Form.Row className="account-test">
+          <Col sm={labelWidth}>{testButton}</Col>
+          { ! testFeedback ? null :
+            <Col className="account-test-failed">{testFeedback}</Col>
+          }
+        </Form.Row>
+        &nbsp;
         <Form.Row>
-          <Col><Button type="submit">{account ? 'Save' : 'Create'}</Button></Col>
+          <Col><Button type="submit">{ account ? 'Save' : 'Create' }</Button></Col>
         </Form.Row>
       </Form>
     </Container>
@@ -248,4 +314,8 @@ function updateAccount(originalAccountID, account) {
     return axios.put(`/api/v1/accounts/${originalAccountID}`, account)
   }
   return axios.post(`/api/v1/accounts`, account)
+}
+
+function verifyAccount(account) {
+  return axios.post(`/api/v1/accounts/${account.ID}/verify`, account)
 }

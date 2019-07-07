@@ -106,6 +106,7 @@ func setupAPI(router gin.IRouter, ledgerFileName string, ldg *ledger.Ledger, acc
 	router.PUT("/accounts/:id", updateAccount(accountsFileName, accountStore, ledgerFileName, ldg))
 	router.POST("/accounts", addAccount(accountsFileName, accountStore))
 	router.DELETE("/accounts/:id", removeAccount(accountsFileName, accountStore))
+	router.POST("/accounts/:id/verify", verifyAccount(accountStore))
 
 	router.GET("/transactions", getTransactions(ldg, accountStore))
 	router.PATCH("/transactions/:id", updateTransaction(ledgerFileName, ldg))

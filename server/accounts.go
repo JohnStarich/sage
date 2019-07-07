@@ -178,3 +178,34 @@ func removeAccount(accountsFileName string, accountStore *client.AccountStore) g
 		c.Status(http.StatusNoContent)
 	}
 }
+
+func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		account, err := readAndValidateAccount(c.Request.Body)
+		if err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+
+		accountID := c.Param("id")
+		pass := account.Institution().Password()
+		if pass.IsEmpty() {
+			currentAccount, exists := accountStore.Find(accountID)
+			if !exists {
+				abortWithClientError(c, http.StatusBadRequest, errors.New("Institution password is required"))
+				return
+			}
+			pass.Set(currentAccount.Institution().Password())
+		}
+
+		if err := client.Verify(account); err != nil {
+			if err == client.ErrAuthFailed {
+				abortWithClientError(c, http.StatusUnauthorized, err)
+				return
+			}
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}

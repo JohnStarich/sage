@@ -1,6 +1,7 @@
 .account {
   max-width: 40em;
   margin-top: 4em;
+  margin-bottom: 4em;
 }
 
 .account .row {
@@ -9,4 +10,17 @@
 
 .account form > .form-group {
   margin-bottom: 2.6em;
+}
+
+.account .account-test-failed {
+  color: red;
+}
+
+.account .account-test > div {
+  align-self: baseline;
+}
+
+.account .account-test-spinner {
+  margin-left: 0.5em;
+  margin-bottom: 0.1em;
 }
