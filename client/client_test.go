@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
+	"golang.org/x/time/rate"
 )
 
 type recordCloser struct {
@@ -54,6 +55,7 @@ func TestNewClient(t *testing.T) {
 	logger := zap.NewNop()
 	loggerErr := errors.New("some logger error")
 	client := &ofxgo.BasicClient{}
+	limiter := rate.NewLimiter(rate.Inf, 0)
 	ofxVersion := "bad OFX version"
 	for _, tc := range []struct {
 		description   string
@@ -78,9 +80,8 @@ func TestNewClient(t *testing.T) {
 			getLogger := func() (*zap.Logger, error) {
 				if tc.loggerErr {
 					return nil, loggerErr
-				} else {
-					return logger, nil
 				}
+				return logger, nil
 			}
 			getClient := func(url string, c *ofxgo.BasicClient) ofxgo.Client {
 				assert.Equal(t, expectedURL, url)
@@ -89,8 +90,12 @@ func TestNewClient(t *testing.T) {
 				assert.Equal(t, config.OFXVersion, c.SpecVersion.String())
 				return client
 			}
+			getLimiter := func(url string) *rate.Limiter {
+				assert.Equal(t, expectedURL, url)
+				return limiter
+			}
 
-			c, err := newClient(expectedURL, config, getLogger, getClient)
+			c, err := newClient(expectedURL, config, getLogger, getClient, getLimiter)
 			if tc.loggerErr {
 				assert.Equal(t, loggerErr, err)
 				return
@@ -104,6 +109,7 @@ func TestNewClient(t *testing.T) {
 			sage := c.(*sageClient)
 			assert.Equal(t, client, sage.Client)
 			assert.Equal(t, logger, sage.Logger)
+			assert.Equal(t, limiter, sage.Limiter)
 		})
 	}
 }

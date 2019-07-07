@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aclindsa/ofxgo"
@@ -15,7 +16,12 @@ import (
 )
 
 const (
-	loggerDevEnv = "DEVELOPMENT"
+	loggerDevEnv    = "DEVELOPMENT"
+	discoverCardURL = "https://ofx.discovercard.com"
+)
+
+var (
+	rateLimiterCache = make(map[string]*rate.Limiter)
 )
 
 type sageClient struct {
@@ -26,13 +32,14 @@ type sageClient struct {
 
 // New creates a new ofxgo Client with the given connection info
 func New(url string, config Config) (ofxgo.Client, error) {
-	return newClient(url, config, getLoggerFromEnv, ofxgo.GetClient)
+	return newClient(url, config, getLoggerFromEnv, ofxgo.GetClient, getLimiterFromCache)
 }
 
 func newClient(
 	url string, config Config,
 	getLogger func() (*zap.Logger, error),
 	getClient func(string, *ofxgo.BasicClient) ofxgo.Client,
+	getLimiter func(string) *rate.Limiter,
 ) (ofxgo.Client, error) {
 	s := &sageClient{}
 
@@ -52,16 +59,31 @@ func newClient(
 	}
 	basicClient.CarriageReturn = true
 	s.Client = getClient(url, basicClient)
-	s.Limiter = rate.NewLimiter(rate.Inf, 0)
-	if _, ok := s.Client.(*ofxgo.DiscoverCardClient); ok {
-		s.Limiter = rate.NewLimiter(rate.Every(5*time.Second), 1)
-	}
+	s.Limiter = getLimiter(url)
 	var err error
 	s.Logger, err = getLogger()
 	if err != nil {
 		return nil, err
 	}
 	return s, nil
+}
+
+func getLimiterFromCache(url string) *rate.Limiter {
+	url = strings.Trim(url, "/")
+	if limiter, ok := rateLimiterCache[url]; ok {
+		return limiter
+	}
+
+	var limiter *rate.Limiter
+	switch url {
+	case discoverCardURL:
+		limiter = rate.NewLimiter(rate.Every(5*time.Second), 1)
+	default:
+		// don't save an "unlimited" limiter in the cache
+		return rate.NewLimiter(rate.Inf, 0)
+	}
+	rateLimiterCache[url] = limiter
+	return limiter
 }
 
 func getLoggerFromEnv() (*zap.Logger, error) {

@@ -11,9 +11,19 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const (
+	ofxAuthFailed = 15500
+)
+
+var (
+	// ErrAuthFailed is returned whenever a signon request fails with an authentication problem
+	ErrAuthFailed = errors.New("Username or password is incorrect")
+)
+
 // Transactions downloads and returns transactions from a bank or credit card account for the given time period, ending today
 func Transactions(account Account, start, end time.Time) ([]ledger.Transaction, error) {
-	client, err := clientForInstitution(account.Institution())
+	institution := account.Institution()
+	client, err := New(institution.URL(), institution.Config())
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +71,9 @@ func fetchTransactions(
 	}
 
 	if response.Signon.Status.Code != 0 {
+		if response.Signon.Status.Code == ofxAuthFailed {
+			return nil, ErrAuthFailed
+		}
 		meaning, err := response.Signon.Status.CodeMeaning()
 		if err != nil {
 			return nil, errors.Wrap(err, "Failed to parse OFX response code")
@@ -197,4 +210,12 @@ func makeUniqueTxnID(account Account) func(string) string {
 		id = strings.Replace(id, ":", "", -1)
 		return id
 	}
+}
+
+// Verify attempts to sign in with the given account. Returns any encountered errors
+func Verify(account Account) error {
+	end := time.Now()
+	start := end.Add(-24 * time.Hour)
+	_, err := Transactions(account, start, end)
+	return err
 }
