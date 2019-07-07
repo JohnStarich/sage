@@ -3,7 +3,6 @@ import axios from 'axios';
 import Form from 'react-bootstrap/Form';
 
 
-
 export function cleanCategory(account) {
   let i = account.lastIndexOf(":")
   if (i === -1) {
@@ -14,7 +13,7 @@ export function cleanCategory(account) {
 
 let categoriesPromise = null
 
-const Categories = () => {
+export const Categories = () => {
   if (categoriesPromise === null) {
     categoriesPromise = axios.get('/api/v1/categories')
       .then(res => res.data.Accounts)
@@ -23,8 +22,6 @@ const Categories = () => {
   }
   return categoriesPromise
 }
-
-export default Categories;
 
 export function CategoryPicker({ category, setCategory, disabled }) {
   const [categories, setCategories] = React.useState([])
@@ -45,3 +42,5 @@ export function CategoryPicker({ category, setCategory, disabled }) {
     </Form.Control>
   )
 }
+
+export default CategoryPicker;

@@ -3,7 +3,7 @@ import React from 'react';
 import Amount from './Amount';
 import Form from 'react-bootstrap/Form';
 import Table from 'react-bootstrap/Table';
-import { CategoryPicker } from './Categories';
+import { CategoryPicker } from './CategoryPicker';
 
 
 export default function Transaction(updateTransaction) {

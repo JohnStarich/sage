@@ -8,7 +8,7 @@ import ToolkitProvider, { Search } from 'react-bootstrap-table2-toolkit';
 import Transaction from './Transaction';
 import axios from 'axios';
 import paginationFactory from 'react-bootstrap-table2-paginator';
-import { cleanCategory } from './Categories';
+import { cleanCategory } from './CategoryPicker';
 
 
 const columns = [
