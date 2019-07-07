@@ -19,7 +19,7 @@ import (
 )
 
 func loadLedger(fileName string) (*ledger.Ledger, error) {
-	ledgerFile, err := os.Open(fileName)
+	ledgerFile, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error opening '%s'", fileName)
 	}
@@ -32,28 +32,29 @@ func loadLedger(fileName string) (*ledger.Ledger, error) {
 }
 
 func loadRules(fileName string) (rules.Rules, error) {
-	rulesFile, err := os.Open(fileName)
+	rulesFile, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error opening '%s'", fileName)
+		return nil, errors.Wrapf(err, "Error opening rules file '%s'", fileName)
 	}
 	defer rulesFile.Close()
 	r, err := rules.NewCSVRulesFromReader(rulesFile)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Error reading rules from file '%s'", fileName)
 	}
 	return r, nil
 }
 
 func loadAccounts(fileName string) (*client.AccountStore, error) {
-	accountsFile, err := os.Open(fileName)
+	accountsFile, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Error opening accounts file '%s'", fileName)
 	}
 	defer accountsFile.Close()
-	return client.NewAccountStoreFromReader(accountsFile)
+	accountStore, err := client.NewAccountStoreFromReader(accountsFile)
+	return accountStore, errors.Wrap(err, "Error reading accounts from file")
 }
 
-func start(isServer bool, ledgerFileName string, ldg *ledger.Ledger, accountsFileName string, accountStore *client.AccountStore, r rules.Rules) error {
+func start(isServer bool, port uint16, ledgerFileName string, ldg *ledger.Ledger, accountsFileName string, accountStore *client.AccountStore, r rules.Rules) error {
 	logger, err := zap.NewProduction()
 	if os.Getenv("DEVELOPMENT") == "true" {
 		logger, err = zap.NewDevelopment()
@@ -66,7 +67,7 @@ func start(isServer bool, ledgerFileName string, ldg *ledger.Ledger, accountsFil
 		return sync.Sync(logger, ledgerFileName, ldg, accountStore, r)
 	}
 	gin.SetMode(gin.ReleaseMode)
-	return server.Run("0.0.0.0:8080", ledgerFileName, ldg, accountsFileName, accountStore, r, logger)
+	return server.Run(fmt.Sprintf("0.0.0.0:%d", port), ledgerFileName, ldg, accountsFileName, accountStore, r, logger)
 }
 
 func usage(flagSet *flag.FlagSet) string {
@@ -97,7 +98,8 @@ func requireFlags(flagSet *flag.FlagSet) (err error) {
 
 func handleErrors() (usageErr bool, err error) {
 	flagSet := flag.NewFlagSet("sage", flag.ContinueOnError)
-	enableServer := flagSet.Bool("server", false, "Syncs on an interval until terminated")
+	isServer := flagSet.Bool("server", false, "Starts the Sage http server and sync on an interval until terminated")
+	serverPort := flagSet.Uint("port", 0, "Sets the port the server listens on. Defaults to 8080. Implies -server")
 	rulesFileName := flagSet.String("rules", "", "Required: Path to an hledger CSV import rules file")
 	ledgerFileName := flagSet.String("ledger", "", "Required: Path to a ledger file")
 	accountsFileName := flagSet.String("accounts", "", "Required: Path to an accounts file, includes connection information for institutions")
@@ -114,6 +116,18 @@ func handleErrors() (usageErr bool, err error) {
 		return true, errors.Errorf("%s\n%s", err.Error(), usage(flagSet))
 	}
 
+	*isServer = *isServer || *serverPort != 0
+	if *serverPort == 0 {
+		*serverPort = 8080
+	}
+	var port uint16
+	if *isServer {
+		port = uint16(*serverPort)
+		if port <= 0 || uint(port) != *serverPort {
+			return true, errors.Errorf("Port number must be a positive 16-bit integer: %d", *serverPort)
+		}
+	}
+
 	r, err := loadRules(*rulesFileName)
 	if err != nil {
 		return false, err
@@ -128,7 +142,7 @@ func handleErrors() (usageErr bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	return false, start(*enableServer, *ledgerFileName, ldg, *accountsFileName, accountStore, r)
+	return false, start(*isServer, port, *ledgerFileName, ldg, *accountsFileName, accountStore, r)
 }
 
 func main() {
