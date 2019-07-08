@@ -27,7 +27,7 @@ func TestNewCSVRule(t *testing.T) {
 	assert.Equal(t, csvRule{
 		Conditions: conditions,
 		matchLine:  regexp.MustCompile("(?i)a|b|c"),
-		Account1:   someAccount1,
+		account1:   someAccount1,
 		Account2:   someAccount2,
 		comment:    someComment,
 	}, rule)
@@ -162,7 +162,7 @@ func TestCSVRuleString(t *testing.T) {
 		{
 			description: "one field",
 			rule: csvRule{
-				Account1: "some account 1",
+				account1: "some account 1",
 			},
 			result: `
 account1 some account 1
@@ -171,7 +171,7 @@ account1 some account 1
 		{
 			description: "every field",
 			rule: csvRule{
-				Account1:   "some account 1",
+				account1:   "some account 1",
 				Account2:   "some account 2",
 				comment:    "some comment",
 				Conditions: []string{"a", "b"},
@@ -188,7 +188,7 @@ b
 		{
 			description: "unconditional rule",
 			rule: csvRule{
-				Account1: "some account 1",
+				account1: "some account 1",
 				Account2: "some account 2",
 				comment:  "some comment",
 			},
@@ -219,7 +219,7 @@ func TestNewCSVRulesFromReader(t *testing.T) {
 			input: `
 account1 some account
 			`,
-			rules: []Rule{csvRule{Account1: "some account"}},
+			rules: []Rule{csvRule{account1: "some account"}},
 		},
 		{
 			description: "one condition",
@@ -229,7 +229,7 @@ match me
   account1 some account
 			`,
 			rules: []Rule{csvRule{
-				Account1:   "some account",
+				account1:   "some account",
 				Conditions: []string{"match me"},
 			}},
 		},
@@ -245,11 +245,11 @@ match me
 			`,
 			rules: []Rule{
 				csvRule{
-					Account1:   "some account",
+					account1:   "some account",
 					Conditions: []string{"match me"},
 				},
 				csvRule{
-					Account1:   "some account",
+					account1:   "some account",
 					Conditions: []string{"match me"},
 				},
 			},
@@ -263,7 +263,7 @@ me too!
   account1 some account
 			`,
 			rules: []Rule{csvRule{
-				Account1:   "some account",
+				account1:   "some account",
 				Conditions: []string{"match me", "me too!"},
 			}},
 		},
@@ -274,7 +274,7 @@ if match me
   account1 some account
 			`,
 			rules: []Rule{csvRule{
-				Account1:   "some account",
+				account1:   "some account",
 				Conditions: []string{"match me"},
 			}},
 		},
@@ -288,7 +288,7 @@ match me
   comment some comment
 			`,
 			rules: []Rule{csvRule{
-				Account1:   "some account 1",
+				account1:   "some account 1",
 				Account2:   "some account 2",
 				comment:    "some comment",
 				Conditions: []string{"match me"},
@@ -311,7 +311,7 @@ if
   account1 some account 1
 						`,
 			rules: []Rule{csvRule{
-				Account1:   "some account 1",
+				account1:   "some account 1",
 				Conditions: []string{"if"},
 			}},
 		},
