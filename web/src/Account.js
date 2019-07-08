@@ -168,6 +168,34 @@ export default function Account(props) {
         </Form.Group>
 
         <Form.Group>
+          <Form.Group controlId={makeID("institutionUsername")} as={Row}>
+            <Form.Label column sm={labelWidth}>Username</Form.Label>
+            <Col sm={inputWidth}>
+              <Form.Control type="text" defaultValue={account ? account.Institution.Username : null} {...formControlDefaults} required />
+              <Form.Control.Feedback type="invalid">
+                Please choose a username.
+              </Form.Control.Feedback>
+            </Col>
+          </Form.Group>
+
+          <Form.Group controlId={makeID("institutionPassword")} as={Row}>
+            <Form.Label column sm={labelWidth}>Password</Form.Label>
+            <Col sm={inputWidth}>
+              <Form.Control
+                type="text"
+                placeholder="••••••••"
+                required={! account}
+                {...formControlDefaults}
+                />
+              <Form.Control.Feedback type="invalid">
+                A password is required when adding a new account
+              </Form.Control.Feedback>
+            </Col>
+          </Form.Group>
+        </Form.Group>
+
+        <Form.Group>
+          <p>To fill out these fields, look up your institution's details on <a href="https://www.ofxhome.com/index.php/home/directory" target="_blank">ofxhome.com</a></p>
           <Form.Group controlId={makeID("institutionDescription")} as={Row}>
             <Form.Label column sm={labelWidth}>Institution name</Form.Label>
             <Col sm={inputWidth}>
@@ -198,31 +226,6 @@ export default function Account(props) {
               </Form.Control.Feedback>
             </Col>
           </Form.Group>
-
-          <Form.Group controlId={makeID("institutionUsername")} as={Row}>
-            <Form.Label column sm={labelWidth}>Username</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.Institution.Username : null} {...formControlDefaults} required />
-              <Form.Control.Feedback type="invalid">
-                Please choose a username.
-              </Form.Control.Feedback>
-            </Col>
-          </Form.Group>
-
-          <Form.Group controlId={makeID("institutionPassword")} as={Row}>
-            <Form.Label column sm={labelWidth}>Password</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control
-                type="text"
-                placeholder="••••••••"
-                required={! account}
-                {...formControlDefaults}
-                />
-              <Form.Control.Feedback type="invalid">
-                A password is required when adding a new account
-              </Form.Control.Feedback>
-            </Col>
-          </Form.Group>
         </Form.Group>
 
         <Form.Group>
@@ -236,21 +239,21 @@ export default function Account(props) {
           <Form.Group controlId={makeID("institutionAppID")} as={Row}>
             <Form.Label column sm={labelWidth}>Client App ID</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.Institution.AppID : null} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={account ? account.Institution.AppID : null} placeholder="QWIN" {...formControlDefaults} required />
             </Col>
           </Form.Group>
 
           <Form.Group controlId={makeID("institutionAppVersion")} as={Row}>
             <Form.Label column sm={labelWidth}>Client Version</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.Institution.AppVersion : null} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={account ? account.Institution.AppVersion : null} placeholder="2500" {...formControlDefaults} required />
             </Col>
           </Form.Group>
 
           <Form.Group controlId={makeID("institutionOFXVersion")} as={Row}>
             <Form.Label column sm={labelWidth}>OFX Version</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.Institution.OFXVersion : null} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={account ? account.Institution.OFXVersion : null} placeholder="102" {...formControlDefaults} required />
             </Col>
           </Form.Group>
         </Form.Group>
