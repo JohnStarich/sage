@@ -1,3 +1,7 @@
+.categories .table {
+  margin-top: 2em;
+}
+
 .categories .badge {
   font-size: 1em;
   margin: 0.25em;
@@ -14,4 +18,12 @@
 
 .categories .account-uncategorized {
   font-style: italic;
+}
+
+.categories .categories-small-width {
+  width: 4.7em;
+}
+
+.categories .account-non-standard {
+  color: red;
 }
