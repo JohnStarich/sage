@@ -6,6 +6,7 @@ import './App.css';
 import Accounts from './Accounts';
 import Activity from './Activity';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
+import Categories from './Categories';
 import Container from 'react-bootstrap/Container';
 import Dropdown from 'react-bootstrap/Dropdown';
 import Nav from 'react-bootstrap/Nav';
@@ -56,7 +57,7 @@ function AppContent({ match }) {
             }>
             <Container>
               <Route path="/accounts" component={Accounts} />
-              <Route path="/categories" component={() => null} />
+              <Route path="/categories" component={Categories} />
             </Container>
           </Breadcrumbs>
         </Route>

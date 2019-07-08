@@ -1,0 +1,17 @@
+.categories .badge {
+  font-size: 1em;
+  margin: 0.25em;
+}
+
+.categories .category span, .categories .category .badge {
+  display: inline-block; /* fix problem where spans weren't separated by spaces to be considered separate blocks */
+  text-transform: capitalize;
+}
+
+.categories .category .badge {
+  margin-right: 1em;
+}
+
+.categories .account-uncategorized {
+  font-style: italic;
+}
