@@ -195,7 +195,7 @@ export default function Account(props) {
         </Form.Group>
 
         <Form.Group>
-          <p>To fill out these fields, look up your institution's details on <a href="https://www.ofxhome.com/index.php/home/directory" target="_blank">ofxhome.com</a></p>
+          <p>To fill out these fields, look up your institution's details on <a href="https://www.ofxhome.com/index.php/home/directory" target="_blank" rel="noopener noreferrer">ofxhome.com</a></p>
           <Form.Group controlId={makeID("institutionDescription")} as={Row}>
             <Form.Label column sm={labelWidth}>Institution name</Form.Label>
             <Col sm={inputWidth}>
