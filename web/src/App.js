@@ -13,6 +13,7 @@ import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import Sync from './Sync';
 import { Crumb, Breadcrumbs } from './Breadcrumb';
+import { ReactComponent as Logo } from './sage.svg';
 
 function App() {
   return (
@@ -30,7 +31,7 @@ function AppContent({ match }) {
     <>
       <Crumb title="Sage" match={match} />
       <Navbar className="main-nav" bg="dark" expand="sm" variant="dark" sticky="top">
-        <NavLink exact to="/"><Navbar.Brand>Sage</Navbar.Brand></NavLink>
+        <NavLink exact to="/"><Navbar.Brand><Logo className="sage-logo dark" /> Sage</Navbar.Brand></NavLink>
         <Navbar.Toggle />
         <Navbar.Collapse>
           <Nav className="mr-auto">

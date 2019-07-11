@@ -1,8 +1,14 @@
+.sage-logo {
+  height: 1.5em;
+  margin-right: 0.25em;
+}
+
 .content > .row {
   padding: 3em 0;
   padding-bottom: 0;
   box-sizing: border-box;
 }
+
 .content > .row:first-child {
   padding-top: 4em;
 }
