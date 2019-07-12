@@ -7,8 +7,8 @@
                 stroke-linejoin: round;
                 stroke: #222;
             }
-            .sage-logo.dark .bulb {
-                fill: #fff;
+            .sage-logo.dark * {
+                stroke: #fff;
             }
             .bulb {
                 stroke-width: 0.5rem;
