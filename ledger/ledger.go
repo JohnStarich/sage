@@ -200,6 +200,9 @@ func (l *Ledger) AddTransactions(txns []Transaction) error {
 			return err
 		}
 	}
+	for i := range newTransactions {
+		newTransactions[i].Date = newTransactions[i].Date.UTC()
+	}
 	l.idSet = idSet
 	l.transactions = newTransactions
 	return err
