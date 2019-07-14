@@ -206,6 +206,7 @@ func (l *Ledger) AddTransactions(txns []Transaction) error {
 }
 
 // Balances returns a cumulative balance sheet for all accounts over the given time period.
+// Current interval is monthly.
 func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal.Decimal) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -223,14 +224,17 @@ func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal
 		}
 	}
 
-	const granularity = 10
-	interval := end.Sub(start) / (granularity - 1) // subtract 1 to handle txns on end date
+	getMonthNum := func(t time.Time) int {
+		return int(t.Month()) - 1 + 12*t.Year()
+	}
+	startMonthNum := getMonthNum(start)
+	intervals := getMonthNum(end) - startMonthNum + 1
 
 	for _, txn := range l.transactions {
-		index := txn.Date.Sub(start) / interval
+		index := getMonthNum(txn.Date) - startMonthNum
 		for _, p := range txn.Postings {
 			if _, ok := balances[p.Account]; !ok {
-				balances[p.Account] = make([]decimal.Decimal, granularity)
+				balances[p.Account] = make([]decimal.Decimal, intervals)
 			}
 			balances[p.Account][index] = balances[p.Account][index].Add(p.Amount)
 		}

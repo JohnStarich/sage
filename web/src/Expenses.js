@@ -58,9 +58,9 @@ export default function Expenses(props) {
             <Bar key={a.ID} dataKey={a.Account} stackId="1" fill={Colors[i % Colors.length]} />
           )}
           <XAxis dataKey="Date" />
-          <YAxis tick={<AmountTick />} />
+          <YAxis tick={AmountTick} />
           <ReferenceLine y={0} />
-          <Tooltip content={<AmountTooltip />} />
+          <Tooltip content={AmountTooltip} />
           <Legend />
         </BarChart>
       </ResponsiveContainer>
@@ -108,19 +108,33 @@ const AmountTick = tick => {
   )
 }
 
+const dateFormatter = new Intl.DateTimeFormat('default', {year: 'numeric', month: 'long'})
+
 function convertAccountsToChartData({ start, end, accounts }) {
-  let startTime = new Date(start).getTime()
-  let endTime = new Date(end).getTime()
-  if (! accounts || endTime < startTime) {
+  if (! accounts || ! end || ! start) {
     return null
   }
+  if (end <= start) {
+    return null
+  }
+  // Remove trailing Z, since we are only interested in the year and month. Time zone conversions will muddy the water
+  start = new Date(start.slice(0, -1))
+  end = new Date(end.slice(0, -1))
   if (accounts.length === 0) {
     throw new Error("Attempted to convert an empty list of accounts to chart data")
   }
-  let interval = (endTime - startTime) / accounts[0].Balances.length
   let times = []
-  for (let i = startTime; i < endTime; i += interval) {
-    times.push(new Date(i));
+
+  let year = start.getFullYear()
+  let month = start.getMonth()
+  let currentDate = new Date(year, month, 1)
+  while (currentDate < end) {
+    times.push(currentDate)
+    if (month === 11) {
+      year++
+    }
+    month = (month + 1) % 12
+    currentDate = new Date(year, month, 1)
   }
 
   // convert from series of balances and times into large data point objects
@@ -128,7 +142,7 @@ function convertAccountsToChartData({ start, end, accounts }) {
     accounts.reduce((accumulator, account) => {
       accumulator[account.Account] = account.Balances[i]
       return accumulator
-    }, { Date: new Date(time).toDateString() })
+    }, { Date: dateFormatter.format(time) })
   )
 }
 
