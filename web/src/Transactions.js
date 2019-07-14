@@ -11,11 +11,13 @@ import paginationFactory from 'react-bootstrap-table2-paginator';
 import { cleanCategory } from './CategoryPicker';
 
 
+const dateFormatter = new Intl.DateTimeFormat('default', {year: 'numeric', month: 'numeric', day: 'numeric'})
+
 const columns = [
   {
     dataField: 'Date',
     text: 'Date',
-    formatter: date => new Date(date).toDateString(),
+    formatter: date => dateFormatter.format(new Date(date)),
     classes: 'transactions-no-wrap',
   },
   {
