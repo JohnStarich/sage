@@ -1,17 +1,16 @@
 .transactions .transactions-large-width {
-  width: 50%;
+  width: 49%;
 }
 
-.transactions .transactions-no-wrap {
-  width: 1px;
-  white-space: nowrap;
+.transactions .transactions-date {
+  font-weight: 300;
 }
 
 .transactions .category {
   text-transform: capitalize;
 }
 
-.transactions .category.uncategorized {
+.transactions .category .uncategorized {
   font-style: italic;
 }
 

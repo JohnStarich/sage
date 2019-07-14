@@ -18,24 +18,27 @@ const columns = [
     dataField: 'Date',
     text: 'Date',
     formatter: date => dateFormatter.format(new Date(date)),
-    classes: 'transactions-no-wrap',
+    classes: 'table-no-wrap transactions-date',
   },
   {
     dataField: 'Payee',
     text: 'Payee',
     headerClasses: 'transactions-large-width',
+    classes: 'table-hide-no-wrap',
   },
   {
     dataField: 'Postings',
     text: 'Categories',
     formatter: postings => {
       let categories = postings.slice(1).map(p => cleanCategory(p.Account))
-      let className = "category"
+      let className = null
       if (categories.includes("uncategorized")) {
-        className += " uncategorized"
+        className = "uncategorized"
       }
       return <span className={className}>{categories.join(", ")}</span>
     },
+    headerClasses: 'table-hide-no-wrap',
+    classes: "category table-hide-no-wrap",
   },
   {
     dataField: 'SummaryAmount',

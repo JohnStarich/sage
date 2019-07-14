@@ -8,7 +8,7 @@ export default function(props) {
   if (typeof amount !== 'number') {
     return "NaN"
   }
-  let className = "amount"
+  let className = "amount monospace"
   if (amount < 0) {
     className += " amount-negative"
   } else {

@@ -1,0 +1,16 @@
+.monospace {
+  font-family: "Courier New", Courier, "Lucida Sans Typewriter", "Lucida Typewriter", monospace;
+  font-weight: 500;
+}
+
+.table-no-wrap {
+  width: 1px;
+  white-space: nowrap;
+}
+
+.table-hide-no-wrap {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow-x: hidden;
+}
+
