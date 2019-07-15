@@ -53,3 +53,16 @@ func (s *Store) Replace(newRules Rules) {
 	defer s.mu.Unlock()
 	s.rules = newRules
 }
+
+// Accounts returns account names (account2) for any CSV rules
+func (s *Store) Accounts() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	accounts := make([]string, 0, len(s.rules))
+	for _, rule := range s.rules {
+		if csv, ok := rule.(csvRule); ok && csv.Account2 != "" {
+			accounts = append(accounts, csv.Account2)
+		}
+	}
+	return accounts
+}

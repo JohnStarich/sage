@@ -201,19 +201,29 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 	}
 }
 
-func getExpenseAndRevenueAccounts(ldg *ledger.Ledger) gin.HandlerFunc {
+func getExpenseAndRevenueAccounts(ldg *ledger.Ledger, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		_, _, balanceMap := ldg.Balances()
-		accounts := make([]string, 0, len(balanceMap)+1)
-		accounts = append(accounts, client.Uncategorized)
+		accounts := make(map[string]bool, len(balanceMap)+1)
+		accounts[client.Uncategorized] = true
 		for account := range balanceMap {
 			if strings.HasPrefix(account, client.ExpenseAccount+":") || strings.HasPrefix(account, client.RevenueAccount+":") {
-				accounts = append(accounts, account)
+				accounts[account] = true
 			}
 		}
-		sort.Strings(accounts)
+
+		for _, account := range rulesStore.Accounts() {
+			accounts[account] = true
+		}
+
+		accountsSlice := make([]string, 0, len(accounts))
+		for account := range accounts {
+			accountsSlice = append(accountsSlice, account)
+		}
+
+		sort.Strings(accountsSlice)
 		c.JSON(http.StatusOK, map[string]interface{}{
-			"Accounts": accounts,
+			"Accounts": accountsSlice,
 		})
 	}
 }

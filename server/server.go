@@ -118,7 +118,7 @@ func setupAPI(
 
 	router.POST("/sync", syncLedger(ledgerFileName, ldg, accountStore, rulesStore))
 	router.GET("/balances", getBalances(ldg, accountStore))
-	router.GET("/categories", getExpenseAndRevenueAccounts(ldg))
+	router.GET("/categories", getExpenseAndRevenueAccounts(ldg, rulesStore))
 
 	router.GET("/accounts", getAccounts(accountStore))
 	router.GET("/accounts/:id", getAccount(accountStore))
