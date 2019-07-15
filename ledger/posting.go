@@ -98,6 +98,7 @@ func (p Posting) String() string {
 	return p.FormatTable(1, 1)
 }
 
-func (p Posting) isOpeningBalance() bool {
+// IsOpeningBalance returns true if this matches an "opening balance" posting, false otherwise
+func (p Posting) IsOpeningBalance() bool {
 	return p.ID() == "Opening-Balance" || strings.HasPrefix(p.Account, "equity:Opening Balance")
 }

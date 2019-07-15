@@ -95,7 +95,7 @@ func (l *Ledger) Validate() error {
 	foundOpeningBalance := false
 	for _, p := range l.transactions[0].Postings {
 		if strings.HasPrefix(p.Account, "equity:") {
-			if !p.isOpeningBalance() {
+			if !p.IsOpeningBalance() {
 				// this appears to be a custom equity line, ignore it
 				continue
 			}
@@ -309,4 +309,20 @@ func (l *Ledger) UpdateAccount(oldAccount, newAccount string) error {
 		}
 	}
 	return nil
+}
+
+// OpeningBalances attempts to find the opening balances transaction and return it
+// Note: only checks the first transaction in the ledger
+func (l *Ledger) OpeningBalances() (opening Transaction, found bool) {
+	if len(l.transactions) == 0 {
+		return
+	}
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	for _, p := range l.transactions[0].Postings {
+		if p.IsOpeningBalance() {
+			return l.transactions[0], true
+		}
+	}
+	return
 }

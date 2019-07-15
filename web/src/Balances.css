@@ -32,3 +32,12 @@
   color: red;
 }
 
+.balances .balance-warning {
+  text-align: right;
+  width: 8em;
+}
+
+.balances-warning-overlay ul {
+  list-style: none;
+  padding: 0;
+}

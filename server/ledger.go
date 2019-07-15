@@ -79,6 +79,7 @@ func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.
 // BalanceResponse is the response type for fetching account balances
 type BalanceResponse struct {
 	Start, End time.Time
+	Messages   []AccountMessage
 	Accounts   []AccountResponse
 }
 
@@ -89,6 +90,13 @@ type AccountResponse struct {
 	AccountType string
 	Balances    []decimal.Decimal
 	Institution string `json:",omitempty"`
+}
+
+// AccountMessage contains important information for an account
+type AccountMessage struct {
+	AccountID   string `json:",omitempty"`
+	AccountName string `json:",omitempty"`
+	Message     string
 }
 
 type txnToAccountMap map[string]map[string]client.Account
@@ -162,33 +170,26 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 				ID:       accountName,
 				Balances: balances,
 			}
-			components := strings.Split(accountName, ":")
-			if len(components) == 0 {
+
+			format := client.ParseLedgerFormat(accountName)
+			if format.AccountType == "" {
 				continue
 			}
-			accountType := components[0]
-			if len(accountTypes) > 0 && !accountTypes[accountType] {
+			if len(accountTypes) > 0 && !accountTypes[format.AccountType] {
 				// filter by account type
 				continue
 			}
 
-			account.AccountType = accountType
-			switch accountType {
+			account.AccountType = format.AccountType
+			switch format.AccountType {
 			case client.AssetAccount, client.LiabilityAccount:
-				if len(components) < 3 {
-					// require accountType:institution:accountNumber format
-					continue
-				}
-				institutionName, accountID := components[1], strings.Join(components[2:], ":")
-
-				account.Account = accountID
-				account.Institution = institutionName
-
+				account.Account = format.AccountID
+				account.Institution = format.Institution
 				if clientAccount, found := accountIDMap.Find(accountName); found {
 					account.Account = clientAccount.Description()
 				}
 			default:
-				account.ID = strings.Join(components[1:], ":")
+				account.ID = format.Remaining
 				account.Account = account.ID
 			}
 
@@ -197,8 +198,50 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 		sort.Slice(resp.Accounts, func(a, b int) bool {
 			return resp.Accounts[a].ID < resp.Accounts[b].ID
 		})
+
+		{
+			var accounts []client.Account
+			accountStore.Iterate(func(a client.Account) bool {
+				format := client.LedgerFormat(a)
+				if len(accountTypes) == 0 || accountTypes[format.AccountType] {
+					accounts = append(accounts, a)
+				}
+				return true
+			})
+			resp.Messages = append(resp.Messages, getOpeningBalanceMessages(ldg, accounts)...)
+		}
+
+		sort.Slice(resp.Messages, func(a, b int) bool {
+			return resp.Messages[a].AccountID < resp.Messages[b].AccountID
+		})
+
 		c.JSON(http.StatusOK, resp)
 	}
+}
+
+func getOpeningBalanceMessages(ldg *ledger.Ledger, accounts []client.Account) []AccountMessage {
+	var messages []AccountMessage
+	var openingPostings []ledger.Posting
+	if openingBalances, ok := ldg.OpeningBalances(); ok {
+		openingPostings = openingBalances.Postings
+	}
+	openingBalAccounts := make(map[string]bool)
+	for _, p := range openingPostings {
+		if !p.IsOpeningBalance() {
+			openingBalAccounts[p.Account] = true
+		}
+	}
+	for _, account := range accounts {
+		id := client.LedgerAccountName(account)
+		if !openingBalAccounts[id] {
+			messages = append(messages, AccountMessage{
+				AccountID:   id,
+				AccountName: account.Description(),
+				Message:     "Missing opening balance",
+			})
+		}
+	}
+	return messages
 }
 
 func getExpenseAndRevenueAccounts(ldg *ledger.Ledger, rulesStore *rules.Store) gin.HandlerFunc {

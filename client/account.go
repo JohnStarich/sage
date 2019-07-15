@@ -2,7 +2,6 @@ package client
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -88,31 +87,6 @@ func (b baseAccount) marshalJSON(withPassword bool) ([]byte, error) {
 
 func (b baseAccount) MarshalWithPassword() ([]byte, error) {
 	return b.marshalJSON(true)
-}
-
-// LedgerAccountName returns a suitable account name for a ledger file
-func LedgerAccountName(a Account) string {
-	var accountType string
-	switch a.(type) {
-	case *CreditCard:
-		accountType = LiabilityAccount
-	case Bank:
-		accountType = AssetAccount
-	default:
-		panic(fmt.Sprintf("Unknown account type: %T", a))
-	}
-
-	description := a.Institution().Description() // TODO use FID? not very plain-text accounting friendly
-	accountName := redactPrefix(a.ID())          // don't use account description - can lead to duplicate accounts
-	return fmt.Sprintf("%s:%s:%s", accountType, description, accountName)
-}
-
-func redactPrefix(s string) string {
-	suffix := s
-	if len(s) > RedactSuffixLength {
-		suffix = s[len(s)-RedactSuffixLength:]
-	}
-	return "****" + suffix
 }
 
 type bankLike struct {

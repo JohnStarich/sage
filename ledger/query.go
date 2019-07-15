@@ -27,7 +27,7 @@ func (l *Ledger) Query(search string, page, results int) QueryResult {
 	txns := l.transactions
 	if len(txns) > 0 {
 		for _, p := range l.transactions[0].Postings {
-			if p.isOpeningBalance() {
+			if p.IsOpeningBalance() {
 				txns = l.transactions[1:]
 				break
 			}
