@@ -89,7 +89,7 @@ func ledgerSync(
 	// throw out extra transactions that were included by the institution responses
 	filteredTxns := make([]ledger.Transaction, 0, len(allTxns))
 	for _, t := range allTxns {
-		if beforeStart.After(t.Date) {
+		if t.Date.Before(lastTxnTime) {
 			continue
 		}
 		filteredTxns = append(filteredTxns, t)
