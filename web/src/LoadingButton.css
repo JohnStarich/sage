@@ -1,0 +1,8 @@
+.loading-btn {
+  transition: width 1s;
+}
+
+.loading-btn-spinner {
+  margin-left: 0.5em;
+  margin-bottom: 0.1em;
+}

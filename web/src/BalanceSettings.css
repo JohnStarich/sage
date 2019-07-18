@@ -1,3 +1,8 @@
+.balance-settings .loading-btn {
+  margin: 0.5em 0;
+  margin-bottom: 2em;
+}
+
 .balance-settings .amount:not(.form-control) {
   cursor: pointer;
 }

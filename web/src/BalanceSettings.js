@@ -1,17 +1,18 @@
-import axios from 'axios';
-import React from 'react';
-import Crumb from './Breadcrumb';
+import "react-datepicker/dist/react-datepicker.css";
+import './BalanceSettings.css';
 import Amount from './Amount';
 import BootstrapTable from 'react-bootstrap-table-next';
-import cellEditFactory from 'react-bootstrap-table2-editor';
-import FunctionalEditor from './FunctionalEditor';
-import UTCDatePicker from './UTCDatePicker';
-import "react-datepicker/dist/react-datepicker.css";
-import Form from 'react-bootstrap/Form';
-import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import './BalanceSettings.css';
+import Container from 'react-bootstrap/Container';
+import Crumb from './Breadcrumb';
+import Form from 'react-bootstrap/Form';
+import FunctionalEditor from './FunctionalEditor';
+import LoadingButton from './LoadingButton';
+import React from 'react';
+import Row from 'react-bootstrap/Row';
+import UTCDatePicker from './UTCDatePicker';
+import axios from 'axios';
+import cellEditFactory from 'react-bootstrap-table2-editor';
 
 
 const dateFormatter = new Intl.DateTimeFormat('default', {year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'})
@@ -112,6 +113,18 @@ export default function BalanceSettings({ match }) {
             />
         </Col>
       </Form.Group>
+      <Row>
+        <Col>
+          <LoadingButton
+            variant="outline-danger"
+            onClick={() => {
+              if (window.confirm(`Sync from the beginning of the ledger (${dateFormatter.format(start)})? This is a very time-consuming operation.`)) {
+                return axios.post('/api/v1/sync?fromLedgerStart')
+              }
+            }}>
+              Sync from start
+          </LoadingButton></Col>
+      </Row>
       <Row>
         <Col><p>Click a balance cell to update an opening balance.</p></Col>
       </Row>
