@@ -3,31 +3,41 @@ import './Amount.css';
 import Form from 'react-bootstrap/Form';
 
 export default function(props) {
-  const TagName = props.tagName || 'span';
-  let amount = props.amount
+  const {
+    tagName,
+    amount,
+    className,
+    editable,
+    onChange,
+    prefix,
+    ...remainingProps
+  } = props
+  const TagName = tagName || 'span';
   if (typeof amount !== 'number') {
     return "NaN"
   }
-  let className = "amount monospace"
+
+  let fullClassName = "amount monospace"
   if (amount < 0) {
-    className += " amount-negative"
+    fullClassName += " amount-negative"
   } else {
-    className += " amount-positive"
+    fullClassName += " amount-positive"
   }
-  if (props.className) {
-    className += " " + props.className
+  if (className) {
+    fullClassName += " " + className
   }
 
-  if (props.editable) {
-    if (! props.onChange) {
+
+  if (editable) {
+    if (! onChange) {
       throw Error("Editable amounts must have an onChange prop")
     }
-    const [amount, setAmount] = React.useState(props.amount)
+    const [currentAmount, setCurrentAmount] = React.useState(amount)
     const onAmountChange = e => {
       let amountStr = e.target.value
-      if (props.prefix && props.prefix.length > 0 && amountStr.startsWith(props.prefix)) {
+      if (prefix && prefix.length > 0 && amountStr.startsWith(prefix)) {
         // trim off prefix
-        amountStr = amountStr.slice(props.prefix.length)
+        amountStr = amountStr.slice(prefix.length)
       }
 
       let amountNum = Number(amountStr)
@@ -39,20 +49,27 @@ export default function(props) {
         return
       }
       // TODO limit to two decimal places
-      if (amountNum === amount) {
-        setAmount(amountStr)
+      if (amountNum === currentAmount) {
+        setCurrentAmount(amountStr)
         return
       }
-      props.onChange(amountNum)
-      setAmount(amountStr)
+      onChange(amountNum)
+      setCurrentAmount(amountStr)
     }
+    const propSet = new Set(['value', 'defaultValue'])
+    Object.keys(remainingProps).forEach(p => {
+      if (propSet.has(p)) {
+        throw new Error("Invalid prop for Amount: " + p)
+      }
+    })
+
     return (
       <Form.Control
-        className={className}
+        className={fullClassName}
         type="text"
-        disabled={props.disabled}
-        value={`${props.prefix}${amount}`}
+        value={`${prefix}${currentAmount}`}
         onChange={onAmountChange}
+        {...remainingProps}
         />
     )
   }
@@ -76,8 +93,8 @@ export default function(props) {
     .join("")
   let commaBlocks = newAmount.split(',')
   return (
-    <TagName className={className}>
-      <TagName className="amount-prefix">{props.prefix}</TagName>
+    <TagName className={fullClassName}>
+      <TagName className="amount-prefix">{prefix}</TagName>
       <TagName className="amount-sign">{sign}</TagName>
       {commaBlocks[0]}
       {commaBlocks.slice(1).map((group, i) =>
