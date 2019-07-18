@@ -166,6 +166,17 @@ func duplicateTransactionError(id string) error {
 	return errors.Errorf("Duplicate transaction IDs found: %s", id)
 }
 
+// FirstTransactionTime returns the last transactions Date field. Returns 0 if there are no transactions
+func (l *Ledger) FirstTransactionTime() time.Time {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	if len(l.transactions) == 0 {
+		var t time.Time
+		return t
+	}
+	return l.transactions[0].Date
+}
+
 // LastTransactionTime returns the last transactions Date field. Returns 0 if there are no transactions
 func (l *Ledger) LastTransactionTime() time.Time {
 	l.mu.RLock()
@@ -210,28 +221,28 @@ func (l *Ledger) AddTransactions(txns []Transaction) error {
 
 // Balances returns a cumulative balance sheet for all accounts over the given time period.
 // Current interval is monthly.
-func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal.Decimal) {
+func (l *Ledger) Balances() (start, end *time.Time, balances map[string][]decimal.Decimal) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	if len(l.transactions) == 0 {
 		return
 	}
 	balances = make(map[string][]decimal.Decimal)
-	start, end = l.transactions[0].Date, l.transactions[0].Date
+	start, end = timePtr(l.transactions[0].Date), timePtr(l.transactions[0].Date)
 	for _, txn := range l.transactions {
-		if txn.Date.Before(start) {
-			start = txn.Date
+		if txn.Date.Before(*start) {
+			start = timePtr(txn.Date)
 		}
-		if txn.Date.After(end) {
-			end = txn.Date
+		if txn.Date.After(*end) {
+			end = timePtr(txn.Date)
 		}
 	}
 
 	getMonthNum := func(t time.Time) int {
 		return int(t.Month()) - 1 + 12*t.Year()
 	}
-	startMonthNum := getMonthNum(start)
-	intervals := getMonthNum(end) - startMonthNum + 1
+	startMonthNum := getMonthNum(*start)
+	intervals := getMonthNum(*end) - startMonthNum + 1
 
 	for _, txn := range l.transactions {
 		index := getMonthNum(txn.Date) - startMonthNum
@@ -252,6 +263,10 @@ func (l *Ledger) Balances() (start, end time.Time, balances map[string][]decimal
 		}
 	}
 	return
+}
+
+func timePtr(t time.Time) *time.Time {
+	return &t
 }
 
 // UpdateTransaction replaces a transaction where ID is 'id' with 'transaction'
@@ -325,4 +340,57 @@ func (l *Ledger) OpeningBalances() (opening Transaction, found bool) {
 		}
 	}
 	return
+}
+
+// UpdateOpeningBalance inserts or updates an account's opening balance for this ledger.
+// The opening balance must be the first transaction in the ledger, if the ledger is non-empty.
+func (l *Ledger) UpdateOpeningBalance(opening Transaction) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if err := opening.Validate(); err != nil {
+		return err
+	}
+
+	if opening.Date.IsZero() {
+		return errors.New("Opening transaction date must be set")
+	}
+
+	if !isOpeningTransaction(opening) {
+		return errors.New("One of the transaction's postings must have an ID of " + OpeningBalanceID)
+	}
+
+	// only allow some fields in the update for now
+	newOpening := Transaction{
+		Date:     opening.Date.UTC(),
+		Payee:    "* Opening Balance",
+		Postings: opening.Postings,
+	}
+
+	newTransactions := []Transaction{newOpening}
+	if len(l.transactions) > 0 && isOpeningTransaction(l.transactions[0]) {
+		newTransactions = append(newTransactions, l.transactions[1:]...)
+	} else {
+		newTransactions = append(newTransactions, l.transactions...)
+	}
+	testLedger, err := New(newTransactions)
+	if err != nil {
+		return err
+	}
+	if err := testLedger.Validate(); err != nil {
+		return err
+	}
+
+	l.idSet = testLedger.idSet
+	l.transactions = testLedger.transactions
+	return nil
+}
+
+func isOpeningTransaction(txn Transaction) bool {
+	for _, p := range txn.Postings {
+		if p.IsOpeningBalance() {
+			return true
+		}
+	}
+	return false
 }

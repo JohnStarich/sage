@@ -108,7 +108,7 @@ const AmountTick = tick => {
   )
 }
 
-const dateFormatter = new Intl.DateTimeFormat('default', {year: 'numeric', month: 'long'})
+const dateFormatter = new Intl.DateTimeFormat('default', {year: 'numeric', month: 'long', timeZone: 'UTC'})
 
 function convertAccountsToChartData({ start, end, accounts }) {
   if (! accounts || ! end || ! start) {
@@ -118,16 +118,16 @@ function convertAccountsToChartData({ start, end, accounts }) {
     return null
   }
   // Remove trailing Z, since we are only interested in the year and month. Time zone conversions will muddy the water
-  start = new Date(start.slice(0, -1))
-  end = new Date(end.slice(0, -1))
+  start = new Date(start)
+  end = new Date(end)
   if (accounts.length === 0) {
     throw new Error("Attempted to convert an empty list of accounts to chart data")
   }
   let times = []
 
-  let year = start.getFullYear()
-  let month = start.getMonth()
-  let currentDate = new Date(year, month, 1)
+  let year = start.getUTCFullYear()
+  let month = start.getUTCMonth()
+  let currentDate = new Date(Date.UTC(year, month, 1))
   while (currentDate < end) {
     times.push(currentDate)
     if (month === 11) {

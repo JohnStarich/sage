@@ -12,6 +12,7 @@ import (
 const (
 	// RedactSuffixLength the number of characters that remain unredacted at the end of a string
 	RedactSuffixLength = 4
+	redactPrefixLength = 4
 
 	// Ledger account types
 	AssetAccount     = "assets"

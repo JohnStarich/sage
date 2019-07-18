@@ -1,0 +1,3 @@
+.balance-settings .amount:not(.form-control) {
+  cursor: pointer;
+}

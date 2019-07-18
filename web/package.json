@@ -11,6 +11,7 @@
     "react-bootstrap-table2-editor": "^1.2.4",
     "react-bootstrap-table2-paginator": "^2.0.6",
     "react-bootstrap-table2-toolkit": "^2.0.1",
+    "react-datepicker": "^2.8.0",
     "react-dom": "^16.8.6",
     "react-router-dom": "^5.0.1",
     "react-scripts": "3.0.1",

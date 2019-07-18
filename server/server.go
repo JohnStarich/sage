@@ -69,7 +69,7 @@ func Run(
 		// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
 		time.Sleep(2 * time.Second)
 		runSync := func() error {
-			return sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore)
+			return sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore, false)
 		}
 		if err := runSync(); err != nil {
 			if _, ok := err.(ledger.Error); !ok {
@@ -118,6 +118,7 @@ func setupAPI(
 
 	router.POST("/sync", syncLedger(ledgerFileName, ldg, accountStore, rulesStore))
 	router.GET("/balances", getBalances(ldg, accountStore))
+	router.PUT("/balances/opening", updateOpeningBalances(ledgerFileName, ldg, accountStore))
 	router.GET("/categories", getExpenseAndRevenueAccounts(ldg, rulesStore))
 
 	router.GET("/accounts", getAccounts(accountStore))

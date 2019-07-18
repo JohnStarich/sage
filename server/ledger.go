@@ -26,7 +26,8 @@ const (
 func syncLedger(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger := c.MustGet(loggerKey).(*zap.Logger)
-		err := sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore)
+		_, syncFromStart := c.GetQuery("fromLedgerStart")
+		err := sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore, syncFromStart)
 		if err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
@@ -78,18 +79,20 @@ func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.
 
 // BalanceResponse is the response type for fetching account balances
 type BalanceResponse struct {
-	Start, End time.Time
-	Messages   []AccountMessage
-	Accounts   []AccountResponse
+	Start, End         *time.Time
+	OpeningBalanceDate *time.Time
+	Messages           []AccountMessage
+	Accounts           []AccountResponse
 }
 
 // AccountResponse contains details for an account's balance over time
 type AccountResponse struct {
-	ID          string
-	Account     string
-	AccountType string
-	Balances    []decimal.Decimal
-	Institution string `json:",omitempty"`
+	ID             string
+	Account        string
+	AccountType    string
+	OpeningBalance *decimal.Decimal
+	Balances       []decimal.Decimal
+	Institution    string `json:",omitempty"`
 }
 
 // AccountMessage contains important information for an account
@@ -165,10 +168,25 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 			}
 		}
 
+		var openingBalances ledger.Transaction
+		if balances, found := ldg.OpeningBalances(); found {
+			resp.OpeningBalanceDate = &balances.Date
+			openingBalances = balances
+		}
+		findOpeningBalance := func(accountName string) *decimal.Decimal {
+			for _, p := range openingBalances.Postings {
+				if p.Account == accountName {
+					return &p.Amount
+				}
+			}
+			return nil
+		}
+
 		for accountName, balances := range balanceMap {
 			account := AccountResponse{
-				ID:       accountName,
-				Balances: balances,
+				ID:             accountName,
+				OpeningBalance: findOpeningBalance(accountName),
+				Balances:       balances,
 			}
 
 			format := client.ParseLedgerFormat(accountName)
@@ -195,22 +213,32 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 
 			resp.Accounts = append(resp.Accounts, account)
 		}
+
+		var accounts []client.Account
+		accountStore.Iterate(func(a client.Account) bool {
+			format := client.LedgerFormat(a)
+			if len(accountTypes) == 0 || accountTypes[format.AccountType] {
+				accounts = append(accounts, a)
+			}
+			return true
+		})
+		for _, account := range accounts {
+			ledgerAccount := client.LedgerFormat(account)
+			accountName := ledgerAccount.String()
+			if _, inBalances := balanceMap[accountName]; !inBalances {
+				resp.Accounts = append(resp.Accounts, AccountResponse{
+					ID:             accountName,
+					Account:        account.Description(),
+					AccountType:    ledgerAccount.AccountType,
+					OpeningBalance: findOpeningBalance(accountName),
+				})
+			}
+		}
 		sort.Slice(resp.Accounts, func(a, b int) bool {
 			return resp.Accounts[a].ID < resp.Accounts[b].ID
 		})
 
-		{
-			var accounts []client.Account
-			accountStore.Iterate(func(a client.Account) bool {
-				format := client.LedgerFormat(a)
-				if len(accountTypes) == 0 || accountTypes[format.AccountType] {
-					accounts = append(accounts, a)
-				}
-				return true
-			})
-			resp.Messages = append(resp.Messages, getOpeningBalanceMessages(ldg, accounts)...)
-		}
-
+		resp.Messages = append(resp.Messages, getOpeningBalanceMessages(ldg, accounts)...)
 		sort.Slice(resp.Messages, func(a, b int) bool {
 			return resp.Messages[a].AccountID < resp.Messages[b].AccountID
 		})
@@ -295,6 +323,49 @@ func updateTransaction(ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFun
 			return
 		}
 
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func updateOpeningBalances(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var opening ledger.Transaction
+		if err := c.ShouldBindJSON(&opening); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+
+		var total decimal.Decimal
+		for _, p := range opening.Postings {
+			format := client.ParseLedgerFormat(p.Account)
+			if format.AccountID == "" {
+				abortWithClientError(c, http.StatusBadRequest, errors.New("Invalid ledger account ID"))
+				return
+			}
+
+			_, found := accountStore.FindLedger(format)
+			if !found {
+				abortWithClientError(c, http.StatusBadRequest, errors.New("Account could not be found with ID "+format.AccountID))
+				return
+			}
+			total = total.Sub(p.Amount)
+		}
+
+		opening.Postings = append(opening.Postings, ledger.Posting{
+			Account: "equity:Opening Balances",
+			Amount:  total,
+			Tags:    map[string]string{"id": ledger.OpeningBalanceID},
+		})
+
+		if err := ldg.UpdateOpeningBalance(opening); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+
+		if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
 		c.Status(http.StatusNoContent)
 	}
 }

@@ -78,5 +78,5 @@ func redactPrefix(s string) string {
 	if len(s) > RedactSuffixLength {
 		suffix = s[len(s)-RedactSuffixLength:]
 	}
-	return "****" + suffix
+	return strings.Repeat("*", redactPrefixLength) + suffix
 }

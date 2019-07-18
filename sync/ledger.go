@@ -23,8 +23,8 @@ var (
 
 // Sync runs a Ledger sync, followed by a LedgerFile sync
 // If a partial failure occurs during Ledger sync, runs LedgerFile sync anyway
-func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) error {
-	ledgerErr := Ledger(logger, ldg, accountStore, rulesStore)
+func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store, syncFromLedgerStart bool) error {
+	ledgerErr := Ledger(logger, ldg, accountStore, rulesStore, syncFromLedgerStart)
 	if ledgerErr != nil {
 		if _, ok := ledgerErr.(ledger.Error); !ok {
 			return ledgerErr
@@ -37,13 +37,19 @@ func Sync(logger *zap.Logger, ledgerFileName string, ldg *ledger.Ledger, account
 }
 
 // Ledger fetches transactions for each account and categorizes them based on rules
-func Ledger(logger *zap.Logger, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) error {
+func Ledger(logger *zap.Logger, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store, syncFromLedgerStart bool) error {
 	ledgerMu.Lock()
 	defer ledgerMu.Unlock()
-	return ledgerSync(logger, ldg, rulesStore, downloadTxns(accountStore))
+	return ledgerSync(logger, ldg, rulesStore, downloadTxns(accountStore), syncFromLedgerStart)
 }
 
-func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, rulesStore *rules.Store, download func(start, end time.Time) ([]ledger.Transaction, error)) error {
+func ledgerSync(
+	logger *zap.Logger,
+	ldg *ledger.Ledger,
+	rulesStore *rules.Store,
+	download func(start, end time.Time) ([]ledger.Transaction, error),
+	syncFromLedgerStart bool,
+) error {
 	if err := ldg.Validate(); err != nil {
 		return errors.Wrap(err, "Existing ledger is not valid")
 	}
@@ -51,7 +57,12 @@ func ledgerSync(logger *zap.Logger, ldg *ledger.Ledger, rulesStore *rules.Store,
 	now := time.Now()
 	// TODO use smart first date selection on a per-account basis
 	const syncBuffer = 2 * days
-	lastTxnTime := ldg.LastTransactionTime()
+	var lastTxnTime time.Time
+	if syncFromLedgerStart {
+		lastTxnTime = ldg.FirstTransactionTime()
+	} else {
+		lastTxnTime = ldg.LastTransactionTime()
+	}
 	if lastTxnTime.IsZero() {
 		lastTxnTime = now.Add(-30 * days)
 	}

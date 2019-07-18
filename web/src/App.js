@@ -6,6 +6,7 @@ import './App.css';
 
 import Accounts from './Accounts';
 import Activity from './Activity';
+import BalanceSettings from './BalanceSettings';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Categories from './Categories';
 import Container from 'react-bootstrap/Container';
@@ -45,6 +46,7 @@ function AppContent({ match }) {
             </Dropdown.Toggle>
             <Dropdown.Menu>
               <Link to="/accounts"><Dropdown.Item as="button">Accounts</Dropdown.Item></Link>
+              <Link to="/balances"><Dropdown.Item as="button">Balances</Dropdown.Item></Link>
               <Link to="/categories"><Dropdown.Item as="button">Categories</Dropdown.Item></Link>
             </Dropdown.Menu>
           </Dropdown>
@@ -59,6 +61,7 @@ function AppContent({ match }) {
             }>
             <Container>
               <Route path="/accounts" component={Accounts} />
+              <Route path="/balances" component={BalanceSettings} />
               <Route path="/categories" component={Categories} />
             </Container>
           </Breadcrumbs>

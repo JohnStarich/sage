@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -50,6 +51,18 @@ func (s *AccountStore) Find(id string) (account Account, found bool) {
 	defer s.mu.RUnlock()
 	account, found = s.accounts[id]
 	return
+}
+
+// FindLedger returns the account with the given ledger account string if it exists, otherwise found is false
+func (s *AccountStore) FindLedger(format *LedgerAccountFormat) (account Account, found bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, account := range s.accounts {
+		if format.Institution == account.Institution().Description() && len(format.AccountID) > redactPrefixLength && strings.HasSuffix(account.ID(), format.AccountID[redactPrefixLength:]) {
+			return account, true
+		}
+	}
+	return nil, false
 }
 
 // Update replaces the account with a matching ID, fails if the account does not exist

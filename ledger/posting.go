@@ -10,6 +10,9 @@ import (
 
 const (
 	usd = "$"
+
+	// OpeningBalanceID is an ID used only for the ledger's opening balances transaction (in an equity: posting)
+	OpeningBalanceID = "Opening-Balance"
 )
 
 type Posting struct {
@@ -100,5 +103,5 @@ func (p Posting) String() string {
 
 // IsOpeningBalance returns true if this matches an "opening balance" posting, false otherwise
 func (p Posting) IsOpeningBalance() bool {
-	return p.ID() == "Opening-Balance" || strings.HasPrefix(p.Account, "equity:Opening Balance")
+	return p.ID() == OpeningBalanceID || strings.HasPrefix(p.Account, "equity:Opening Balance")
 }

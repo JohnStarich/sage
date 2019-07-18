@@ -6,22 +6,25 @@ import Table from 'react-bootstrap/Table';
 import Button from 'react-bootstrap/Button';
 import Popover from 'react-bootstrap/Popover';
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
+import { Link } from 'react-router-dom';
 
 
-export default function Balances(props) {
-  const [payload, setPayload] = React.useState(null)
-  const { syncTime } = props;
+export default function Balances({ syncTime }) {
+  const [accounts, setAccounts] = React.useState(null)
+  const [messages, setMessages] = React.useState([])
 
   React.useEffect(() => {
     axios.get('/api/v1/balances')
-      .then(res => setPayload(Object.assign({}, res.data)))
+      .then(res => {
+        setAccounts(res.data.Accounts || [])
+        setMessages(res.data.Messages || [])
+      })
   }, [syncTime])
 
-  if (payload === null) {
+  if (accounts === null) {
     return <div className="balances"><em>Loading...</em></div>
   }
 
-  const messages = payload.Messages || []
   const messageMap = messages.reduce((acc, message) => {
     if (! message.AccountID) {
       return acc
@@ -34,7 +37,6 @@ export default function Balances(props) {
     return acc
   }, {})
 
-  const accounts = payload.Accounts || []
   const accountIDs = new Set(accounts.map(a => a.ID))
 
   const nonAccountMessages =
@@ -55,10 +57,12 @@ export default function Balances(props) {
               <tr key={account.ID}>
                 <td>{account.Account}</td>
                 <td>
-                  <Amount
-                    amount={Number(account.Balances[account.Balances.length - 1])}
-                    prefix="$"
-                    />
+                  {! account.Balances ? null :
+                    <Amount
+                      amount={Number(account.Balances[account.Balances.length - 1])}
+                      prefix="$"
+                      />
+                  }
                 </td>
                 {! messageMap[account.ID] ? null :
                     <td className="balance-warning"><WarningTooltip messages={messageMap[account.ID].map(m => m.Message)} /></td>
@@ -88,7 +92,12 @@ function WarningTooltip({ messages }) {
         <strong>{messages && messages.length > 1 ? `${messages.length} issues` : '1 issue'}</strong>
         <ul>
           {messages.map((m, i) =>
-            <li key={i}>{m}</li>
+            <li key={i}>
+              {m === "Missing opening balance"
+                ? <Link to="/balances">{m}</Link>
+                : m
+              }
+            </li>
           )}
         </ul>
       </div>

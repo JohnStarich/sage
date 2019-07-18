@@ -11,7 +11,7 @@ import paginationFactory from 'react-bootstrap-table2-paginator';
 import { cleanCategory } from './CategoryPicker';
 
 
-const dateFormatter = new Intl.DateTimeFormat('default', {year: 'numeric', month: 'numeric', day: 'numeric'})
+const dateFormatter = new Intl.DateTimeFormat('default', {year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC'})
 
 const columns = [
   {
