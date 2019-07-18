@@ -19,8 +19,3 @@
 .account .account-test > div {
   align-self: baseline;
 }
-
-.account .account-test-spinner {
-  margin-left: 0.5em;
-  margin-bottom: 0.1em;
-}

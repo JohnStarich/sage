@@ -1,15 +1,14 @@
+import './Account.css';
+import Button from 'react-bootstrap/Button';
+import Col from 'react-bootstrap/Col';
+import Container from 'react-bootstrap/Container';
+import Form from 'react-bootstrap/Form';
+import LoadingButton from './LoadingButton';
+import RadioGroup from './RadioGroup';
 import React from 'react';
+import Row from 'react-bootstrap/Row';
 import axios from 'axios';
 import { Redirect } from 'react-router-dom';
-import './Account.css';
-
-import Button from 'react-bootstrap/Button';
-import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Form from 'react-bootstrap/Form';
-import Spinner from 'react-bootstrap/Spinner';
-import RadioGroup from './RadioGroup';
 
 
 export default function Account(props) {
@@ -19,7 +18,6 @@ export default function Account(props) {
   const [redirect, setRedirect] = React.useState(null)
   const [verified, setVerified] = React.useState(null)
   const [testFeedback, setTestFeedback] = React.useState(null)
-  const [testLoading, setTestLoading] = React.useState(false)
 
   if (account === null) {
     // prop was defined but hasn't loaded
@@ -51,25 +49,25 @@ export default function Account(props) {
 
   const testClicked = () => {
     const form = document.getElementById(makeID("form"))
-    if (form.checkValidity() !== false) {
-      const newAccount = accountFromForm(id, form)
-      setTestLoading(true)
-      verifyAccount(newAccount)
-        .then(res => {
-          setVerified(true)
-          setTestFeedback(null)
-        })
-        .catch(e => {
-          // this case should be impossible due to client-side validation
-          setVerified(false)
-          if (!e.response.data || !e.response.data.Error) {
-            throw e
-          }
-          setTestFeedback(e.response.data.Error)
-        })
-        .finally(() => setTestLoading(false))
+    if (form.checkValidity() === false) {
+      setValidated(true)
+      return
     }
+    const newAccount = accountFromForm(id, form)
     setValidated(true)
+    return verifyAccount(newAccount)
+      .then(res => {
+        setVerified(true)
+        setTestFeedback(null)
+      })
+      .catch(e => {
+        // this case should be impossible due to client-side validation
+        setVerified(false)
+        if (!e.response.data || !e.response.data.Error) {
+          throw e
+        }
+        setTestFeedback(e.response.data.Error)
+      })
   }
 
   const testButtonData = {
@@ -88,15 +86,7 @@ export default function Account(props) {
       testButtonData.text = 'Test Failed'
     }
   }
-  const testButton = (
-    <Button {...testButtonData.props}>
-      {testButtonData.text}
-      {testLoading
-        ? <Spinner animation="border" size="sm" className="account-test-spinner" />
-        : null
-      }
-    </Button>
-  )
+  const testButton = <LoadingButton {...testButtonData.props}>{testButtonData.text}</LoadingButton>
 
   return (
     <Container className="account">
