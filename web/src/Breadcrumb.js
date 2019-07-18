@@ -58,6 +58,7 @@ function handleStateChangeOnClient({ title, crumbs }) {
   breadcrumbs = crumbs
 }
 
+// Crumb must render for the given route *unconditionally* in order for the breadcrumb component to work correctly.
 // withSideEffect reduces updates for crumbs mounted before the Breadcrumbs component
 export const Crumb = withSideEffect(
   reducePropsToState,
