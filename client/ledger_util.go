@@ -57,7 +57,7 @@ func ParseLedgerFormat(account string) *LedgerAccountFormat {
 
 func (l *LedgerAccountFormat) String() string {
 	result := ""
-	for _, s := range []string{l.AccountType, l.Institution, l.AccountID, l.Remaining} {
+	for _, s := range []string{l.AccountType, l.Institution, redactPrefix(l.AccountID), l.Remaining} {
 		if s != "" {
 			result += s + ":"
 		}
