@@ -93,6 +93,7 @@ export default function BalanceSettings({ match }) {
     },
   ];
 
+  const disabled = postings.length === 0
   return (
     <Container className="balance-settings">
       <Crumb title="Balances" match={match} />
@@ -103,6 +104,7 @@ export default function BalanceSettings({ match }) {
         <Form.Label column>Start date</Form.Label>
         <Col>
           <UTCDatePicker
+            disabled={disabled}
             customInput={<Form.Control />}
             selected={start}
             onChange={v => {
@@ -116,6 +118,7 @@ export default function BalanceSettings({ match }) {
       <Row>
         <Col>
           <LoadingButton
+            disabled={disabled}
             variant="outline-danger"
             onClick={() => {
               if (window.confirm(`Sync from the beginning of the ledger (${dateFormatter.format(start)})? This is a very time-consuming operation.`)) {
