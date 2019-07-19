@@ -54,13 +54,13 @@ export default function Expenses(props) {
     <div className="expenses">
       <ResponsiveContainer width="100%">
         <BarChart data={data} stackOffset="sign" margin={{ left: 50 }}>
+          <Tooltip content={AmountTooltip} />
           {accountsCopy.map((a, i) =>
             <Bar key={a.ID} dataKey={a.Account} stackId="1" fill={Colors[i % Colors.length]} />
           )}
           <XAxis dataKey="Date" />
           <YAxis tick={AmountTick} />
           <ReferenceLine y={0} />
-          <Tooltip content={AmountTooltip} />
           <Legend />
         </BarChart>
       </ResponsiveContainer>
