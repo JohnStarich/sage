@@ -189,8 +189,8 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 				Balances:       balances,
 			}
 
-			format := client.ParseLedgerFormat(accountName)
-			if format.AccountType == "" {
+			format, err := client.ParseLedgerFormat(accountName)
+			if err != nil || format.AccountType == "" {
 				continue
 			}
 			if len(accountTypes) > 0 && !accountTypes[format.AccountType] {
@@ -337,9 +337,9 @@ func updateOpeningBalances(ledgerFileName string, ldg *ledger.Ledger, accountSto
 
 		var total decimal.Decimal
 		for _, p := range opening.Postings {
-			format := client.ParseLedgerFormat(p.Account)
-			if format.AccountID == "" {
-				abortWithClientError(c, http.StatusBadRequest, errors.New("Invalid ledger account ID"))
+			format, err := client.ParseLedgerFormat(p.Account)
+			if err != nil || format.AccountType == "" {
+				abortWithClientError(c, http.StatusBadRequest, errors.Wrap(err, "Invalid ledger account ID"))
 				return
 			}
 

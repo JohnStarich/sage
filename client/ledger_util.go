@@ -3,6 +3,8 @@ package client
 import (
 	"fmt"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // LedgerAccountFormat represents an account's structured name for a ledger account format
@@ -35,24 +37,27 @@ func LedgerFormat(a Account) *LedgerAccountFormat {
 }
 
 // ParseLedgerFormat parses the given account string as a ledger account
-func ParseLedgerFormat(account string) *LedgerAccountFormat {
+func ParseLedgerFormat(account string) (*LedgerAccountFormat, error) {
 	format := &LedgerAccountFormat{}
 	components := strings.Split(account, ":")
 	if len(components) == 0 {
-		return format
+		return nil, errors.New("Account string must have at least 2 colon separated components: " + account)
 	}
 	format.AccountType = components[0]
+	if format.AccountType == "" {
+		return nil, errors.New("First component in account string must not be empty: " + account)
+	}
 	switch format.AccountType {
 	case AssetAccount, LiabilityAccount:
 		if len(components) < 3 {
 			// require accountType:institution:accountNumber format
-			return format
+			return format, nil
 		}
 		format.Institution, format.AccountID = components[1], strings.Join(components[2:], ":")
 	default:
 		format.Remaining = strings.Join(components[1:], ":")
 	}
-	return format
+	return format, nil
 }
 
 func (l *LedgerAccountFormat) String() string {
