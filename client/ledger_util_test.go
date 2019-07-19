@@ -7,6 +7,7 @@ import (
 )
 
 func TestLedgerAccountFormat(t *testing.T) {
+	// NOTE: since this skips NewLedgerFormat, redactPrefix isn't being run
 	for _, tc := range []struct {
 		description string
 		format      LedgerAccountFormat
@@ -19,7 +20,7 @@ func TestLedgerAccountFormat(t *testing.T) {
 				Institution: "some institution",
 				AccountID:   "some account",
 			},
-			expected: "some account type:some institution:****ount",
+			expected: "some account type:some institution:some account",
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
