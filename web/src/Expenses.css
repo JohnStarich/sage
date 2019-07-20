@@ -5,12 +5,19 @@
 }
 
 .expenses .amount-tooltip {
+  font-size: 0.95em;
+  box-sizing: border-box;
   background-color: #FCFCFC;
   padding: 0.5em;
   padding-left: 0;
   padding-right: 1.5em;
   border: 1px solid #EEE;
   border-radius: 0.25em;
+}
+
+.expenses .amount-tooltip ul {
+  list-style: square;
+  list-style-position: outside;
 }
 
 .expenses .amount-tooltip .label {

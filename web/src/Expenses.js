@@ -54,7 +54,7 @@ export default function Expenses(props) {
     <div className="expenses">
       <ResponsiveContainer width="100%">
         <BarChart data={data} stackOffset="sign" margin={{ left: 50 }}>
-          <Tooltip content={AmountTooltip} />
+          <Tooltip offset={40} content={AmountTooltip} />
           {accountsCopy.map((a, i) =>
             <Bar key={a.ID} dataKey={a.Account} stackId="1" fill={Colors[i % Colors.length]} />
           )}
@@ -222,7 +222,6 @@ function reduceCategoryNames(names) {
 // assumes current balances are not cumulative
 function sortAccountsByActivity(accounts) {
   const getBalance = a =>
-    a.Balances.map(Math.abs)
-      .reduce((acc, elem) => acc + elem)
+    Math.abs(a.Balances.reduce((acc, elem) => acc + elem))
   return accounts.sort((a, b) => getBalance(b) - getBalance(a))
 }

@@ -4,14 +4,14 @@ const initialColors = [
   '#1e90ff',
   '#ff56a1',
   '#95Eb6f',
-  '#008b8b',
+  '#ffce5e',
+  '#ae3eff',
 ]
 const brightnesses = [
   1,
-  0.9,
-  0.8,
+  0.85,
   0.7,
-  0.6,
+  0.55,
 ]
 
 const orderedColors = (() => {
