@@ -88,6 +88,7 @@ export default function Transactions(props) {
   const [count, setCount] = React.useState(1)
   const [page, setPage] = React.useState(1)
   const [search, setSearch] = React.useState("")
+  const [accountIDMap, setAccountIDMap] = React.useState(null)
 
   const handleTableChange = (_, { page, sizePerPage = 10, searchText = search }) => {
     if (search !== searchText) {
@@ -103,6 +104,7 @@ export default function Transactions(props) {
         setTransactions(transactions)
         setCount(res.data.Count)
         setPage(page)
+        setAccountIDMap(res.data.AccountIDMap)
       })
   }
 
@@ -145,7 +147,7 @@ export default function Transactions(props) {
             { ...toolkitprops.baseProps }
             bootstrap4
             bordered={false}
-            expandRow={{ renderer: Transaction(updateTransaction) }}
+            expandRow={{ renderer: Transaction(updateTransaction, accountIDMap) }}
             noDataIndication="No transactions found"
             onTableChange={ handleTableChange }
             pagination={ paginationFactory({

@@ -36,6 +36,11 @@ func syncLedger(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.
 	}
 }
 
+type transactionsResponse struct {
+	ledger.QueryResult
+	AccountIDMap map[string]string
+}
+
 func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var page, results int = 1, 10
@@ -65,15 +70,22 @@ func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.
 			c.AbortWithError(http.StatusBadRequest, errors.New(errMsg))
 			return
 		}
-		query := ldg.Query(c.Query("search"), page, results)
+		result := transactionsResponse{
+			QueryResult:  ldg.Query(c.Query("search"), page, results),
+			AccountIDMap: make(map[string]string),
+		}
 		// attempt to make asset and liability accounts more descriptive
 		accountIDMap := newAccountIDMap(accountStore)
-		for i := range query.Transactions {
-			if clientAccount, ok := accountIDMap.Find(query.Transactions[i].Postings[0].Account); ok {
-				query.Transactions[i].Postings[0].Account = clientAccount.Description()
+		for i := range result.Transactions {
+			accountName := result.Transactions[i].Postings[0].Account
+			if _, exists := result.AccountIDMap[accountName]; !exists {
+				clientAccount, ok := accountIDMap.Find(accountName)
+				if ok {
+					result.AccountIDMap[accountName] = clientAccount.Description()
+				}
 			}
 		}
-		c.JSON(http.StatusOK, query)
+		c.JSON(http.StatusOK, result)
 	}
 }
 

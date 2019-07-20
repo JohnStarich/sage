@@ -6,15 +6,20 @@ import Table from 'react-bootstrap/Table';
 import { CategoryPicker } from './CategoryPicker';
 
 
-export default function Transaction(updateTransaction) {
+export default function Transaction(updateTransaction, accountIDMap) {
   return txn => {
     let postings = txn.Postings.map((p, i) => {
       if (i === 0) {
-        let account = p.Account;
-        let separatorIndex = account.indexOf(':')
-        account = separatorIndex !== -1 ? account.slice(separatorIndex + 1) : account
-        account = account.replace(/:/, " - ")
-        return Object.assign({}, p, { Account: account })
+        let accountName
+        if (accountIDMap[p.Account]) {
+          accountName = accountIDMap[p.Account]
+        } else {
+          accountName = p.Account;
+          let separatorIndex = accountName.indexOf(':')
+          accountName = separatorIndex !== -1 ? accountName.slice(separatorIndex + 1) : accountName
+          accountName = accountName.replace(/:/, " - ")
+        }
+        return Object.assign({}, p, { AccountName: accountName })
       }
       return p
     })
@@ -34,7 +39,7 @@ export default function Transaction(updateTransaction) {
               <tr key={posting.Account}>
                 <td>
                   { i === 0
-                    ? <Form.Control type="text" value={posting.Account} disabled />
+                    ? <Form.Control type="text" value={posting.AccountName} disabled />
                     : <CategoryPicker category={posting.Account} setCategory={c => updatePosting(i, { Account: c })} />
                   }
                 </td>
