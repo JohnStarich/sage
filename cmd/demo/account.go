@@ -73,7 +73,7 @@ func (a *AccountGenerator) Transactions(ofxVersionStr string, txnUID ofxgo.UID, 
 		Version: ofxVersion,
 		Signon: ofxgo.SignonResponse{
 			Status:   successStatus,
-			DtServer: ofxgo.Date{now},
+			DtServer: ofxgo.Date{Time: now},
 			Language: ofxgo.String("ENG"),
 			Org:      ofxgo.String(a.Org),
 			Fid:      ofxgo.String(a.FID),
@@ -85,16 +85,16 @@ func (a *AccountGenerator) Transactions(ofxVersionStr string, txnUID ofxgo.UID, 
 			TrnUID:    txnUID,
 			Status:    successStatus,
 			CltCookie: ofxgo.String(cookie),
-			CurDef:    ofxgo.CurrSymbol{currency.USD},
-			DtAsOf:    ofxgo.Date{now},
+			CurDef:    ofxgo.CurrSymbol{Unit: currency.USD},
+			DtAsOf:    ofxgo.Date{Time: now},
 			BankAcctFrom: ofxgo.BankAcct{
 				BankID:   ofxgo.String("routing number"),
 				AcctID:   ofxgo.String("account number"),
 				AcctType: ofxgo.AcctTypeChecking,
 			},
 			BankTranList: &ofxgo.TransactionList{
-				DtStart:      ofxgo.Date{start},
-				DtEnd:        ofxgo.Date{end},
+				DtStart:      ofxgo.Date{Time: start},
+				DtEnd:        ofxgo.Date{Time: end},
 				Transactions: a.transactions(start, end),
 			},
 		})
@@ -103,14 +103,14 @@ func (a *AccountGenerator) Transactions(ofxVersionStr string, txnUID ofxgo.UID, 
 			TrnUID:    txnUID,
 			Status:    successStatus,
 			CltCookie: ofxgo.String(cookie),
-			CurDef:    ofxgo.CurrSymbol{currency.USD},
-			DtAsOf:    ofxgo.Date{now},
+			CurDef:    ofxgo.CurrSymbol{Unit: currency.USD},
+			DtAsOf:    ofxgo.Date{Time: now},
 			CCAcctFrom: ofxgo.CCAcct{
 				AcctID: ofxgo.String("account number"),
 			},
 			BankTranList: &ofxgo.TransactionList{
-				DtStart:      ofxgo.Date{start},
-				DtEnd:        ofxgo.Date{end},
+				DtStart:      ofxgo.Date{Time: start},
+				DtEnd:        ofxgo.Date{Time: end},
 				Transactions: a.transactions(start, end),
 			},
 		})
@@ -143,10 +143,10 @@ func (a *AccountGenerator) transactions(start, end time.Time) []ofxgo.Transactio
 			txnSeed := seed * uint64(date.Month()) * uint64(date.Day())
 			randTxn := newRandTransaction(date, txnSeed)
 			txn := ofxgo.Transaction{
-				DtPosted: ofxgo.Date{randTxn.Date},
-				TrnAmt:   ofxgo.Amount{*randTxn.Amount.Rat()},
+				DtPosted: ofxgo.Date{Time: randTxn.Date},
+				TrnAmt:   ofxgo.Amount{Rat: *randTxn.Amount.Rat()},
 				FiTID:    ofxgo.String(randTxn.ID),
-				Currency: &ofxgo.Currency{CurSym: ofxgo.CurrSymbol{currency.USD}},
+				Currency: &ofxgo.Currency{CurSym: ofxgo.CurrSymbol{Unit: currency.USD}},
 			}
 			if randTxn.Amount.IsNegative() {
 				txn.TrnType = ofxgo.TrnTypeDebit
