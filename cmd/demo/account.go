@@ -143,6 +143,7 @@ func (a *AccountGenerator) transactions(start, end time.Time) []ofxgo.Transactio
 			txnSeed := seed * uint64(date.Month()) * uint64(date.Day())
 			randTxn := newRandTransaction(date, txnSeed)
 			txn := ofxgo.Transaction{
+				Name:     ofxgo.String(randTxn.Payee),
 				DtPosted: ofxgo.Date{Time: randTxn.Date},
 				TrnAmt:   ofxgo.Amount{Rat: *randTxn.Amount.Rat()},
 				FiTID:    ofxgo.String(randTxn.ID),
@@ -163,8 +164,8 @@ func newRandTransaction(date time.Time, seed uint64) randTransaction {
 	var rng rand.PCGSource
 	rng.Seed(seed)
 	random := rand.New(&rng)
-	id := strconv.FormatUint(rand.Uint64(), 10)
-	amount := decimal.NewFromFloat(rand.Float64() * float64(rand.Intn(100))).Round(2)
+	id := strconv.FormatUint(random.Uint64(), 10)
+	amount := decimal.NewFromFloat(random.Float64() * float64(random.Intn(100))).Round(2)
 	return randTransaction{
 		ID:       id,
 		Date:     date,
