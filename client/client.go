@@ -32,13 +32,13 @@ type sageClient struct {
 
 // New creates a new ofxgo Client with the given connection info
 func New(url string, config Config) (ofxgo.Client, error) {
-	return newClient(url, config, getLoggerFromEnv, ofxgo.GetClient, getLimiterFromCache)
+	return newClient(url, config, getLoggerFromEnv, getClient, getLimiterFromCache)
 }
 
 func newClient(
 	url string, config Config,
 	getLogger func() (*zap.Logger, error),
-	getClient func(string, *ofxgo.BasicClient) ofxgo.Client,
+	getClient func(string, *ofxgo.BasicClient) (ofxgo.Client, error),
 	getLimiter func(string) *rate.Limiter,
 ) (ofxgo.Client, error) {
 	s := &sageClient{}
@@ -58,14 +58,24 @@ func newClient(
 		basicClient.SpecVersion = ofxVersion
 	}
 	basicClient.CarriageReturn = true
-	s.Client = getClient(url, basicClient)
-	s.Limiter = getLimiter(url)
 	var err error
+	s.Client, err = getClient(url, basicClient)
+	if err != nil {
+		return nil, err
+	}
+	s.Limiter = getLimiter(url)
 	s.Logger, err = getLogger()
 	if err != nil {
 		return nil, err
 	}
 	return s, nil
+}
+
+func getClient(url string, basicClient *ofxgo.BasicClient) (ofxgo.Client, error) {
+	if strings.HasPrefix(url, localhostPrefix) {
+		return NewLocalClient(url, basicClient)
+	}
+	return ofxgo.GetClient(url, basicClient), nil
 }
 
 func getLimiterFromCache(url string) *rate.Limiter {
@@ -117,18 +127,25 @@ func request(
 
 // RequestNoParse is mostly lifted from basic client's implementation
 func (s *sageClient) RequestNoParse(req *ofxgo.Request) (*http.Response, error) {
-	return doInstrumentedRequest(req, s.Logger, newRequestMarshaler(s), s.RawRequest)
+	return doInstrumentedRequest(req, s.Logger, s, s.RawRequest)
 }
 
 func doInstrumentedRequest(
-	req *ofxgo.Request, logger *zap.Logger, marshal requestMarshaler,
+	req *ofxgo.Request, logger *zap.Logger, marshaller requestMarshaler,
 	doPostRequest func(string, io.Reader) (*http.Response, error),
 ) (*http.Response, error) {
-	requestData, err := marshal(req)
+	requestData, err := marshaller.MarshalRequest(req)
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug("Marshaled request:\n" + requestData.String())
+	if ce := logger.Check(zap.DebugLevel, ""); ce != nil {
+		requestBytes, err := ioutil.ReadAll(requestData)
+		if err != nil {
+			return nil, err
+		}
+		requestData = bytes.NewReader(requestBytes)
+		logger.Debug("Marshaled request:\n" + string(requestBytes))
+	}
 
 	response, responseErr := doPostRequest(req.URL, requestData)
 	if ce := logger.Check(zap.DebugLevel, "Received response"); responseErr == nil && ce != nil {
@@ -143,15 +160,18 @@ func doInstrumentedRequest(
 	return response, responseErr
 }
 
-type requestMarshaler func(*ofxgo.Request) (*bytes.Buffer, error)
+type requestMarshaler interface {
+	MarshalRequest(*ofxgo.Request) (io.Reader, error)
+}
 
-func newRequestMarshaler(c ofxgo.Client) requestMarshaler {
-	return func(req *ofxgo.Request) (*bytes.Buffer, error) {
-		req.SetClientFields(c)
-
-		b, err := req.Marshal()
-		return b, errors.Wrap(err, "Failed to marshal request")
+func (s *sageClient) MarshalRequest(req *ofxgo.Request) (io.Reader, error) {
+	if marshaller, ok := s.Client.(requestMarshaler); ok {
+		return marshaller.MarshalRequest(req)
 	}
+
+	req.SetClientFields(s)
+	b, err := req.Marshal()
+	return b, errors.Wrap(err, "Failed to marshal request")
 }
 
 func (s *sageClient) RawRequest(url string, r io.Reader) (*http.Response, error) {

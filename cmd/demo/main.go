@@ -43,20 +43,21 @@ func handleServerError(resp http.ResponseWriter, err error) {
 }
 
 func handleError(resp http.ResponseWriter, err error) {
+	fmt.Printf("Error: [%s] %s\n%s\n", resp.Header().Get("Status"), err.Error(), debug.Stack())
 	resp.Write([]byte(err.Error()))
 }
 
 var (
 	// Poor man's SGML/XML parser for simplistic, error-prone request handling
-	versionRe = regexp.MustCompile(`(?m)^VERSION:([0-9]+)$`)
-	orgRe     = regexp.MustCompile(`<ORG>([^<]+)`)
-	fidRe     = regexp.MustCompile(`<FID>([^<]+)`)
-	acctRe    = regexp.MustCompile(`<ACCTID>([^<]+)`)
-	routingRe = regexp.MustCompile(`<BANKID>([^<]+)`)
-	txnUIDRe  = regexp.MustCompile(`<TRNUID>([^<]+)`)
-	cookieRe  = regexp.MustCompile(`<CLTCOOKIE>([^<]+)`)
-	startRe   = regexp.MustCompile(`<DTSTART>([^<]+)`)
-	endRe     = regexp.MustCompile(`<DTEND>([^<]+)`)
+	versionRe = regexp.MustCompile(`(?m)^(?:<\?OFX OFXHEADER="200" VERSION="|VERSION:)([0-9]{3})\b`)
+	orgRe     = regexp.MustCompile(`<ORG>([^<\n]+)`)
+	fidRe     = regexp.MustCompile(`<FID>([^<\n]+)`)
+	acctRe    = regexp.MustCompile(`<ACCTID>([^<\n]+)`)
+	routingRe = regexp.MustCompile(`<BANKID>([^<\n]+)`)
+	txnUIDRe  = regexp.MustCompile(`<TRNUID>([^<\n]+)`)
+	cookieRe  = regexp.MustCompile(`<CLTCOOKIE>([^<\n]+)`)
+	startRe   = regexp.MustCompile(`<DTSTART>([^<\n]+)`)
+	endRe     = regexp.MustCompile(`<DTEND>([^<\n]+)`)
 )
 
 func handleOFXRequest(resp http.ResponseWriter, req *http.Request) {

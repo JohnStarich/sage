@@ -12,6 +12,7 @@ import (
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/sync"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 func validateAccount(account client.Account) sageErrors.Errors {
@@ -45,13 +46,17 @@ func validateAccount(account client.Account) sageErrors.Errors {
 	if err != nil {
 		errs = append(errs, errors.Wrap(err, "Institution URL is malformed"))
 	} else {
-		check(u.Scheme != "https", "Institution URL is required to use HTTPS")
+		check(u.Scheme != "https" && u.Hostname() != "localhost", "Institution URL is required to use HTTPS")
 	}
 
 	return errs
 }
 
 func abortWithClientError(c *gin.Context, status int, err error) {
+	if status/100 == 5 {
+		logger := c.MustGet(loggerKey).(*zap.Logger)
+		logger.WithOptions(zap.AddCallerSkip(1)).Error("Aborting with server error", zap.Error(err))
+	}
 	c.AbortWithStatusJSON(status, map[string]string{
 		"Error": err.Error(),
 	})
@@ -187,17 +192,6 @@ func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 			return
 		}
 
-		accountID := c.Param("id")
-		pass := account.Institution().Password()
-		if pass.IsEmpty() {
-			currentAccount, exists := accountStore.Find(accountID)
-			if !exists {
-				abortWithClientError(c, http.StatusBadRequest, errors.New("Institution password is required"))
-				return
-			}
-			pass.Set(currentAccount.Institution().Password())
-		}
-
 		if err := client.Verify(account); err != nil {
 			if err == client.ErrAuthFailed {
 				abortWithClientError(c, http.StatusUnauthorized, err)
@@ -206,6 +200,21 @@ func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
+
+		accountID := c.Param("id")
+		inst := account.Institution()
+		pass := account.Institution().Password()
+		if pass.IsEmpty() {
+			currentAccount, exists := accountStore.Find(accountID)
+			if !exists && !client.IsLocalhostTestURL(inst.URL()) {
+				abortWithClientError(c, http.StatusBadRequest, errors.New("Institution password is required"))
+				return
+			}
+			if exists {
+				pass.Set(currentAccount.Institution().Password())
+			}
+		}
+
 		c.Status(http.StatusNoContent)
 	}
 }

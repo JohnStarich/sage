@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -83,12 +84,12 @@ func TestNewClient(t *testing.T) {
 				}
 				return logger, nil
 			}
-			getClient := func(url string, c *ofxgo.BasicClient) ofxgo.Client {
+			getClient := func(url string, c *ofxgo.BasicClient) (ofxgo.Client, error) {
 				assert.Equal(t, expectedURL, url)
 				assert.Equal(t, config.AppID, c.AppID)
 				assert.Equal(t, config.AppVersion, c.AppVer)
 				assert.Equal(t, config.OFXVersion, c.SpecVersion.String())
-				return client
+				return client, nil
 			}
 			getLimiter := func(url string) *rate.Limiter {
 				assert.Equal(t, expectedURL, url)
@@ -202,6 +203,14 @@ func TestRequestNoParse(t *testing.T) {
 	assert.Error(t, err)
 }
 
+type FakeMarshaler struct {
+	marshalRequest func(*ofxgo.Request) (io.Reader, error)
+}
+
+func (f FakeMarshaler) MarshalRequest(req *ofxgo.Request) (io.Reader, error) {
+	return f.marshalRequest(req)
+}
+
 func TestDoInstrumentedRequest(t *testing.T) {
 	for _, tc := range []struct {
 		description string
@@ -241,22 +250,25 @@ func TestDoInstrumentedRequest(t *testing.T) {
 			logger := zaptest.NewLogger(t, zaptest.Level(tc.logLevel))
 
 			someMarshalErr := errors.New("some marshal error")
-			someMarshalBuf := bytes.NewBufferString("some buffer")
-			marshal := func(req *ofxgo.Request) (*bytes.Buffer, error) {
+			bufContent := "some buffer"
+			someMarshalBuf := bytes.NewBufferString(bufContent)
+			someMarshaller := FakeMarshaler{func(req *ofxgo.Request) (io.Reader, error) {
 				assert.Equal(t, someRequest, req)
 				if tc.marshalErr {
 					return nil, someMarshalErr
 				}
 				return someMarshalBuf, nil
-			}
+			}}
 
 			someBody := bytes.NewBufferString("some body")
 			bodyCloser := &recordCloser{Reader: someBody}
 			someResponse := &http.Response{Body: bodyCloser}
 			somePostErr := errors.New("some post error")
-			doPostRequest := func(url string, data io.Reader) (*http.Response, error) {
+			doPostRequest := func(url string, r io.Reader) (*http.Response, error) {
 				assert.Equal(t, someRequest.URL, url)
-				assert.Equal(t, someMarshalBuf, data)
+				data, err := ioutil.ReadAll(r)
+				assert.NoError(t, err)
+				assert.Equal(t, bufContent, string(data))
 				if tc.postErr {
 					return nil, somePostErr
 				}
@@ -266,7 +278,7 @@ func TestDoInstrumentedRequest(t *testing.T) {
 				return someResponse, nil
 			}
 
-			resp, err := doInstrumentedRequest(someRequest, logger, marshal, doPostRequest)
+			resp, err := doInstrumentedRequest(someRequest, logger, someMarshaller, doPostRequest)
 			if tc.expectErr {
 				assert.Error(t, err)
 				return
@@ -291,7 +303,9 @@ func TestNewRequestMarshaler(t *testing.T) {
 		NoIndent:       true,
 		CarriageReturn: true,
 	}
-	marshal := newRequestMarshaler(c)
+	marshaler := &sageClient{
+		Client: c,
+	}
 
 	req := &ofxgo.Request{
 		Signon: ofxgo.SignonRequest{
@@ -302,9 +316,11 @@ func TestNewRequestMarshaler(t *testing.T) {
 
 	t.Run("OFX 1XX", func(t *testing.T) {
 		c.SpecVersion = ofxgo.OfxVersion102
-		buf, err := marshal(req)
+		buf, err := marshaler.MarshalRequest(req)
 		require.NoError(t, err)
-		data := buf.String()
+		dataBytes, err := ioutil.ReadAll(buf)
+		require.NoError(t, err)
+		data := string(dataBytes)
 		assert.NotEmpty(t, data)
 		assert.NotContains(t, strings.Replace(data, "\r\n", "", -1), "\n", `All line endings should be \r\n`)
 		assert.Contains(t, data, "<DTCLIENT>")
@@ -313,9 +329,11 @@ func TestNewRequestMarshaler(t *testing.T) {
 
 	t.Run("OFX 2XX", func(t *testing.T) {
 		c.SpecVersion = ofxgo.OfxVersion200
-		buf, err := marshal(req)
+		buf, err := marshaler.MarshalRequest(req)
 		require.NoError(t, err)
-		data := buf.String()
+		dataBytes, err := ioutil.ReadAll(buf)
+		require.NoError(t, err)
+		data := string(dataBytes)
 		assert.NotEmpty(t, data)
 		assert.NotContains(t, strings.Replace(data, "\r\n", "", -1), "\n", `All line endings should be \r\n`)
 		assert.Contains(t, data, "<DTCLIENT>")
