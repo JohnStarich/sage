@@ -64,7 +64,7 @@ export default function Balances({ syncTime }) {
                       />
                   }
                 </td>
-                {! messageMap[account.ID] ? null :
+                {! messageMap[account.ID] ? <td></td> :
                     <td className="balance-warning"><WarningTooltip messages={messageMap[account.ID].map(m => m.Message)} /></td>
                 }
               </tr>
