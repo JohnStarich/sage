@@ -18,15 +18,22 @@ export default function Account(props) {
   const [redirect, setRedirect] = React.useState(null)
   const [verified, setVerified] = React.useState(null)
   const [testFeedback, setTestFeedback] = React.useState(null)
+  const [institutionURL, setInstitutionURL] = React.useState(null)
 
   if (account === null) {
     // prop was defined but hasn't loaded
     return null
   }
   // account prop is either not set or has finished loading
-  if (account && isBank === null) {
-    setIsBank(account && account.RoutingNumber && account.RoutingNumber !== "")
-    return null
+  if (account) {
+    if (isBank === null) {
+      setIsBank(account && account.RoutingNumber && account.RoutingNumber !== "")
+      return null
+    }
+    if (institutionURL === null) {
+      setInstitutionURL(account.Institution.URL)
+      return null
+    }
   }
 
   const id = account ? account.ID : 'new'
@@ -174,7 +181,7 @@ export default function Account(props) {
               <Form.Control
                 type="text"
                 placeholder="••••••••"
-                required={! account}
+                required={! account && ! (institutionURL && institutionURL.startsWith("http://"))}
                 {...formControlDefaults}
                 />
               <Form.Control.Feedback type="invalid">
@@ -210,7 +217,7 @@ export default function Account(props) {
           <Form.Group controlId={makeID("institutionURL")} as={Row}>
             <Form.Label column sm={labelWidth}>URL</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="url" defaultValue={account ? account.Institution.URL : null} pattern="https://.*" {...formControlDefaults} required />
+              <Form.Control type="url" defaultValue={institutionURL} pattern="(https://|http://localhost).*" {...formControlDefaults} onChange={e => setInstitutionURL(e.target.value)} required />
               <Form.Control.Feedback type="invalid">
                 Provide a valid URL. <code>https://</code> is required.
               </Form.Control.Feedback>
