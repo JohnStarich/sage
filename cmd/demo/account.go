@@ -165,11 +165,22 @@ func newRandTransaction(date time.Time, seed uint64) randTransaction {
 	rng.Seed(seed)
 	random := rand.New(&rng)
 	id := strconv.FormatUint(random.Uint64(), 10)
-	amount := decimal.NewFromFloat(random.Float64() * float64(random.Intn(100))).Round(2)
+	amount := decimal.NewFromFloat(random.Float64() * float64(random.Intn(100))).Round(2).Abs()
+	payeeTypeChoice := random.Intn(10)
+	payeeChoice := random.Int()
+	var payee string
+	if payeeTypeChoice == 0 {
+		revChoice := revenueChoices[payeeChoice%len(revenueChoices)]
+		amount = amount.Mul(revChoice.Multiplier)
+		payee = revChoice.Name
+	} else {
+		amount = amount.Neg()
+		payee = payeeChoices[payeeChoice%len(payeeChoices)]
+	}
 	return randTransaction{
 		ID:       id,
 		Date:     date,
-		Payee:    payeeChoices[random.Int()%len(payeeChoices)],
+		Payee:    payee,
 		Currency: "$",
 		Amount:   amount,
 	}
@@ -196,5 +207,14 @@ var (
 		"Lightning Up Counseling",
 		"Green Grape Grocer",
 		"Hamstrung Deli",
+	}
+
+	revenueChoices = []struct {
+		Name       string
+		Multiplier decimal.Decimal
+	}{
+		{"Big Ol Company", decimal.NewFromFloat(3)},
+		{"Interest Paid", decimal.NewFromFloat(0.1)},
+		{"Book Sales", decimal.NewFromFloat(1)},
 	}
 )
