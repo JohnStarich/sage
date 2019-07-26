@@ -13,6 +13,8 @@ Automatically download transactions from your banks and credit cards, then categ
 * [x] Web UI to add credentials for new accounts 
 * [x] Can deploy as a single binary or as a Docker container
 
+![Activity page demo](.github/media/activity.png)
+
 For future features, [see below](#future-work)
 
 [double-entry bookkeeping]: https://en.wikipedia.org/wiki/Double-entry_bookkeeping_system
