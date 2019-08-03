@@ -53,9 +53,12 @@ func validateAccount(account client.Account) sageErrors.Errors {
 }
 
 func abortWithClientError(c *gin.Context, status int, err error) {
+	logger := c.MustGet(loggerKey).(*zap.Logger)
+	logger.WithOptions(zap.AddCallerSkip(1))
 	if status/100 == 5 {
-		logger := c.MustGet(loggerKey).(*zap.Logger)
-		logger.WithOptions(zap.AddCallerSkip(1)).Error("Aborting with server error", zap.Error(err))
+		logger.Error("Aborting with server error", zap.Error(err))
+	} else {
+		logger.Info("Aborting with client error", zap.String("error", err.Error()))
 	}
 	c.AbortWithStatusJSON(status, map[string]string{
 		"Error": err.Error(),
