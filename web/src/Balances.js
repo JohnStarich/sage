@@ -26,11 +26,11 @@ export default function Balances({ syncTime }) {
   }
 
   const messageMap = messages.reduce((acc, message) => {
-    if (! message.AccountID) {
+    if (!message.AccountID) {
       return acc
     }
     let id = message.AccountID
-    if (! acc[id]) {
+    if (!acc[id]) {
       acc[id] = []
     }
     acc[id].push(message)
@@ -41,11 +41,11 @@ export default function Balances({ syncTime }) {
 
   const nonAccountMessages =
     messages
-      .filter(m => ! m.AccountID)
+      .filter(m => !m.AccountID)
       .map(m => m.Message)
   const remainingAccountMessages =
     Object.keys(messageMap)
-      .filter(id => ! accountIDs.has(id))
+      .filter(id => !accountIDs.has(id))
       .map(id => messageMap[id])
 
   return (
@@ -54,20 +54,20 @@ export default function Balances({ syncTime }) {
         <tbody>
           <tr><th>Account</th><th>Balance</th></tr>
           {accounts.map(account =>
-              <tr key={account.ID}>
-                <td>{account.Account}</td>
-                <td>
-                  {! account.Balances ? null :
-                    <Amount
-                      amount={Number(account.Balances[account.Balances.length - 1])}
-                      prefix="$"
-                      />
-                  }
-                </td>
-                {! messageMap[account.ID] ? <td></td> :
-                    <td className="balance-warning"><WarningTooltip messages={messageMap[account.ID].map(m => m.Message)} /></td>
+            <tr key={account.ID}>
+              <td>{account.Account}</td>
+              <td>
+                {!account.Balances ? null :
+                  <Amount
+                    amount={Number(account.Balances[account.Balances.length - 1])}
+                    prefix="$"
+                  />
                 }
-              </tr>
+              </td>
+              {!messageMap[account.ID] ? <td></td> :
+                <td className="balance-warning"><WarningTooltip messages={messageMap[account.ID].map(m => m.Message)} /></td>
+              }
+            </tr>
           )}
           {remainingAccountMessages.map(msgs =>
             <tr key={msgs[0].AccountID} className="message">
@@ -105,10 +105,10 @@ function WarningTooltip({ messages }) {
   )
 
   return (
-     <OverlayTrigger trigger="click" placement="left" overlay={popover}>
-       <Button variant="warning">
-         {messages && messages.length > 1 ? `${messages.length} issues` : '1 issue'}
-       </Button>
-     </OverlayTrigger>
+    <OverlayTrigger trigger="click" placement="left" overlay={popover}>
+      <Button variant="warning">
+        {messages && messages.length > 1 ? `${messages.length} issues` : '1 issue'}
+      </Button>
+    </OverlayTrigger>
   );
 }

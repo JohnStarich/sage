@@ -18,7 +18,7 @@ const orderedColors = (() => {
   let allColors = []
   for (let color of initialColors) {
     for (let brightness of brightnesses) {
-        allColors.push(scaleColor(color, brightness))
+      allColors.push(scaleColor(color, brightness))
     }
   }
   return allColors

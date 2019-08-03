@@ -3,7 +3,7 @@ import DatePicker from 'react-datepicker';
 
 
 function convertUTCToLocalDate(date) {
-  if (! date) {
+  if (!date) {
     return date
   }
   date = new Date(date)
@@ -12,7 +12,7 @@ function convertUTCToLocalDate(date) {
 }
 
 function convertLocalToUTCDate(date) {
-  if (! date) {
+  if (!date) {
     return date
   }
   date = new Date(date)
@@ -26,6 +26,6 @@ export default function UTCDatePicker({ selected, onChange, ...props }) {
       selected={convertUTCToLocalDate(selected)}
       onChange={date => onChange(convertLocalToUTCDate(date))}
       {...props}
-      />
+    />
   )
 }

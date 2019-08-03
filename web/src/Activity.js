@@ -11,14 +11,14 @@ import Transactions from './Transactions';
 export default function Activity(props) {
   const { syncTime } = props;
   return (
-      <Container className="content">
-        <Row>
-          <Col lg xl={5}><Balances syncTime={syncTime} /></Col>
-          <Col xl={7}><Expenses syncTime={syncTime} /></Col>
-        </Row>
-        <Row>
-          <Col><Transactions syncTime={syncTime} /></Col>
-        </Row>
-      </Container>
+    <Container className="content">
+      <Row>
+        <Col lg xl={5}><Balances syncTime={syncTime} /></Col>
+        <Col xl={7}><Expenses syncTime={syncTime} /></Col>
+      </Row>
+      <Row>
+        <Col><Transactions syncTime={syncTime} /></Col>
+      </Row>
+    </Container>
   )
 }

@@ -57,8 +57,8 @@ function AppContent({ match }) {
         <Route path="/" exact component={() => <Activity syncTime={syncTime} />} />
         <Route>
           <Breadcrumbs as={Breadcrumb} skip={1} render={({ title, match }) =>
-              <NavLink className="breadcrumb-item" to={match.url} exact>{title}</NavLink>
-            }>
+            <NavLink className="breadcrumb-item" to={match.url} exact>{title}</NavLink>
+          }>
             <Container>
               <Route path="/accounts" component={Accounts} />
               <Route path="/balances" component={BalanceSettings} />

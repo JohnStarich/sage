@@ -33,7 +33,7 @@ export default function Accounts({ match }) {
 
   const deleteAccount = accountID => {
     let account = accounts.find(a => a.ID === accountID)
-    if (! window.confirm(`Are you sure you want to delete your account '${account.Description}'?`)) {
+    if (!window.confirm(`Are you sure you want to delete your account '${account.Description}'?`)) {
       return
     }
     axios.delete(`/api/v1/accounts/${accountID}`)

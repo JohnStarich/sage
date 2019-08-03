@@ -43,7 +43,7 @@ export default function Sync(props) {
       className={className}
       disabled={isSyncing}
       onClick={!isSyncing ? clickSync : null}
-      >
+    >
       {isSyncing
         ? <Spinner animation="border" size="sm" />
         : (failed ? 'Sync Failed' : 'Sync')

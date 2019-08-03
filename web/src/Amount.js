@@ -2,7 +2,7 @@ import React from 'react';
 import './Amount.css';
 import Form from 'react-bootstrap/Form';
 
-export default function(props) {
+export default function (props) {
   const {
     tagName,
     amount,
@@ -29,7 +29,7 @@ export default function(props) {
 
 
   if (editable) {
-    if (! onChange) {
+    if (!onChange) {
       throw Error("Editable amounts must have an onChange prop")
     }
     const [currentAmount, setCurrentAmount] = React.useState(amount)
@@ -70,7 +70,7 @@ export default function(props) {
         value={`${prefix}${currentAmount}`}
         onChange={onAmountChange}
         {...remainingProps}
-        />
+      />
     )
   }
 
@@ -85,7 +85,7 @@ export default function(props) {
     .reverse()
     .map((ch, i) => {
       if (i !== 0 && i !== integer.length && i % 3 === 0) {
-        return ch + "," 
+        return ch + ","
       }
       return ch
     })
@@ -103,7 +103,7 @@ export default function(props) {
           {group}
         </TagName>
       )}
-      {"."+fractional}
+      {"." + fractional}
     </TagName>
   )
 }

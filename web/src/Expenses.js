@@ -22,12 +22,12 @@ export default function Expenses(props) {
 
   React.useEffect(() => {
     axios.get('/api/v1/balances', {
-        params: {
-          accountTypes: ['expenses', 'revenues', 'uncategorized'],
-        },
-      })
+      params: {
+        accountTypes: ['expenses', 'revenues', 'uncategorized'],
+      },
+    })
       .then(res => {
-        if (! res.data.Accounts) {
+        if (!res.data.Accounts) {
           return
         }
         setAccounts(res.data.Accounts.map(account => {
@@ -40,7 +40,7 @@ export default function Expenses(props) {
   }, [syncTime])
 
   const noData = <div>No expense data to display</div>
-  if (! accounts) {
+  if (!accounts) {
     return noData
   }
   let accountsCopy = reduceCategories(accounts)
@@ -69,7 +69,7 @@ export default function Expenses(props) {
 }
 
 const AmountTooltip = ({ active, payload, label }) => {
-  if (! active) {
+  if (!active) {
     return null
   }
   return (
@@ -108,10 +108,10 @@ const AmountTick = tick => {
   )
 }
 
-const dateFormatter = new Intl.DateTimeFormat('default', {year: 'numeric', month: 'long', timeZone: 'UTC'})
+const dateFormatter = new Intl.DateTimeFormat('default', { year: 'numeric', month: 'long', timeZone: 'UTC' })
 
 function convertAccountsToChartData({ start, end, accounts }) {
-  if (! accounts || ! end || ! start) {
+  if (!accounts || !end || !start) {
     return null
   }
   if (end <= start) {
@@ -169,8 +169,8 @@ function reduceCategories(accounts) {
   for (let account of accounts) {
     for (let name of accountNames) {
       if (account.Account === name ||
-          (account.Account === "" && account.AccountType === name) ||
-          account.Account.startsWith(name+':')) {
+        (account.Account === "" && account.AccountType === name) ||
+        account.Account.startsWith(name + ':')) {
         if (newAccounts[name] === undefined) {
           account.Account = name
           newAccounts[name] = Object.assign({}, account)
@@ -202,7 +202,7 @@ function reduceCategoryNames(names) {
   while (allNames.size < targetCount && previousSize !== allNames.size) {
     previousSize = allNames.size
     for (let name of allNames) {
-      let prefix = name+':'
+      let prefix = name + ':'
       let foundPrefixMatch = false
       for (let i = 0; i < names.length && allNames.size < targetCount; i++) {
         if (names[i].startsWith(prefix)) {

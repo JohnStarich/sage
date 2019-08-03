@@ -15,7 +15,7 @@ import axios from 'axios';
 import cellEditFactory from 'react-bootstrap-table2-editor';
 
 
-const dateFormatter = new Intl.DateTimeFormat('default', {year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'})
+const dateFormatter = new Intl.DateTimeFormat('default', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
 
 function firstDayOfYear() {
   const now = new Date()
@@ -31,18 +31,18 @@ export default function BalanceSettings({ match }) {
     axios.get('/api/v1/balances')
       .then(res => {
         window.setTimeout(() => {
-        if (res.data.Accounts) {
-          setPostings(res.data.Accounts
-            .map(({ ID: Account, Account: Description, OpeningBalance: Amount }) => {
-              return { Account, Description, Amount }
-            }))
-        }
-        setStart(
-          res.data.OpeningBalanceDate
-          ? new Date(res.data.OpeningBalanceDate)
-          : firstDayOfYear()
-        )
-      }, 1000)
+          if (res.data.Accounts) {
+            setPostings(res.data.Accounts
+              .map(({ ID: Account, Account: Description, OpeningBalance: Amount }) => {
+                return { Account, Description, Amount }
+              }))
+          }
+          setStart(
+            res.data.OpeningBalanceDate
+              ? new Date(res.data.OpeningBalanceDate)
+              : firstDayOfYear()
+          )
+        }, 1000)
       })
   }, [])
 
@@ -86,7 +86,7 @@ export default function BalanceSettings({ match }) {
               prefix="$"
               editable
               autoFocus
-              />
+            />
           </FunctionalEditor>
         )
       },
@@ -112,7 +112,7 @@ export default function BalanceSettings({ match }) {
               updateOpeningBalance(v)
             }}
             popperPlacement="top"
-            />
+          />
         </Col>
       </Form.Group>
       <Row>
@@ -125,7 +125,7 @@ export default function BalanceSettings({ match }) {
                 return axios.post('/api/v1/sync?fromLedgerStart')
               }
             }}>
-              Sync from start
+            Sync from start
           </LoadingButton></Col>
       </Row>
       <Row>
@@ -134,15 +134,15 @@ export default function BalanceSettings({ match }) {
       <Row>
         <BootstrapTable
           keyField="Account"
-          data={ postings }
-          columns={ columns }
+          data={postings}
+          columns={columns}
 
           bootstrap4
-          bordered={ false }
-          cellEdit={ cellEdit }
+          bordered={false}
+          cellEdit={cellEdit}
           noDataIndication="No accounts found"
           wrapperClasses='table-responsive'
-          />
+        />
       </Row>
     </Container>
   )

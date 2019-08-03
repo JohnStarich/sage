@@ -8,7 +8,7 @@ export function cleanCategory(account) {
   if (i === -1) {
     return account
   }
-  return account.slice(i+1)
+  return account.slice(i + 1)
 }
 
 let categoriesPromise = null
@@ -31,11 +31,11 @@ export function CategoryPicker({ category, setCategory, disabled }) {
   }
   return (
     <Form.Control
-        as="select"
-        disabled={disabled}
-        value={category}
-        onChange={e => setCategory(e.target.value)}
-        className="category">
+      as="select"
+      disabled={disabled}
+      value={category}
+      onChange={e => setCategory(e.target.value)}
+      className="category">
       {categories.map(c =>
         <option key={c[0]} value={c[0]}>{c[1]}</option>
       )}

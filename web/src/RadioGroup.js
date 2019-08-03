@@ -16,7 +16,7 @@ export default function RadioGroup(props) {
     smColumns,
     ...remainingProps
   } = props;
-  if (! choices) {
+  if (!choices) {
     throw new Error("Choices prop must be provided")
   }
   if (smColumns && smColumns.length !== 2) {
@@ -30,9 +30,9 @@ export default function RadioGroup(props) {
   return (
     <Form.Group className="radio-group" as={smColumns ? Row : undefined}>
       {!label ? null :
-          <Form.Label htmlFor={id} column={smColumns} sm={smColumns ? smColumns[0] : null}>
-            {label}
-          </Form.Label>
+        <Form.Label htmlFor={id} column={smColumns} sm={smColumns ? smColumns[0] : null}>
+          {label}
+        </Form.Label>
       }
       <ColTag sm={smColumns ? smColumns[1] : null}>
         {choices.map((choice, i) =>
@@ -44,11 +44,11 @@ export default function RadioGroup(props) {
               type="radio"
               value={choice}
               {...remainingProps}
-              />
+            />
             <Form.Check.Label className="btn btn-outline-secondary">{choice}</Form.Check.Label>
-          { i !== choices.length-1 ? null :
-            <Form.Control.Feedback type="invalid">Required</Form.Control.Feedback>
-          }
+            {i !== choices.length - 1 ? null :
+              <Form.Control.Feedback type="invalid">Required</Form.Control.Feedback>
+            }
           </Form.Check>
         )}
       </ColTag>

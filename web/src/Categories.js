@@ -40,7 +40,7 @@ const columns = [
         return true
       }
       if (accountType !== 'expenses' && accountType !== 'revenues') {
-        return {valid: false, message: 'Category must start with "expenses:" or "revenues:"'}
+        return { valid: false, message: 'Category must start with "expenses:" or "revenues:"' }
       }
       return true
     },
@@ -48,13 +48,13 @@ const columns = [
       placeholder: 'expenses:Shopping:Food and Restaurants',
     },
     formatter: cell => {
-      if (! cell) {
+      if (!cell) {
         return null
       }
 
       let accountType, category;
       if (cell.includes(':')) {
-        accountType =  cell.slice(0, cell.indexOf(':'))
+        accountType = cell.slice(0, cell.indexOf(':'))
         category = cleanCategory(cell)
       } else {
         accountType = cell
@@ -81,7 +81,7 @@ const columns = [
 
 export default function Categories({ match }) {
   const [rules, setRules] = React.useState([])
-  
+
   React.useEffect(() => {
     axios.get('/api/v1/rules').then(res => {
       let newRules = res.data.Rules || []
@@ -177,19 +177,19 @@ export default function Categories({ match }) {
       <Button variant="primary" onClick={addRule}>Add</Button>
       <BootstrapTable
         keyField="ID"
-        data={ rules }
-        columns={ columns }
+        data={rules}
+        columns={columns}
 
         bootstrap4
-        bordered={ false }
-        cellEdit={ cellEdit }
+        bordered={false}
+        cellEdit={cellEdit}
         noDataIndication="No rules found"
         wrapperClasses='table-responsive categories'
-        />
+      />
     </>
   )
 }
 
 function renumberRules(rules) {
-  return rules.map((rule, i) => Object.assign({}, rule, { ID: i+1 }))
+  return rules.map((rule, i) => Object.assign({}, rule, { ID: i + 1 }))
 }

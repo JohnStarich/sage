@@ -15,13 +15,13 @@ export function Breadcrumbs(props) {
     setRenderCrumbs(breadcrumbs.slice(skip))
   }, [breadcrumbsCopy, lastUpdate, skip])
 
-  if (! render) {
+  if (!render) {
     throw new Error("Must include render prop")
   }
 
   const updateCrumbs = () => {
     // trigger re-render whenever a crumb's props are updated
-    setLastUpdate(! lastUpdate)
+    setLastUpdate(!lastUpdate)
   }
 
   const Tag = as
@@ -41,7 +41,7 @@ export function Breadcrumbs(props) {
 
 function reducePropsToState(propsList) {
   let crumbs = propsList
-  let title = propsList.reduce((acc, { title, separator=' | ' }, i) => {
+  let title = propsList.reduce((acc, { title, separator = ' | ' }, i) => {
     if (i !== 0) {
       acc += separator
     }

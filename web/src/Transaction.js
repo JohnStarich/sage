@@ -38,7 +38,7 @@ export default function Transaction(updateTransaction, accountIDMap) {
             {postings.map((posting, i) =>
               <tr key={posting.Account}>
                 <td>
-                  { i === 0
+                  {i === 0
                     ? <Form.Control type="text" value={posting.AccountName} disabled />
                     : <CategoryPicker category={posting.Account} setCategory={c => updatePosting(i, { Account: c })} />
                   }
@@ -50,7 +50,7 @@ export default function Transaction(updateTransaction, accountIDMap) {
                     editable
                     onChange={a => updatePosting(i, { Amount: a })}
                     prefix={posting.Currency}
-                    />
+                  />
                 </td>
               </tr>
             )}

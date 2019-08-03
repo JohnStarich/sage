@@ -11,7 +11,7 @@ import paginationFactory from 'react-bootstrap-table2-paginator';
 import { cleanCategory } from './CategoryPicker';
 
 
-const dateFormatter = new Intl.DateTimeFormat('default', {year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC'})
+const dateFormatter = new Intl.DateTimeFormat('default', { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC' })
 
 const columns = [
   {
@@ -60,7 +60,7 @@ const columns = [
 ];
 
 function prepTransactions(transactions) {
-  if (! transactions) {
+  if (!transactions) {
     return []
   }
   transactions = transactions.map(t => {
@@ -97,8 +97,8 @@ export default function Transactions(props) {
       setSearch(searchText)
     }
     axios.get('/api/v1/transactions', {
-        params: { page, results: sizePerPage, search: searchText },
-      })
+      params: { page, results: sizePerPage, search: searchText },
+    })
       .then(res => {
         let transactions = prepTransactions(res.data.Transactions)
         setTransactions(transactions)
@@ -131,31 +131,31 @@ export default function Transactions(props) {
     <div className="transactions">
       <ToolkitProvider
         keyField="ID"
-        data={ transactions }
-        columns={ columns }
+        data={transactions}
+        columns={columns}
         search
-        >
+      >
         {toolkitprops =>
           <div key="0">
-          <Search.SearchBar
-            { ...toolkitprops.searchProps }
-            delay={1000}
-            className="search"
-            tabIndex="0"
+            <Search.SearchBar
+              {...toolkitprops.searchProps}
+              delay={1000}
+              className="search"
+              tabIndex="0"
             />
-          <BootstrapTable
-            { ...toolkitprops.baseProps }
-            bootstrap4
-            bordered={false}
-            expandRow={{ renderer: Transaction(updateTransaction, accountIDMap) }}
-            noDataIndication="No transactions found"
-            onTableChange={ handleTableChange }
-            pagination={ paginationFactory({
-              page: page,
-              totalSize: count,
-            }) }
-            remote
-            wrapperClasses='table-responsive'
+            <BootstrapTable
+              {...toolkitprops.baseProps}
+              bootstrap4
+              bordered={false}
+              expandRow={{ renderer: Transaction(updateTransaction, accountIDMap) }}
+              noDataIndication="No transactions found"
+              onTableChange={handleTableChange}
+              pagination={paginationFactory({
+                page: page,
+                totalSize: count,
+              })}
+              remote
+              wrapperClasses='table-responsive'
             />
           </div>
         }

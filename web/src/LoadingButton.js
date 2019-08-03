@@ -27,7 +27,7 @@ export default function LoadingButton(props) {
           .finally(() => setIsLoading(false))
       }}
       {...remainingProps}
-      >
+    >
       {children}
       {isLoading
         ? <Spinner animation="border" size="sm" className="loading-btn-spinner" />
