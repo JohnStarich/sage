@@ -41,7 +41,7 @@ func TestLedgerAccountName(t *testing.T) {
 			account: NewCreditCard(
 				"super cash back",
 				"some description",
-				baseInstitution{description: "Some Credit Card Co"},
+				baseInstitution{org: "Some Credit Card Co"},
 			),
 			expectedName: "liabilities:Some Credit Card Co:****back",
 		},
@@ -51,7 +51,7 @@ func TestLedgerAccountName(t *testing.T) {
 				"blah account",
 				"routing no",
 				"blah account description",
-				baseInstitution{description: "The Boring Bank"},
+				baseInstitution{org: "The Boring Bank"},
 			),
 			expectedName: "assets:The Boring Bank:****ount",
 		},

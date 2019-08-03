@@ -58,7 +58,7 @@ func (s *AccountStore) FindLedger(format *LedgerAccountFormat) (account Account,
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, account := range s.accounts {
-		if format.Institution == account.Institution().Description() && len(format.AccountID) > redactPrefixLength && strings.HasSuffix(account.ID(), format.AccountID[redactPrefixLength:]) {
+		if format.Institution == account.Institution().Org() && len(format.AccountID) > redactPrefixLength && strings.HasSuffix(account.ID(), format.AccountID[redactPrefixLength:]) {
 			return account, true
 		}
 	}

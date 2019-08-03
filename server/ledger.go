@@ -121,7 +121,7 @@ func newAccountIDMap(accountStore *client.AccountStore) txnToAccountMap {
 	// inst name -> account ID suffix -> account
 	accountIDMap := make(txnToAccountMap)
 	accountStore.Iterate(func(clientAccount client.Account) bool {
-		instName := clientAccount.Institution().Description()
+		instName := clientAccount.Institution().Org()
 		id := clientAccount.ID()
 		if len(id) > client.RedactSuffixLength {
 			id = id[len(id)-client.RedactSuffixLength:]
