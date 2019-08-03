@@ -336,11 +336,14 @@ func TestFetchTransactions(t *testing.T) {
 				return &resp, nil
 			}
 
-			parsedTxns := make([]ledger.Transaction, 0)
-			parseTxn := func(ofxgo.Transaction, string, string, func(string) string) ledger.Transaction {
-				txn := ledger.Transaction{Comment: "some parsed txn"}
-				parsedTxns = append(parsedTxns, txn)
-				return txn
+			someTransactions := []ledger.Transaction{
+				{Comment: "some parsed txn"},
+			}
+			importTransactions := func(account Account, resp *ofxgo.Response, parser transactionParser) ([]ledger.Transaction, error) {
+				if tc.responseErr {
+					return nil, errors.New("some resp error")
+				}
+				return someTransactions, nil
 			}
 
 			txns, err := fetchTransactions(
@@ -348,7 +351,7 @@ func TestFetchTransactions(t *testing.T) {
 				tc.startTime,
 				tc.endTime,
 				doRequest,
-				parseTxn,
+				importTransactions,
 			)
 			if tc.expectErr {
 				require.Error(t, err)
@@ -362,7 +365,7 @@ func TestFetchTransactions(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, parsedTxns, txns, "returned txns must be equal to result of parse")
+			assert.Equal(t, someTransactions, txns, "returned txns must be equal to result of parse")
 		})
 	}
 }

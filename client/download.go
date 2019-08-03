@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 )
 
 const (
+	// Uncategorized is used as the default account2 on an imported transaction
 	Uncategorized = "uncategorized"
 
 	ofxAuthFailed = 15500
@@ -36,7 +36,7 @@ func Transactions(account Account, start, end time.Time) ([]ledger.Transaction, 
 		// TODO it seems the ledger balance is nearly always the current balance, rather than the statement close. Restore this when a true closing balance can be found
 		//balanceTransactions,
 		client.Request,
-		parseTransaction,
+		importTransactions,
 	)
 }
 
@@ -44,7 +44,7 @@ func fetchTransactions(
 	account Account,
 	start, end time.Time,
 	doRequest func(*ofxgo.Request) (*ofxgo.Response, error),
-	parseTransaction func(ofxgo.Transaction, string, string, func(string) string) ledger.Transaction,
+	importTransactions func(Account, *ofxgo.Response, transactionParser) ([]ledger.Transaction, error),
 ) ([]ledger.Transaction, error) {
 	query, err := account.Statement(start, end)
 	if err != nil {
@@ -54,7 +54,6 @@ func fetchTransactions(
 		return nil, errors.Errorf("Invalid statement query: does not contain any statement requests: %+v", query)
 	}
 
-	accountName := LedgerAccountName(account)
 	institution := account.Institution()
 	config := institution.Config()
 
@@ -83,39 +82,7 @@ func fetchTransactions(
 		return nil, errors.Errorf("Nonzero signon status (%d: %s) with message: %s", response.Signon.Status.Code, meaning, response.Signon.Status.Message)
 	}
 
-	statements := append(response.Bank, response.CreditCard...)
-	if len(statements) == 0 {
-		return nil, errors.Errorf("No messages received")
-	}
-
-	makeTxnID := makeUniqueTxnID(account)
-	var txns []ledger.Transaction
-
-	for _, message := range statements {
-		var balanceCurrency string
-		var statementTxns []ofxgo.Transaction
-		switch statement := message.(type) {
-		case *ofxgo.StatementResponse:
-			balanceCurrency = normalizeCurrency(statement.CurDef.String())
-			if statement.BankTranList != nil {
-				statementTxns = statement.BankTranList.Transactions
-			}
-		case *ofxgo.CCStatementResponse:
-			balanceCurrency = normalizeCurrency(statement.CurDef.String())
-			if statement.BankTranList != nil {
-				statementTxns = statement.BankTranList.Transactions
-			}
-		default:
-			return nil, fmt.Errorf("Invalid statement type: %T", message)
-		}
-
-		for _, txn := range statementTxns {
-			parsedTxn := parseTransaction(txn, balanceCurrency, accountName, makeTxnID)
-			txns = append(txns, parsedTxn)
-		}
-	}
-
-	return txns, nil
+	return importTransactions(account, response, parseTransaction)
 }
 
 // decToPtr makes a copy of d and returns a reference to it
@@ -131,6 +98,8 @@ func normalizeCurrency(currency string) string {
 		return currency
 	}
 }
+
+type transactionParser func(txn ofxgo.Transaction, currency, accountName string, makeTxnID func(string) string) ledger.Transaction
 
 func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeTxnID func(string) string) ledger.Transaction {
 	if txn.Currency != nil {
