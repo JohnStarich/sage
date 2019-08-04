@@ -88,8 +88,8 @@ func (a *AccountGenerator) Transactions(ofxVersionStr string, txnUID ofxgo.UID, 
 			CurDef:    ofxgo.CurrSymbol{Unit: currency.USD},
 			DtAsOf:    ofxgo.Date{Time: now},
 			BankAcctFrom: ofxgo.BankAcct{
-				BankID:   ofxgo.String("routing number"),
-				AcctID:   ofxgo.String("account number"),
+				BankID:   ofxgo.String(a.RoutingNumber),
+				AcctID:   ofxgo.String(a.AccountID),
 				AcctType: ofxgo.AcctTypeChecking,
 			},
 			BankTranList: &ofxgo.TransactionList{
@@ -106,7 +106,7 @@ func (a *AccountGenerator) Transactions(ofxVersionStr string, txnUID ofxgo.UID, 
 			CurDef:    ofxgo.CurrSymbol{Unit: currency.USD},
 			DtAsOf:    ofxgo.Date{Time: now},
 			CCAcctFrom: ofxgo.CCAcct{
-				AcctID: ofxgo.String("account number"),
+				AcctID: ofxgo.String(a.AccountID),
 			},
 			BankTranList: &ofxgo.TransactionList{
 				DtStart:      ofxgo.Date{Time: start},
