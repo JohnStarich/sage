@@ -44,7 +44,7 @@ func fetchTransactions(
 	account Account,
 	start, end time.Time,
 	doRequest func(*ofxgo.Request) (*ofxgo.Response, error),
-	importTransactions func(Account, *ofxgo.Response, transactionParser) ([]ledger.Transaction, error),
+	importTransactions func(*ofxgo.Response, transactionParser) ([]ledger.Transaction, error),
 ) ([]ledger.Transaction, error) {
 	query, err := account.Statement(start, end)
 	if err != nil {
@@ -82,7 +82,7 @@ func fetchTransactions(
 		return nil, errors.Errorf("Nonzero signon status (%d: %s) with message: %s", response.Signon.Status.Code, meaning, response.Signon.Status.Message)
 	}
 
-	return importTransactions(account, response, parseTransaction)
+	return importTransactions(response, parseTransaction)
 }
 
 // decToPtr makes a copy of d and returns a reference to it
@@ -169,10 +169,13 @@ func balanceTransactions(txns []ledger.Transaction, balance decimal.Decimal, bal
 	}
 }
 
-func makeUniqueTxnID(account Account) func(string) string {
-	institution := account.Institution()
+func makeUniqueAccountTxnID(account Account) func(string) string {
+	return makeUniqueTxnID(account.Institution().FID(), account.ID())
+}
+
+func makeUniqueTxnID(fid, accountID string) func(txnID string) string {
 	// Follows FITID recommendation from OFX 102 Section 3.2.1
-	idPrefix := institution.FID() + "-" + account.ID() + "-"
+	idPrefix := fid + "-" + accountID + "-"
 	return func(txnID string) string {
 		id := idPrefix + txnID
 		// clean ID for use as an hledger tag

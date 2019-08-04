@@ -213,7 +213,7 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 			account.AccountType = format.AccountType
 			switch format.AccountType {
 			case client.AssetAccount, client.LiabilityAccount:
-				account.Account = format.AccountID
+				account.Account = format.Institution + " " + format.AccountID
 				account.Institution = format.Institution
 				if clientAccount, found := accountIDMap.Find(accountName); found {
 					account.Account = clientAccount.Description()
@@ -374,6 +374,26 @@ func updateOpeningBalances(ledgerFileName string, ldg *ledger.Ledger, accountSto
 			return
 		}
 
+		if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		txns, err := client.ReadOFX(c.Request.Body)
+		if err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		rulesStore.ApplyAll(txns)
+		if err := ldg.AddTransactions(txns); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
 		if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return

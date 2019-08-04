@@ -30,7 +30,7 @@ func LedgerFormat(a Account) *LedgerAccountFormat {
 	return &LedgerAccountFormat{
 		AccountType: accountType,
 		Institution: a.Institution().Org(),
-		AccountID:   redactPrefix(a.ID()),
+		AccountID:   a.ID(),
 	}
 }
 
@@ -60,7 +60,7 @@ func ParseLedgerFormat(account string) (*LedgerAccountFormat, error) {
 
 func (l *LedgerAccountFormat) String() string {
 	result := ""
-	for _, s := range []string{l.AccountType, l.Institution, l.AccountID, l.Remaining} {
+	for _, s := range []string{l.AccountType, l.Institution, redactPrefix(l.AccountID), l.Remaining} {
 		if s != "" {
 			result += s + ":"
 		}

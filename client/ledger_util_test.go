@@ -20,7 +20,7 @@ func TestLedgerAccountFormat(t *testing.T) {
 				Institution: "some institution",
 				AccountID:   "some account",
 			},
-			expected: "some account type:some institution:some account",
+			expected: "some account type:some institution:****ount",
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {

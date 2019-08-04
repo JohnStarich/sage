@@ -339,7 +339,7 @@ func TestFetchTransactions(t *testing.T) {
 			someTransactions := []ledger.Transaction{
 				{Comment: "some parsed txn"},
 			}
-			importTransactions := func(account Account, resp *ofxgo.Response, parser transactionParser) ([]ledger.Transaction, error) {
+			importTransactions := func(resp *ofxgo.Response, parser transactionParser) ([]ledger.Transaction, error) {
 				if tc.responseErr {
 					return nil, errors.New("some resp error")
 				}
@@ -458,13 +458,7 @@ func TestMakeUniqueTxnID(t *testing.T) {
 		{"some punctuation", "some: account", "txn", "some punctuation-some account-txn"},
 	} {
 		t.Run("", func(t *testing.T) {
-			account := mockAccount{
-				baseAccount: baseAccount{
-					id:          tc.accountID,
-					institution: baseInstitution{fid: tc.fid},
-				},
-			}
-			assert.Equal(t, tc.expectedID, makeUniqueTxnID(account)(tc.txnID))
+			assert.Equal(t, tc.expectedID, makeUniqueTxnID(tc.fid, tc.accountID)(tc.txnID))
 		})
 	}
 }

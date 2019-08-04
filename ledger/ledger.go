@@ -73,8 +73,11 @@ func makeIDSet(transactions []Transaction) (idSet map[string]bool, uniqueTxns []
 func (l *Ledger) String() string {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
+	sortedTxns := make(Transactions, len(l.transactions))
+	copy(sortedTxns, l.transactions)
+	sortedTxns.Sort()
 	var buf bytes.Buffer
-	for _, txn := range l.transactions {
+	for _, txn := range sortedTxns {
 		buf.WriteString(txn.String())
 		buf.WriteRune('\n')
 	}
