@@ -8,6 +8,7 @@ import Button from 'react-bootstrap/Button';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Crumb from './Breadcrumb';
+import ImportAccounts from './ImportAccounts';
 import Row from 'react-bootstrap/Row';
 
 export default function Accounts({ match }) {
@@ -67,13 +68,17 @@ export default function Accounts({ match }) {
               </Row>
             )}
             <Row>
-              <Col><Link to={`${match.url}/new`} className="btn btn-primary add-new">Add new</Link></Col>
+              <Col className="account-actions">
+                <Link to={`${match.url}/new`} className="btn btn-primary add-new">Add new</Link>
+                <Link to={`${match.url}/import`} className="btn btn-secondary import">Import</Link>
+              </Col>
             </Row>
           </Container>
         </>
       } />
       <Route path={`${match.path}/edit/:id`} component={props => <AccountEditor updated={accountUpdated} {...props} />} />
       <Route path={`${match.path}/new`} component={props => <NewAccount created={accountCreated} {...props} />} />
+      <Route path={`${match.path}/import`} component={Import} />
     </>
   )
 }
@@ -105,6 +110,15 @@ function AccountEditor({ updated, match }) {
     <>
       <Crumb title={account ? account.Description : 'Loading...'} match={match} />
       <Account account={account} editable updated={updated} />
+    </>
+  )
+}
+
+function Import({ match }) {
+  return (
+    <>
+      <Crumb title="Import" match={match} />
+      <ImportAccounts />
     </>
   )
 }

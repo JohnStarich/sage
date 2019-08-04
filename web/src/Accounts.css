@@ -20,6 +20,11 @@
   text-align: right;
 }
 
-.accounts .add-new {
+.account-actions {
   margin-top: 1.5em;
+  margin-left: 0;
+}
+
+.account-actions .btn {
+  margin-right: 0.5em;
 }
