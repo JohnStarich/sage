@@ -55,6 +55,11 @@ clean: out
 out:
 	mkdir out
 
+.PHONY: release
+release: clean
+	$(MAKE) -j4 dist
+	$(MAKE) apps
+
 # Try to create easily-scripted file names for download
 $(SUPPORTED_ARCH): GOOS = $(@D)
 $(SUPPORTED_ARCH): GOARCH = $(@F)
@@ -62,14 +67,53 @@ $(SUPPORTED_ARCH): CGO_ENABLED = 0
 windows/%: EXT = .exe
 %/386: ARCH = i386
 %/amd64: ARCH = x86_64
-$(SUPPORTED_ARCH): clean out static
+$(SUPPORTED_ARCH): out static
 	go build -v ${VERSION_FLAGS} -o out/sage-${VERSION}-${GOOS}-${ARCH}${EXT}
 
 .PHONY: dist
 dist: $(SUPPORTED_ARCH)
 
+.PHONY: static-deps
+static-deps:
+	npm ci --prefix=web
+
 .PHONY: static
-static:
-	npm ci --prefix=web && npm run --prefix=web build
+static: static-deps
+	npm run --prefix=web build
 	# Unset vars from upcoming targets
 	GOOS= GOARCH= go generate ./server
+
+.PHONY: apps
+apps: out
+	docker run \
+		--name sage-apps-builder \
+		--rm -it \
+		--env DEBUG='electron-windows-installer:*' \
+		-v "${PWD}:/project:delegated" \
+		electronuserland/builder:wine-mono make docker-apps && \
+		ls -Rlh out/ && \
+		find out -type f -mindepth 2 | xargs -I{} mv -f {} out/ && \
+		rm -f out/RELEASES out/*.nupkg && \
+		mv -f "out/Sage-1.0.0 Setup.exe" out/sage-${VERSION}-windows.exe && \
+		mv -f out/Sage-darwin-x64-1.0.0.zip out/sage-${VERSION}-mac.zip && \
+		mv -f out/sage_1.0.0_amd64.deb out/sage-${VERSION}-linux.deb
+
+.PHONY: docker-apps
+docker-apps:
+	apt update
+	apt install -y --no-install-recommends \
+		fakeroot \
+		p7zip \
+		zip
+	fakeroot $(MAKE) static-deps
+	# Fix wrong 7-zip architecture for win32 build
+	wget -O /tmp/7z.7z https://www.7-zip.org/a/7z1900-extra.7z
+	7zr x -o/tmp/7z-files /tmp/7z.7z
+	cp /tmp/7z-files/7za.dll ./web/node_modules/electron-winstaller/vendor/7z.dll
+	cp /tmp/7z-files/7za.exe ./web/node_modules/electron-winstaller/vendor/7z.exe
+	npm config set loglevel verbose
+	(for i in {1..60}; do sleep 60; echo "Keeping Travis CI happy $$i"; done &) && \
+		npm run --prefix=web windows && cp -fr web/out/make/* out/ && \
+		npm run --prefix=web mac     && cp -fr web/out/make/* out/ && \
+		npm run --prefix=web linux   && cp -fr web/out/make/* out/ && \
+		chmod -R 777 out/
