@@ -89,14 +89,15 @@ apps: out
 		--name sage-apps-builder \
 		--rm -it \
 		--env DEBUG='electron-windows-installer:*' \
+		--env-file <(env | grep -iE 'DEBUG|NODE_|ELECTRON_|YARN_|NPM_|CI') \
 		-v "${PWD}:/project:delegated" \
 		electronuserland/builder:wine-mono make docker-apps && \
 		ls -Rlh out/ && \
 		find out -type f -mindepth 2 | xargs -I{} mv -f {} out/ && \
 		rm -f out/RELEASES out/*.nupkg && \
-		mv -f "out/Sage-1.0.0 Setup.exe" out/sage-${VERSION}-windows.exe && \
-		mv -f out/Sage-darwin-x64-1.0.0.zip out/sage-${VERSION}-mac.zip && \
-		mv -f out/sage_1.0.0_amd64.deb out/sage-${VERSION}-linux.deb
+		mv -f "out/Sage-1.0.0 Setup.exe" out/Sage-for-Windows.exe && \
+		mv -f out/Sage-darwin-x64-1.0.0.zip out/Sage-for-Mac.zip && \
+		mv -f out/sage_1.0.0_amd64.deb out/Sage-for-Linux.deb
 
 .PHONY: docker-apps
 docker-apps:
