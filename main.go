@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -150,12 +151,20 @@ func handleErrors() (usageErr bool, err error) {
 }
 
 func main() {
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+
+		// Block until a signal is received.
+		<-c
+		sync.Shutdown(0)
+	}()
 	usageErr, err := handleErrors()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		if usageErr {
-			os.Exit(2)
+			sync.Shutdown(2)
 		}
-		os.Exit(1)
+		sync.Shutdown(1)
 	}
 }

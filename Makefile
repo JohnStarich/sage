@@ -39,7 +39,7 @@ test:
 
 .PHONY: build
 build: static
-	go build ${VERSION_FLAGS}
+	go build ${VERSION_FLAGS} -o out/sage
 
 .PHONY: docker
 docker:
@@ -82,6 +82,11 @@ static: static-deps
 	npm run --prefix=web build
 	# Unset vars from upcoming targets
 	GOOS= GOARCH= go generate ./server
+
+.PHONY: start-app
+start-app:
+	@[[ -e out/sage ]] || $(MAKE) build
+	npm --prefix=web run start-app
 
 .PHONY: apps
 apps: out

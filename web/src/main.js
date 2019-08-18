@@ -12,6 +12,7 @@ if (require('electron-squirrel-startup')) { // eslint-disable-line global-requir
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
+let sageServer;
 
 const createWindow = () => {
   // Create the browser window.
@@ -25,7 +26,7 @@ const createWindow = () => {
 
   // Open the DevTools.
   //mainWindow.webContents.openDevTools();
-
+  
   // Emitted when the window is closed.
   mainWindow.on('closed', () => {
     // Dereference the window object, usually you would store windows
@@ -59,16 +60,29 @@ app.on('activate', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
-let executable = path.join(app.getAppPath(), "../sage-server")
+let sageServerName = "sage-server"
+if (! app.isPackaged) {
+  sageServerName = path.join("out", "sage")
+}
+
+let executable = path.join(app.getAppPath(), "..", sageServerName)
 if (process.platform === 'win32') {
   executable += ".exe"
 }
 let data = path.join(app.getPath('userData'), "data")
 fs.mkdirSync(data, {recursive: true})
 
-let sageServer = execFile(executable, ['-server', '-ledger', path.join(data, "ledger.journal"), '-accounts', path.join(data, "accounts.json"), '-rules', path.join(data, "ledger.rules"), '-no-auto-sync'], function(err) {
-  console.error(`Failed to run ${executable}: ${err}`)
+sageServer = execFile(executable, ['-server', '-ledger', path.join(data, "ledger.journal"), '-accounts', path.join(data, "accounts.json"), '-rules', path.join(data, "ledger.rules"), '-no-auto-sync'], function(err) {
+  if (err === null) {
+    return
+  }
+  app.quit()
+  throw Error(`Failed to run ${executable}: ${err}`)
 })
 
 sageServer.stdout.pipe(process.stdout)
 sageServer.stderr.pipe(process.stderr)
+
+app.on('quit', () => {
+  sageServer.kill('SIGINT')
+})
