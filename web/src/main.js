@@ -4,6 +4,9 @@ const { execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+// port = (s * a * g * e) % 2^16
+const SagePort = 46745
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) { // eslint-disable-line global-require
   app.quit();
@@ -22,7 +25,7 @@ const createWindow = () => {
   });
 
   // and load the index.html of the app.
-  mainWindow.loadURL(`http://localhost:8080`);
+  mainWindow.loadURL(`http://localhost:${SagePort}`);
 
   // Open the DevTools.
   //mainWindow.webContents.openDevTools();
@@ -72,7 +75,13 @@ if (process.platform === 'win32') {
 let data = path.join(app.getPath('userData'), "data")
 fs.mkdirSync(data, {recursive: true})
 
-sageServer = execFile(executable, ['-server', '-ledger', path.join(data, "ledger.journal"), '-accounts', path.join(data, "accounts.json"), '-rules', path.join(data, "ledger.rules"), '-no-auto-sync'], function(err) {
+sageServer = execFile(executable, [
+  '-server', '-port', SagePort,
+  '-ledger', path.join(data, "ledger.journal"),
+  '-accounts', path.join(data, "accounts.json"),
+  '-rules', path.join(data, "ledger.rules"),
+  '-no-auto-sync',
+], function(err) {
   if (err === null) {
     return
   }
