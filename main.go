@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
@@ -153,11 +154,15 @@ func handleErrors() (usageErr bool, err error) {
 func main() {
 	go func() {
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-
-		// Block until a signal is received.
-		<-c
-		sync.Shutdown(0)
+		signal.Notify(c)
+		for {
+			switch <-c {
+			case os.Interrupt, syscall.SIGTERM:
+				sync.Shutdown(0)
+			case os.Kill:
+				sync.Shutdown(1)
+			}
+		}
 	}()
 	usageErr, err := handleErrors()
 	if err != nil {
