@@ -83,6 +83,18 @@ static: static-deps
 	# Unset vars from upcoming targets
 	GOOS= GOARCH= go generate ./server
 
+.PHONY: start
+start:
+	trap 'jobs -p | xargs kill' EXIT; \
+	mkdir -p ./data; \
+	go run main.go \
+		-server \
+			-ledger ./data/ledger.journal \
+			-accounts ./data/accounts.json \
+			-rules ./data/ledger.rules \
+			-no-auto-sync & \
+	npm --prefix=web start
+
 .PHONY: start-app
 start-app:
 	@[[ -e out/sage ]] || $(MAKE) build
