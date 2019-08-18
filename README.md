@@ -23,6 +23,7 @@ For future features, [see below](#future-work)
 
 Choose **_one_** of the following options:
 
+* Download the app for [Windows][], [Mac][], or [Linux][]
 * Run the container image from [Docker Hub](https://hub.docker.com/r/johnstarich/sage):
 ```bash
 DATA_DIR=$HOME/sage
@@ -35,13 +36,18 @@ docker run \
     johnstarich/sage
 # Visit http://localhost:8080 in your browser
 ```
-* Download and install the latest release from the [releases page](https://github.com/JohnStarich/sage/releases/latest) or this script:
+* Download and install the latest Sage server release from the [releases page](https://github.com/JohnStarich/sage/releases/latest) or this script:
 ```bash
 curl -fsSL -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/JohnStarich/sage/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep -i "$(uname -s)-$(uname -m)" | xargs curl -fSL -o sage
 chmod +x sage
 ./sage -help  # Optionally move sage into your PATH
 ```
 * OR download the source and build it: `go get github.com/johnstarich/sage`
+
+[Windows]: https://github.com/JohnStarich/sage/releases/latest/download/Sage-for-Windows.exe
+[Mac]: https://github.com/JohnStarich/sage/releases/latest/download/Sage-for-Mac.zip
+[Linux]: https://github.com/JohnStarich/sage/releases/latest/download/Sage-for-Linux.deb
+
 
 ## Usage
 
