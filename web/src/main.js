@@ -80,7 +80,6 @@ sageServer = execFile(executable, [
   '-ledger', path.join(data, "ledger.journal"),
   '-accounts', path.join(data, "accounts.json"),
   '-rules', path.join(data, "ledger.rules"),
-  '-no-auto-sync',
 ], function(err) {
   if (err === null) {
     return
