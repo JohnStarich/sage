@@ -156,11 +156,14 @@ func main() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c)
 		for {
-			switch <-c {
-			case os.Interrupt, syscall.SIGTERM:
+			s := <-c
+			switch s {
+			case os.Interrupt, syscall.SIGTERM, syscall.SIGUSR2:
 				sync.Shutdown(0)
 			case os.Kill:
 				sync.Shutdown(1)
+			default:
+				fmt.Println(`{"level":"info","msg":"Handling signal ` + s.String() + `"}`)
 			}
 		}
 	}()

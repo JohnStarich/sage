@@ -13,6 +13,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "start-api": "cd .. && nodemon -x go -e go -d 2 -- run main.go -server -ledger ./data/ledger.journal -accounts ./data/accounts.json -rules ./data/ledger.rules -no-auto-sync",
     "build": "INLINE_RUNTIME_CHUNK=false react-scripts build",
     "test": "react-scripts test",
     "start-app": "electron-forge start",
@@ -89,6 +90,7 @@
     "@electron-forge/maker-rpm": "6.0.0-beta.43",
     "@electron-forge/maker-squirrel": "6.0.0-beta.43",
     "@electron-forge/maker-zip": "6.0.0-beta.43",
-    "electron": "6.0.0"
+    "electron": "6.0.0",
+    "nodemon": "^1.19.1"
   }
 }

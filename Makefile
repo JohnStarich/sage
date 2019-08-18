@@ -87,12 +87,7 @@ static: static-deps
 start:
 	trap 'jobs -p | xargs kill' EXIT; \
 	mkdir -p ./data; \
-	go run main.go \
-		-server \
-			-ledger ./data/ledger.journal \
-			-accounts ./data/accounts.json \
-			-rules ./data/ledger.rules \
-			-no-auto-sync & \
+	npm --prefix=web run start-api & \
 	npm --prefix=web start
 
 .PHONY: start-app
