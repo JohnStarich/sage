@@ -18,7 +18,7 @@ RUN make build
 
 FROM scratch
 
-COPY --from=builder /src/sage /
+COPY --from=builder /src/out/sage /
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 WORKDIR /data
