@@ -2,6 +2,7 @@ package rules
 
 import (
 	"bufio"
+	"encoding/json"
 	"io"
 	"regexp"
 	"strconv"
@@ -20,17 +21,32 @@ type csvRule struct {
 }
 
 func NewCSVRule(account1, account2, comment string, conditions ...string) (Rule, error) {
-	pattern, err := regexp.Compile("(?i)" + strings.Join(conditions, "|"))
+	conditions, pattern, err := validateConditions(conditions)
 	if err != nil {
 		return csvRule{}, err
 	}
 	return csvRule{
 		Conditions: conditions,
 		matchLine:  pattern,
-		account1:   account1,
-		Account2:   account2,
-		comment:    comment,
+		account1:   strings.TrimSpace(account1),
+		Account2:   strings.TrimSpace(account2),
+		comment:    strings.TrimSpace(comment),
 	}, nil
+}
+
+func validateConditions(conditions []string) (cleanedConditions []string, re *regexp.Regexp, err error) {
+	cleanedConditions = make([]string, 0, len(conditions))
+	for _, c := range conditions {
+		c = strings.TrimSpace(c)
+		if c != "" {
+			cleanedConditions = append(cleanedConditions, c)
+		}
+	}
+	if len(cleanedConditions) == 0 {
+		return nil, nil, errors.New("At least one condition is required")
+	}
+	pattern, err := regexp.Compile("(?i)" + strings.Join(cleanedConditions, "|"))
+	return cleanedConditions, pattern, err
 }
 
 // TODO add memoization?
@@ -64,6 +80,20 @@ func (c csvRule) Apply(txn *ledger.Transaction) {
 		comment := strings.Replace(c.comment, "%comment", txn.Postings[0].Comment, -1)
 		txn.Postings[0].Comment = comment
 	}
+}
+
+type csvRuleJSON csvRule
+
+func (c *csvRule) UnmarshalJSON(data []byte) error {
+	var jsonRule csvRuleJSON
+	if err := json.Unmarshal(data, &jsonRule); err != nil {
+		return err
+	}
+	*c = csvRule(jsonRule)
+	conditions, pattern, err := validateConditions(c.Conditions)
+	c.Conditions = conditions
+	c.matchLine = pattern
+	return err
 }
 
 func (c csvRule) String() string {
