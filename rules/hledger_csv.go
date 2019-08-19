@@ -43,7 +43,8 @@ func validateConditions(conditions []string) (cleanedConditions []string, re *re
 		}
 	}
 	if len(cleanedConditions) == 0 {
-		return nil, nil, errors.New("At least one condition is required")
+		pattern, err := regexp.Compile("")
+		return nil, pattern, err
 	}
 	pattern, err := regexp.Compile("(?i)" + strings.Join(cleanedConditions, "|"))
 	return cleanedConditions, pattern, err
