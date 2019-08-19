@@ -58,6 +58,12 @@ export default function Accounts({ match }) {
             <Row>
               <Col><h2>Accounts</h2></Col>
             </Row>
+            <Row>
+              <Col>
+                <p>Add a new Direct Connect account to automatically download transactions directly from your institution.</p>
+                <p>Alternatively, import an OFX or QFX file downloaded from your institution.</p>
+              </Col>
+            </Row>
             {accounts.map(a =>
               <Row key={a.ID}>
                 <Col>{a.Description}</Col>
