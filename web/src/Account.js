@@ -1,5 +1,7 @@
 import './Account.css';
+import Accordion from 'react-bootstrap/Accordion';
 import Button from 'react-bootstrap/Button';
+import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
@@ -128,6 +130,7 @@ export default function Account(props) {
         >
         <Form.Group>
           <Row>
+            <Form.Label column sm={labelWidth}>Account Description</Form.Label>
             <Col><Form.Control id={makeID("description")} type="text" defaultValue={account ? account.Description : null} {...formControlDefaults} required /></Col>
           </Row>
           <Form.Group controlId={makeID("id")} as={Row}>
@@ -226,33 +229,46 @@ export default function Account(props) {
         </Form.Group>
 
         <Form.Group>
-          <Form.Group controlId={makeID("institutionClientID")} as={Row}>
-            <Form.Label column sm={labelWidth}>Client ID</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.Institution.ClientID : null} {...formControlDefaults} placeholder="Optional" />
-            </Col>
-          </Form.Group>
+          <Accordion>
+            <Card>
+              <Card.Header>
+                <Accordion.Toggle as={Button} variant="link" eventKey="0">
+                  Advanced Options
+                </Accordion.Toggle>
+              </Card.Header>
+              <Accordion.Collapse eventKey="0">
+                <Card.Body>
+                  <Form.Group controlId={makeID("institutionClientID")} as={Row}>
+                    <Form.Label column sm={labelWidth}>Client ID</Form.Label>
+                    <Col sm={inputWidth}>
+                      <Form.Control type="text" defaultValue={account ? account.Institution.ClientID : null} {...formControlDefaults} placeholder="Optional" />
+                    </Col>
+                  </Form.Group>
 
-          <Form.Group controlId={makeID("institutionAppID")} as={Row}>
-            <Form.Label column sm={labelWidth}>Client App ID</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.Institution.AppID : null} placeholder="QWIN" {...formControlDefaults} required />
-            </Col>
-          </Form.Group>
+                  <Form.Group controlId={makeID("institutionAppID")} as={Row}>
+                    <Form.Label column sm={labelWidth}>Client App ID</Form.Label>
+                    <Col sm={inputWidth}>
+                      <Form.Control type="text" defaultValue={account ? account.Institution.AppID : "QWIN"} placeholder="QWIN" {...formControlDefaults} required />
+                    </Col>
+                  </Form.Group>
 
-          <Form.Group controlId={makeID("institutionAppVersion")} as={Row}>
-            <Form.Label column sm={labelWidth}>Client Version</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.Institution.AppVersion : null} placeholder="2500" {...formControlDefaults} required />
-            </Col>
-          </Form.Group>
+                  <Form.Group controlId={makeID("institutionAppVersion")} as={Row}>
+                    <Form.Label column sm={labelWidth}>Client Version</Form.Label>
+                    <Col sm={inputWidth}>
+                      <Form.Control type="text" defaultValue={account ? account.Institution.AppVersion : "2500"} placeholder="2500" {...formControlDefaults} required />
+                    </Col>
+                  </Form.Group>
 
-          <Form.Group controlId={makeID("institutionOFXVersion")} as={Row}>
-            <Form.Label column sm={labelWidth}>OFX Version</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.Institution.OFXVersion : null} placeholder="102" {...formControlDefaults} required />
-            </Col>
-          </Form.Group>
+                  <Form.Group controlId={makeID("institutionOFXVersion")} as={Row}>
+                    <Form.Label column sm={labelWidth}>OFX Version</Form.Label>
+                    <Col sm={inputWidth}>
+                      <Form.Control type="text" defaultValue={account ? account.Institution.OFXVersion : "102"} placeholder="102" {...formControlDefaults} required />
+                    </Col>
+                  </Form.Group>
+                </Card.Body>
+              </Accordion.Collapse>
+            </Card>
+          </Accordion>
         </Form.Group>
 
         <Form.Row className="account-test">
