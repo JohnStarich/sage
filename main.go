@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"syscall"
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
@@ -158,7 +157,7 @@ func main() {
 		for {
 			s := <-c
 			switch s {
-			case os.Interrupt, syscall.SIGTERM, syscall.SIGUSR2:
+			case os.Interrupt:
 				sync.Shutdown(0)
 			case os.Kill:
 				sync.Shutdown(1)
