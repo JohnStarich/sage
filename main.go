@@ -163,7 +163,7 @@ func main() {
 			case os.Kill:
 				sync.Shutdown(1)
 			default:
-				fmt.Println(`{"level":"info","msg":"Handling signal ` + s.String() + `"}`)
+				fmt.Println(`{"level":"info","msg":"Handling signal: ` + s.String() + `"}`)
 			}
 		}
 	}()
