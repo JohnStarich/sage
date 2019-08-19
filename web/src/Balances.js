@@ -55,7 +55,7 @@ export default function Balances({ syncTime }) {
           <tr><th>Account</th><th>Balance</th></tr>
           {accounts.length !== 0 ? null :
             <tr>
-              <td><Link to="/accounts/new" className="btn btn-outline-primary">Add your first account</Link></td>
+              <td><Link to="/accounts" className="btn btn-outline-primary">Add your first account</Link></td>
               <td></td>
             </tr>
           }
