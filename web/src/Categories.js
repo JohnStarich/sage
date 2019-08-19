@@ -45,7 +45,7 @@ const columns = [
       return true
     },
     editor: {
-      placeholder: 'expenses:Shopping:Food and Restaurants',
+      placeholder: 'expenses:Shopping:Food:Restaurants',
     },
     formatter: cell => {
       if (!cell) {

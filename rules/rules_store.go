@@ -32,8 +32,12 @@ func (s *Store) Apply(txn *ledger.Transaction) {
 	s.rules.Apply(txn)
 }
 
-// ApplyAll transforms the given transactions based on the current rules
+// ApplyAll transforms the given transactions based on the current rules and the default rules.
+// Custom rules take precedence to default rules.
 func (s *Store) ApplyAll(txns []ledger.Transaction) {
+	for i := range txns {
+		Default.Apply(&txns[i])
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for i := range txns {
