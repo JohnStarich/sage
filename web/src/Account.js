@@ -137,6 +137,7 @@ export default function Account(props) {
             <Form.Label column sm={labelWidth}>Account ID</Form.Label>
             <Col sm={inputWidth}>
               <Form.Control type="text" defaultValue={account ? account.ID : null} {...formControlDefaults} required />
+              <p><em>credit card or bank account number</em></p>
             </Col>
           </Form.Group>
 
@@ -187,8 +188,9 @@ export default function Account(props) {
                 required={! account && ! (institutionURL && institutionURL.startsWith("http://"))}
                 {...formControlDefaults}
                 />
+              <p><em>If your normal password doesn't work, try a PIN instead.</em></p>
               <Form.Control.Feedback type="invalid">
-                A password is required when adding a new account
+                <p>A password is required when adding a new account</p>
               </Form.Control.Feedback>
             </Col>
           </Form.Group>
