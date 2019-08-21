@@ -1,10 +1,11 @@
-package client
+package directconnect
 
 import (
 	"strings"
 	"time"
 
 	"github.com/aclindsa/ofxgo"
+	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -22,17 +23,148 @@ var (
 	ErrAuthFailed = errors.New("Username or password is incorrect")
 )
 
-// Transactions downloads and returns transactions from a bank or credit card account for the given time period, ending today
-func Transactions(account Account, start, end time.Time) ([]ledger.Transaction, error) {
-	institution := account.Institution()
-	client, err := New(institution.URL(), institution.Config())
+// Connector downloads statements directly from an institution's OFX/QFX API
+type Connector interface {
+	model.Institution
+
+	URL() string
+	Username() string
+	Password() string
+	Config() Config
+}
+
+// Requestor can annotate an ofxgo.Request to fetch statements
+type Requestor interface {
+	Statement(req *ofxgo.Request, start, end time.Time) error
+}
+
+type directConnect struct {
+	model.BasicInstitution
+
+	ConnectorURL      string
+	ConnectorUsername string
+	ConnectorPassword string
+	ConnectorConfig   Config
+}
+
+// New creates an institution that can automatically download statements
+func New(
+	description,
+	fid,
+	org,
+	url,
+	username, password string,
+	config Config,
+) Connector {
+	return &directConnect{
+		BasicInstitution: model.BasicInstitution{
+			InstDescription: description,
+			InstFID:         fid,
+			InstOrg:         org,
+		},
+		ConnectorConfig:   config,
+		ConnectorPassword: password,
+		ConnectorURL:      url,
+		ConnectorUsername: username,
+	}
+}
+
+/*
+func newFromInterface(d Connector) *directConnect {
+	var pass *Password
+	if interfacePass := d.Password(); interfacePass != nil {
+		pass = NewPassword(interfacePass.passwordString())
+	}
+	return directConnect{
+		BasicInstitution: model.BasicInstitution{
+			Description: d.Description(),
+			FID:         d.InstitutionFID(),
+			Org:         d.InstitutionOrg(),
+		},
+		config:   d.Config(),
+		password: pass,
+		url:      d.URL(),
+		username: d.Username(),
+	}
+}
+*/
+
+func (d *directConnect) URL() string {
+	return d.ConnectorURL
+}
+
+func (d *directConnect) Username() string {
+	return d.ConnectorUsername
+}
+
+func (d *directConnect) Password() string {
+	return d.ConnectorPassword
+}
+
+func (d *directConnect) Config() Config {
+	return d.ConnectorConfig
+}
+
+/*
+type directConnectJSON struct {
+	Description string
+	FID         string
+	Org         string
+	URL         string
+	Username    string
+	Password    string
+	Config
+}
+
+func (d *directConnect) UnmarshalJSON(b []byte) error {
+	var direct directConnectJSON
+	if err := json.Unmarshal(b, &direct); err != nil {
+		return err
+	}
+	d.InstDescription = direct.Description
+	d.FID = direct.FID
+	d.Org = direct.Org
+	d.URL = direct.URL
+	d.Username = direct.Username
+	d.Password = NewPassword(direct.Password)
+	d.Config = direct.Config
+	return nil
+}
+
+func (d directConnect) prepMarshal() directConnectJSON {
+	return directConnectJSON{
+		Description: d.description,
+		FID:         d.fid,
+		Org:         d.org,
+		URL:         d.url,
+		Username:    d.username,
+		Config:      d.config,
+		// no password
+	}
+}
+
+func (d directConnect) MarshalJSON() ([]byte, error) {
+	return json.Marshal(d.prepMarshal())
+}
+
+func (d directConnect) MarshalWithPassword() ([]byte, error) {
+	data := d.prepMarshal()
+	data.Password = d.password.passwordString()
+	return json.Marshal(data)
+}
+*/
+
+// Statement downloads and returns transactions from a connector for the given time period
+func Statement(connector Connector, start, end time.Time, requestors []Requestor) ([]ledger.Transaction, error) {
+	client, err := newSimpleClient(connector.URL(), connector.Config())
 	if err != nil {
 		return nil, err
 	}
 
 	return fetchTransactions(
-		account,
+		connector,
 		start, end,
+		requestors,
 		// TODO it seems the ledger balance is nearly always the current balance, rather than the statement close. Restore this when a true closing balance can be found
 		//balanceTransactions,
 		client.Request,
@@ -41,29 +173,31 @@ func Transactions(account Account, start, end time.Time) ([]ledger.Transaction, 
 }
 
 func fetchTransactions(
-	account Account,
+	connector Connector,
 	start, end time.Time,
+	requestors []Requestor,
 	doRequest func(*ofxgo.Request) (*ofxgo.Response, error),
 	importTransactions func(*ofxgo.Response, transactionParser) ([]ledger.Transaction, error),
 ) ([]ledger.Transaction, error) {
-	query, err := account.Statement(start, end)
-	if err != nil {
-		return nil, err
+	var query ofxgo.Request
+	for _, r := range requestors {
+		if err := r.Statement(&query, start, end); err != nil {
+			return nil, err
+		}
 	}
 	if len(query.Bank) == 0 && len(query.CreditCard) == 0 {
 		return nil, errors.Errorf("Invalid statement query: does not contain any statement requests: %+v", query)
 	}
 
-	institution := account.Institution()
-	config := institution.Config()
+	config := connector.Config()
 
-	query.URL = institution.URL()
+	query.URL = connector.URL()
 	query.Signon = ofxgo.SignonRequest{
 		ClientUID: ofxgo.UID(config.ClientID),
-		Org:       ofxgo.String(institution.Org()),
-		Fid:       ofxgo.String(institution.FID()),
-		UserID:    ofxgo.String(institution.Username()),
-		UserPass:  ofxgo.String(*institution.Password().password),
+		Org:       ofxgo.String(connector.Org()),
+		Fid:       ofxgo.String(connector.FID()),
+		UserID:    ofxgo.String(connector.Username()),
+		UserPass:  ofxgo.String(connector.Password()),
 	}
 
 	response, err := doRequest(&query)
@@ -83,6 +217,14 @@ func fetchTransactions(
 	}
 
 	return importTransactions(response, parseTransaction)
+}
+
+// Verify attempts to sign in with the given account. Returns any encountered errors
+func Verify(connector Connector, requestor Requestor) error {
+	end := time.Now()
+	start := end.Add(-24 * time.Hour)
+	_, err := Statement(connector, start, end, []Requestor{requestor})
+	return err
 }
 
 // decToPtr makes a copy of d and returns a reference to it
@@ -184,12 +326,4 @@ func makeUniqueTxnID(fid, accountID string) func(txnID string) string {
 		id = strings.Replace(id, ":", "", -1)
 		return id
 	}
-}
-
-// Verify attempts to sign in with the given account. Returns any encountered errors
-func Verify(account Account) error {
-	end := time.Now()
-	start := end.Add(-24 * time.Hour)
-	_, err := Transactions(account, start, end)
-	return err
 }

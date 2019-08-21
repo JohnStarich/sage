@@ -1,4 +1,4 @@
-package client
+package password
 
 import (
 	"encoding/json"
@@ -12,7 +12,7 @@ var _ json.Marshaler = &Password{}
 var _ json.Unmarshaler = &Password{}
 
 func TestPasswordMarshalsToNothing(t *testing.T) {
-	result, err := json.Marshal(NewPassword("testing"))
+	result, err := json.Marshal(New("testing"))
 	require.NoError(t, err)
 	assert.Equal(t, "null", string(result))
 }
@@ -21,7 +21,7 @@ func TestPasswordUnmarshals(t *testing.T) {
 	var p Password
 	err := json.Unmarshal([]byte(`"hey there"`), &p)
 	require.NoError(t, err)
-	assert.Equal(t, NewPassword("hey there"), &p)
+	assert.Equal(t, New("hey there"), &p)
 
 	someStruct := struct {
 		Username string
@@ -31,11 +31,11 @@ func TestPasswordUnmarshals(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "username", someStruct.Username)
-	assert.Equal(t, NewPassword("password"), someStruct.Password)
+	assert.Equal(t, New("password"), someStruct.Password)
 }
 
 func TestPasswordSet(t *testing.T) {
-	p := NewPassword("some password")
-	p.Set(NewPassword("some other password"))
-	assert.Equal(t, NewPassword("some other password"), p)
+	p := New("some password")
+	p.Set(New("some other password"))
+	assert.Equal(t, New("some other password"), p)
 }

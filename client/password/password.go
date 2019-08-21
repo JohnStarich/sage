@@ -1,9 +1,9 @@
-package client
+package password
 
 import "encoding/json"
 
-// PasswordMarshaler includes a password in it's marshaled output of MarshalWithPassword
-type PasswordMarshaler interface {
+// Marshaler includes a password in it's marshaled output of MarshalWithPassword
+type Marshaler interface {
 	MarshalWithPassword() ([]byte, error)
 }
 
@@ -13,8 +13,8 @@ type Password struct {
 	password *string
 }
 
-// NewPassword returns a password set to s
-func NewPassword(s string) *Password {
+// New returns a password set to s
+func New(s string) *Password {
 	return &Password{password: &s}
 }
 
@@ -47,7 +47,7 @@ func (p *Password) IsEmpty() bool {
 }
 
 // passwordString must not be exported. Returns the real password as a string.
-func (p *Password) passwordString() string {
+func (p *Password) PasswordString() string {
 	if p.password == nil {
 		return ""
 	}

@@ -1,19 +1,20 @@
-package client
+package directconnect
 
 import (
 	"errors"
 	"testing"
 
 	"github.com/aclindsa/ofxgo"
+	"github.com/johnstarich/sage/client/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var _ PasswordMarshaler = &CreditCard{}
-
 func TestGenerateCCStatement(t *testing.T) {
 	someID := "some ID"
-	someInstitution := baseInstitution{description: "some institution"}
+	someInstitution := &directConnect{
+		BasicInstitution: model.BasicInstitution{InstDescription: "some institution"},
+	}
 	creditCard := NewCreditCard(someID, "some description", someInstitution).(*CreditCard)
 
 	for _, tc := range []struct {
@@ -39,7 +40,8 @@ func TestGenerateCCStatement(t *testing.T) {
 				}
 				return &uid, nil
 			}
-			req, err := generateCCStatement(creditCard, someStartTime, someEndTime, getUID)
+			var req ofxgo.Request
+			err := generateCCStatement(creditCard, &req, someStartTime, someEndTime, getUID)
 			if tc.expectErr {
 				assert.Error(t, err)
 				return
@@ -64,7 +66,8 @@ func TestGenerateCCStatement(t *testing.T) {
 }
 
 func TestCreditCardStatement(t *testing.T) {
-	req, err := (&CreditCard{}).Statement(someStartTime, someEndTime)
+	var req ofxgo.Request
+	err := (&CreditCard{directAccount: &directAccount{}}).Statement(&req, someStartTime, someEndTime)
 	require.NoError(t, err)
 	require.Len(t, req.CreditCard, 1)
 	assert.IsType(t, &ofxgo.CCStatementRequest{}, req.CreditCard[0])

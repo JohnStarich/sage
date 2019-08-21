@@ -1,11 +1,53 @@
-package client
+package model
 
 import (
-	"fmt"
+	"errors"
 	"strings"
-
-	"github.com/pkg/errors"
 )
+
+const (
+	// Ledger account types
+	AssetAccount     = "assets"
+	LiabilityAccount = "liabilities"
+	ExpenseAccount   = "expenses"
+	RevenueAccount   = "revenues"
+
+	// RedactSuffixLength the number of characters that remain unredacted at the end of a redacted string
+	RedactSuffixLength = 4
+	// RedactPrefixLength the number of stars at the end beginning of a redacted string
+	RedactPrefixLength = 4
+)
+
+// Account identifies an account at a financial institution
+type Account interface {
+	Description() string
+	ID() string
+	Institution() Institution
+	Type() string
+}
+
+type basicAccount struct {
+	AccountDescription string
+	AccountID          string
+	AccountType        string
+	BasicInstitution   BasicInstitution
+}
+
+func (b basicAccount) Institution() Institution {
+	return b.BasicInstitution
+}
+
+func (b basicAccount) ID() string {
+	return b.AccountID
+}
+
+func (b basicAccount) Description() string {
+	return b.AccountDescription
+}
+
+func (b basicAccount) Type() string {
+	return b.AccountType
+}
 
 // LedgerAccountFormat represents an account's structured name for a ledger account format
 type LedgerAccountFormat struct {
@@ -17,18 +59,8 @@ type LedgerAccountFormat struct {
 
 // LedgerFormat parses the account and returns a ledger account format
 func LedgerFormat(a Account) *LedgerAccountFormat {
-	var accountType string
-	switch a.(type) {
-	case *CreditCard:
-		accountType = LiabilityAccount
-	case Bank:
-		accountType = AssetAccount
-	default:
-		panic(fmt.Sprintf("Unknown account type: %T", a))
-	}
-
 	return &LedgerAccountFormat{
-		AccountType: accountType,
+		AccountType: a.Type(),
 		Institution: a.Institution().Org(),
 		AccountID:   a.ID(),
 	}
@@ -81,5 +113,5 @@ func redactPrefix(s string) string {
 	if len(s) > RedactSuffixLength {
 		suffix = s[len(s)-RedactSuffixLength:]
 	}
-	return strings.Repeat("*", redactPrefixLength) + suffix
+	return strings.Repeat("*", RedactPrefixLength) + suffix
 }

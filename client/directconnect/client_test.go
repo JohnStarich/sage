@@ -1,4 +1,4 @@
-package client
+package directconnect
 
 import (
 	"bytes"
@@ -46,7 +46,7 @@ func (r *recordCloser) Read(b []byte) (int, error) {
 func TestNew(t *testing.T) {
 	url := "URL"
 	config := Config{AppID: "app ID"}
-	client, err := New(url, config)
+	client, err := newSimpleClient(url, config)
 	require.NoError(t, err)
 	assert.Equal(t, config.AppID, string(client.ID()))
 }
@@ -135,7 +135,7 @@ func TestGetLoggerFromEnv(t *testing.T) {
 }
 
 func TestSageRequest(t *testing.T) {
-	c, err := New("url", Config{})
+	c, err := newSimpleClient("url", Config{})
 	require.NoError(t, err)
 	req := &ofxgo.Request{}
 	_, err = c.Request(req)
@@ -196,7 +196,7 @@ func TestRequest(t *testing.T) {
 }
 
 func TestRequestNoParse(t *testing.T) {
-	c, err := New("url", Config{})
+	c, err := newSimpleClient("url", Config{})
 	require.NoError(t, err)
 	req := &ofxgo.Request{}
 	_, err = c.RequestNoParse(req)

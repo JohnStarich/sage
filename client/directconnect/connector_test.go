@@ -1,4 +1,4 @@
-package client
+package directconnect
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aclindsa/ofxgo"
+	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -223,19 +224,12 @@ func assertEqualTransactions(t *testing.T, expected, actual ledger.Transaction) 
 }
 
 type mockAccount struct {
-	baseAccount
-	bankID    string
-	statement func(start, end time.Time) (ofxgo.Request, error)
+	*bankAccount
+	statement func(req *ofxgo.Request, start, end time.Time) error
 }
 
-var _ Bank = mockAccount{}
-
-func (m mockAccount) Statement(start, end time.Time) (ofxgo.Request, error) {
-	return m.statement(start, end)
-}
-
-func (m mockAccount) BankID() string {
-	return m.bankID
+func (m mockAccount) Statement(req *ofxgo.Request, start, end time.Time) error {
+	return m.statement(req, start, end)
 }
 
 func TestFetchTransactions(t *testing.T) {
@@ -293,26 +287,30 @@ func TestFetchTransactions(t *testing.T) {
 			}
 
 			account := mockAccount{
-				baseAccount: baseAccount{
-					institution: baseInstitution{
-						url:      "some URL",
-						fid:      "some FID",
-						org:      "some org",
-						username: "some username",
-						password: NewPassword("some password"),
-
-						config: Config{
-							ClientID: "some client ID",
+				bankAccount: &bankAccount{
+					directAccount: &directAccount{
+						DirectConnect: &directConnect{
+							ConnectorPassword: "some password",
+							ConnectorURL:      "some URL",
+							ConnectorUsername: "some username",
+							ConnectorConfig: Config{
+								ClientID: "some client ID",
+							},
+							BasicInstitution: model.BasicInstitution{
+								InstFID: "some FID",
+								InstOrg: "some org",
+							},
 						},
 					},
 				},
-				statement: func(start, end time.Time) (ofxgo.Request, error) {
+				statement: func(req *ofxgo.Request, start, end time.Time) error {
 					assert.Equal(t, tc.startTime, start)
 					assert.Equal(t, tc.endTime, end)
+					*req = ofxRequest
 					if tc.queryErr {
-						return ofxRequest, requestErr
+						return requestErr
 					}
-					return ofxRequest, nil
+					return nil
 				},
 			}
 			doRequest := func(req *ofxgo.Request) (*ofxgo.Response, error) {
@@ -347,9 +345,10 @@ func TestFetchTransactions(t *testing.T) {
 			}
 
 			txns, err := fetchTransactions(
-				account,
+				account.DirectConnect,
 				tc.startTime,
 				tc.endTime,
+				[]Requestor{account},
 				doRequest,
 				importTransactions,
 			)
@@ -459,6 +458,59 @@ func TestMakeUniqueTxnID(t *testing.T) {
 	} {
 		t.Run("", func(t *testing.T) {
 			assert.Equal(t, tc.expectedID, makeUniqueTxnID(tc.fid, tc.accountID)(tc.txnID))
+		})
+	}
+}
+
+func TestInstitution(t *testing.T) {
+	c := Config{AppID: "some app ID"}
+	i := New(
+		"Some important place",
+		"1234",
+		"some org",
+		"some URL",
+		"some user",
+		"some password",
+		c,
+	)
+
+	assert.Equal(t, "some URL", i.URL())
+	assert.Equal(t, "some org", i.Org())
+	assert.Equal(t, "1234", i.FID())
+	assert.Equal(t, "some user", i.Username())
+	assert.Equal(t, "some password", i.Password())
+	assert.Equal(t, "Some important place", i.Description())
+	assert.Equal(t, c, i.Config())
+}
+
+func TestLedgerAccountName(t *testing.T) {
+	for _, tc := range []struct {
+		description  string
+		account      Account
+		expectedName string
+	}{
+		{
+			description: "credit cards are liability accounts",
+			account: NewCreditCard(
+				"super cash back",
+				"some description",
+				&directConnect{BasicInstitution: model.BasicInstitution{InstOrg: "Some Credit Card Co"}},
+			),
+			expectedName: "liabilities:Some Credit Card Co:****back",
+		},
+		{
+			description: "banks are asset accounts",
+			account: NewSavingsAccount(
+				"blah account",
+				"routing no",
+				"blah account description",
+				&directConnect{BasicInstitution: model.BasicInstitution{InstOrg: "The Boring Bank"}},
+			),
+			expectedName: "assets:The Boring Bank:****ount",
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			assert.Equal(t, tc.expectedName, model.LedgerAccountName(tc.account))
 		})
 	}
 }

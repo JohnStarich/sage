@@ -1,4 +1,4 @@
-package client
+package directconnect
 
 import (
 	"bytes"
@@ -31,7 +31,7 @@ type sageClient struct {
 }
 
 // New creates a new ofxgo Client with the given connection info
-func New(url string, config Config) (ofxgo.Client, error) {
+func newSimpleClient(url string, config Config) (ofxgo.Client, error) {
 	return newClient(url, config, getLoggerFromEnv, getClient, getLimiterFromCache)
 }
 
@@ -73,7 +73,7 @@ func newClient(
 
 func getClient(url string, basicClient *ofxgo.BasicClient) (ofxgo.Client, error) {
 	if strings.HasPrefix(url, localhostPrefix) {
-		return NewLocalClient(url, basicClient)
+		return newLocalClient(url, basicClient)
 	}
 	return ofxgo.GetClient(url, basicClient), nil
 }

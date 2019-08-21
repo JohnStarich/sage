@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
+	"github.com/johnstarich/sage/client/directconnect"
+	"github.com/johnstarich/sage/client/model"
 	sageErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/sync"
@@ -15,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func validateAccount(account client.Account) sageErrors.Errors {
+func validateAccount(account model.Account) sageErrors.Errors {
 	var errs sageErrors.Errors
 	check := func(condition bool, msg string) bool {
 		if condition {
@@ -34,19 +36,21 @@ func validateAccount(account client.Account) sageErrors.Errors {
 	check(inst.Description() == "", "Institution description is required")
 	check(inst.FID() == "", "Institution FID is required")
 	check(inst.Org() == "", "Institution Org is required")
-	check(inst.URL() == "", "Institution URL is required")
-	check(inst.Username() == "", "Institution username is required")
 
 	switch impl := account.(type) {
-	case client.Bank:
+	case directconnect.Bank:
 		check(impl.BankID() == "", "Bank ID is required")
 	}
 
-	u, err := url.Parse(inst.URL())
-	if err != nil {
-		errs = append(errs, errors.Wrap(err, "Institution URL is malformed"))
-	} else {
-		check(u.Scheme != "https" && u.Hostname() != "localhost", "Institution URL is required to use HTTPS")
+	if connector, ok := inst.(directconnect.Connector); ok {
+		check(connector.URL() == "", "Institution URL is required")
+		check(connector.Username() == "", "Institution username is required")
+		u, err := url.Parse(connector.URL())
+		if err != nil {
+			errs = append(errs, errors.Wrap(err, "Institution URL is malformed"))
+		} else {
+			check(u.Scheme != "https" && u.Hostname() != "localhost", "Institution URL is required to use HTTPS")
+		}
 	}
 
 	return errs
@@ -65,12 +69,12 @@ func abortWithClientError(c *gin.Context, status int, err error) {
 	})
 }
 
-func readAndValidateAccount(r io.ReadCloser) (client.Account, error) {
+func readAndValidateAccount(r io.ReadCloser) (model.Account, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
-	account, err := client.UnmarshalBuiltinAccount(b)
+	account, err := directconnect.UnmarshalAccount(b)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +122,7 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore, l
 			return
 		}
 
-		if pass := account.Institution().Password(); pass.IsEmpty() {
+		if pass := account.Institution().Password(); pass == "" {
 			// if no password provided, use existing password
 			pass.Set(currentAccount.Institution().Password())
 		}

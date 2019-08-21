@@ -1,4 +1,4 @@
-package client
+package directconnect
 
 import (
 	"bytes"
@@ -20,23 +20,23 @@ var (
 	errBadLocalhost = errors.New("Refusing to send OFX request to localhost. URL must start with '" + localhostPrefix + "' and not contain a password")
 )
 
-// LocalClient enables insecure requests on localhost, provided that no passwords are involved
-type LocalClient struct {
+// localClient enables insecure requests on localhost, provided that no passwords are involved
+type localClient struct {
 	ofxgo.Client
 }
 
-// NewLocalClient returns a new LocalClient for the given URL and basic client
-func NewLocalClient(url string, client *ofxgo.BasicClient) (ofxgo.Client, error) {
+// newLocalClient returns a new localClient for the given URL and basic client
+func newLocalClient(url string, client *ofxgo.BasicClient) (ofxgo.Client, error) {
 	if !IsLocalhostTestURL(url) {
 		return nil, errBadLocalhost
 	}
-	return &LocalClient{
+	return &localClient{
 		Client: client,
 	}, nil
 }
 
 // RawRequest runs a raw request for the given URL and reader against localhost. Errors if the host isn't for localhost OR a password field is included.
-func (l *LocalClient) RawRequest(url string, r io.Reader) (*http.Response, error) {
+func (l *localClient) RawRequest(url string, r io.Reader) (*http.Response, error) {
 	if !IsLocalhostTestURL(url) {
 		return nil, errBadLocalhost
 	}
@@ -68,7 +68,7 @@ func IsLocalhostTestURL(urlStr string) bool {
 }
 
 // MarshalRequest implement the requestMarshaler interface to handle the special empty password case
-func (l *LocalClient) MarshalRequest(r *ofxgo.Request) (io.Reader, error) {
+func (l *localClient) MarshalRequest(r *ofxgo.Request) (io.Reader, error) {
 	r.SetClientFields(l)
 
 	const fakePassword = "something"
@@ -93,7 +93,7 @@ func (l *LocalClient) MarshalRequest(r *ofxgo.Request) (io.Reader, error) {
 }
 
 // RequestNoParse runs a raw request by marshalling the given request, returns the raw response
-func (l *LocalClient) RequestNoParse(r *ofxgo.Request) (*http.Response, error) {
+func (l *localClient) RequestNoParse(r *ofxgo.Request) (*http.Response, error) {
 	buf, err := l.MarshalRequest(r)
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (l *LocalClient) RequestNoParse(r *ofxgo.Request) (*http.Response, error) {
 }
 
 // Request runs the given request and parses the result
-func (l *LocalClient) Request(r *ofxgo.Request) (*ofxgo.Response, error) {
+func (l *localClient) Request(r *ofxgo.Request) (*ofxgo.Response, error) {
 	response, err := l.RequestNoParse(r)
 	if err != nil {
 		return nil, err

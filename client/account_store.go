@@ -7,23 +7,26 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/johnstarich/sage/client/directconnect"
+	"github.com/johnstarich/sage/client/model"
+	"github.com/johnstarich/sage/client/password"
 	"github.com/pkg/errors"
 )
 
 // AccountStore enables manipulation of accounts in memory
 type AccountStore struct {
-	accounts map[string]Account
+	accounts map[string]model.Account
 	mu       sync.RWMutex
 }
 
 // NewAccountStore creates an account store from the given accounts, must not contain duplicate account IDs
-func NewAccountStore(accounts []Account) (*AccountStore, error) {
+func NewAccountStore(accounts []model.Account) (*AccountStore, error) {
 	accountMap, err := newAccountsFromSlice(accounts)
 	return &AccountStore{accounts: accountMap}, err
 }
 
-func newAccountsFromSlice(accounts []Account) (map[string]Account, error) {
-	accountMap := make(map[string]Account)
+func newAccountsFromSlice(accounts []model.Account) (map[string]model.Account, error) {
+	accountMap := make(map[string]model.Account)
 	for _, account := range accounts {
 		id := account.ID()
 		if _, exists := accountMap[id]; exists {
@@ -46,7 +49,7 @@ func NewAccountStoreFromReader(r io.Reader) (*AccountStore, error) {
 }
 
 // Find returns the account with the given ID if it exists, otherwise found is false
-func (s *AccountStore) Find(id string) (account Account, found bool) {
+func (s *AccountStore) Find(id string) (account model.Account, found bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	account, found = s.accounts[id]
@@ -54,11 +57,11 @@ func (s *AccountStore) Find(id string) (account Account, found bool) {
 }
 
 // FindLedger returns the account with the given ledger account string if it exists, otherwise found is false
-func (s *AccountStore) FindLedger(format *LedgerAccountFormat) (account Account, found bool) {
+func (s *AccountStore) FindLedger(format *model.LedgerAccountFormat) (account model.Account, found bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, account := range s.accounts {
-		if format.Institution == account.Institution().Org() && len(format.AccountID) > redactPrefixLength && strings.HasSuffix(account.ID(), format.AccountID[redactPrefixLength:]) {
+		if format.Institution == account.Institution().Org() && len(format.AccountID) > model.RedactPrefixLength && strings.HasSuffix(account.ID(), format.AccountID[model.RedactPrefixLength:]) {
 			return account, true
 		}
 	}
@@ -66,7 +69,7 @@ func (s *AccountStore) FindLedger(format *LedgerAccountFormat) (account Account,
 }
 
 // Update replaces the account with a matching ID, fails if the account does not exist
-func (s *AccountStore) Update(id string, account Account) error {
+func (s *AccountStore) Update(id string, account model.Account) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.accounts[id]; !exists {
@@ -84,7 +87,7 @@ func (s *AccountStore) Update(id string, account Account) error {
 }
 
 // Add pushes a new account into the store, fails if the account ID is already in use
-func (s *AccountStore) Add(account Account) error {
+func (s *AccountStore) Add(account model.Account) error {
 	id := account.ID()
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -108,7 +111,7 @@ func (s *AccountStore) Remove(id string) error {
 
 // Iterate ranges over the accounts in the store, running f on each one until it returns false
 // Returns the last return value from f
-func (s *AccountStore) Iterate(f func(Account) (keepGoing bool)) bool {
+func (s *AccountStore) Iterate(f func(model.Account) (keepGoing bool)) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, account := range s.accounts {
@@ -125,9 +128,9 @@ func (s *AccountStore) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &rawAccounts); err != nil {
 		return err
 	}
-	var accounts []Account
+	var accounts []model.Account
 	for _, rawAccount := range rawAccounts {
-		account, err := UnmarshalBuiltinAccount(rawAccount)
+		account, err := directconnect.UnmarshalAccount(rawAccount)
 		if err != nil {
 			return err
 		}
@@ -158,7 +161,7 @@ func (s *AccountStore) marshalJSON(encodePasswords bool) ([]byte, error) {
 	for _, id := range accountIDs {
 		var data json.RawMessage
 		var err error
-		if impl, ok := s.accounts[id].(PasswordMarshaler); encodePasswords && ok {
+		if impl, ok := s.accounts[id].(password.Marshaler); encodePasswords && ok {
 			data, err = impl.MarshalWithPassword()
 		} else {
 			data, err = json.Marshal(s.accounts[id])

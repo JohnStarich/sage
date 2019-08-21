@@ -1,4 +1,4 @@
-package client
+package directconnect
 
 import (
 	"errors"
@@ -6,67 +6,42 @@ import (
 	"time"
 
 	"github.com/aclindsa/ofxgo"
+	"github.com/johnstarich/sage/client/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var _ PasswordMarshaler = Checking{}
-var _ PasswordMarshaler = Savings{}
+var _ Bank = &bankAccount{}
+var _ Requestor = &bankAccount{}
 
 var (
 	someEndTime   = time.Now()
 	someStartTime = someEndTime.Add(-5 * time.Minute)
 )
 
-func TestBankAccount(t *testing.T) {
-	assert.Equal(t, "some ID", bankAccount{bankID: "some ID"}.BankID())
-}
-
-func TestNewCheckingAccount(t *testing.T) {
-	someID := "some ID"
-	someRoutingNumber := "some routing number"
-	someDescription := "some description"
-	someInstitution := baseInstitution{description: "some institution"}
-	a := NewCheckingAccount(someID, someRoutingNumber, someDescription, someInstitution)
-	assert.IsType(t, Checking{}, a)
-	require.Implements(t, (*Bank)(nil), a)
-
-	assert.Equal(t, someRoutingNumber, a.(Bank).BankID())
-	assert.Equal(t, someInstitution, a.Institution())
-	assert.Equal(t, someID, a.ID())
-}
-
-func TestNewSavingsAccount(t *testing.T) {
-	someID := "some ID"
-	someRoutingNumber := "some routing number"
-	someDescription := "some description"
-	someInstitution := baseInstitution{description: "some institution"}
-	a := NewSavingsAccount(someID, someRoutingNumber, someDescription, someInstitution)
-	assert.IsType(t, Savings{}, a)
-	require.Implements(t, (*Bank)(nil), a)
-
-	assert.Equal(t, someRoutingNumber, a.(Bank).BankID())
-	assert.Equal(t, someInstitution, a.Institution())
-	assert.Equal(t, someID, a.ID())
-}
-
 func TestBankStatementFromAccountType(t *testing.T) {
-	b := bankAccount{}
-	_, err := b.statementFromAccountType(someStartTime, someEndTime, checkingType)
+	b := bankAccount{
+		AccountType:   checkingType,
+		directAccount: &directAccount{},
+	}
+	var req ofxgo.Request
+	err := b.Statement(&req, someStartTime, someEndTime)
 	require.NoError(t, err)
 }
 
-func TestGenerateBankStatement(t *testing.T) {
+func TestBankGenerateStatement(t *testing.T) {
 	someID := "some ID"
 	someRoutingNumber := "some routing number"
 	someDescription := "some description"
-	someInstitution := baseInstitution{description: "some institution"}
-	savings := NewSavingsAccount(someID, someRoutingNumber, someDescription, someInstitution).(Savings).bankAccount
-	checking := NewCheckingAccount(someID, someRoutingNumber, someDescription, someInstitution).(Checking).bankAccount
+	someInstitution := &directConnect{
+		BasicInstitution: model.BasicInstitution{InstDescription: "some institution"},
+	}
+	savings := NewSavingsAccount(someID, someRoutingNumber, someDescription, someInstitution).(*bankAccount)
+	checking := NewCheckingAccount(someID, someRoutingNumber, someDescription, someInstitution).(*bankAccount)
 
 	for _, tc := range []struct {
 		description         string
-		account             bankAccount
+		account             *bankAccount
 		inputAccountType    string
 		uidErr              bool
 		expectErr           bool
@@ -108,7 +83,8 @@ func TestGenerateBankStatement(t *testing.T) {
 				return &uid, nil
 			}
 
-			req, err := generateBankStatement(tc.account, someStartTime, someEndTime, tc.inputAccountType, getUID)
+			var req ofxgo.Request
+			err := generateBankStatement(tc.account, &req, someStartTime, someEndTime, tc.inputAccountType, getUID)
 			if tc.expectErr {
 				assert.Error(t, err)
 				return
@@ -122,7 +98,7 @@ func TestGenerateBankStatement(t *testing.T) {
 					&ofxgo.StatementRequest{
 						TrnUID: uid,
 						BankAcctFrom: ofxgo.BankAcct{
-							BankID:   ofxgo.String(tc.account.BankID()),
+							BankID:   ofxgo.String(tc.account.RoutingNumber),
 							AcctID:   ofxgo.String(tc.account.ID()),
 							AcctType: acctTypeEnum,
 						},
@@ -136,20 +112,16 @@ func TestGenerateBankStatement(t *testing.T) {
 	}
 }
 
-func TestCheckingStatement(t *testing.T) {
-	req, err := Checking{}.Statement(someStartTime, someEndTime)
+func TestBankStatement(t *testing.T) {
+	var req ofxgo.Request
+	b := bankAccount{
+		AccountType:   checkingType,
+		directAccount: &directAccount{},
+	}
+	err := b.Statement(&req, someStartTime, someEndTime)
 	require.NoError(t, err)
 	require.Len(t, req.Bank, 1)
 	require.IsType(t, &ofxgo.StatementRequest{}, req.Bank[0])
 	acctType := req.Bank[0].(*ofxgo.StatementRequest).BankAcctFrom.AcctType.String()
 	assert.Equal(t, checkingType, acctType)
-}
-
-func TestSavingsStatement(t *testing.T) {
-	req, err := Savings{}.Statement(someStartTime, someEndTime)
-	require.NoError(t, err)
-	require.Len(t, req.Bank, 1)
-	require.IsType(t, &ofxgo.StatementRequest{}, req.Bank[0])
-	acctType := req.Bank[0].(*ofxgo.StatementRequest).BankAcctFrom.AcctType.String()
-	assert.Equal(t, savingsType, acctType)
 }

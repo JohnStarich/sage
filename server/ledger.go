@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
+	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/sync"
@@ -114,7 +115,7 @@ type AccountMessage struct {
 	Message     string
 }
 
-type txnToAccountMap map[string]map[string]client.Account
+type txnToAccountMap map[string]map[string]model.Account
 
 // newAccountIDMap returns a mapping from an institution's description, then account ID suffix (without '*'s), and finally to the source account
 func newAccountIDMap(accountStore *client.AccountStore) txnToAccountMap {

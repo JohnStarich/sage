@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/johnstarich/sage/client"
+	"github.com/johnstarich/sage/client/directconnect"
+	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
 	"github.com/pkg/errors"
@@ -116,18 +118,29 @@ func LedgerFile(ldg *ledger.Ledger, fileName string) error {
 
 func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) ([]ledger.Transaction, error) {
 	return func(start, end time.Time) ([]ledger.Transaction, error) {
-		var txns []ledger.Transaction
-		var err error
-		accountStore.Iterate(func(account client.Account) bool {
-			var accountTxns []ledger.Transaction
-			accountTxns, err = client.Transactions(account, start, end)
-			if err != nil {
-				return false
-			}
-			txns = append(txns, accountTxns...)
+		instMap := make(map[model.Institution][]model.Account)
+		accountStore.Iterate(func(account model.Account) bool {
+			inst := account.Institution()
+			instMap[inst] = append(instMap[inst], account)
 			return true
 		})
-		return txns, err
+		var allTxns []ledger.Transaction
+		for inst, accounts := range instMap {
+			if connector, isConn := inst.(directconnect.Connector); isConn {
+				var requestors []directconnect.Requestor
+				for _, account := range accounts {
+					if requestor, isRequestor := account.(directconnect.Requestor); isRequestor {
+						requestors = append(requestors, requestor)
+					}
+				}
+				txns, err := directconnect.Statement(connector, start, end, requestors)
+				if err != nil {
+					return nil, err
+				}
+				allTxns = append(allTxns, txns...)
+			}
+		}
+		return allTxns, nil
 	}
 }
 

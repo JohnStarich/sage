@@ -1,9 +1,10 @@
-package client
+package directconnect
 
 import (
 	"io"
 
 	"github.com/aclindsa/ofxgo"
+	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/pkg/errors"
 )
@@ -23,17 +24,17 @@ func importTransactions(
 	for _, message := range messages {
 		var ofxTxns []ofxgo.Transaction
 		var currency string
-		account := LedgerAccountFormat{Institution: org}
+		account := model.LedgerAccountFormat{Institution: org}
 		switch statement := message.(type) {
 		case *ofxgo.CCStatementResponse:
-			account.AccountType = LiabilityAccount
+			account.AccountType = model.LiabilityAccount
 			account.AccountID = statement.CCAcctFrom.AcctID.String()
 			if statement.BankTranList != nil {
 				ofxTxns = statement.BankTranList.Transactions
 			}
 			currency = normalizeCurrency(statement.CurDef.String())
 		case *ofxgo.StatementResponse:
-			account.AccountType = AssetAccount
+			account.AccountType = model.AssetAccount
 			account.AccountID = statement.BankAcctFrom.AcctID.String()
 			if statement.BankTranList != nil {
 				ofxTxns = statement.BankTranList.Transactions
