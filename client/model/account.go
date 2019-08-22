@@ -6,6 +6,9 @@ import (
 )
 
 const (
+	// Uncategorized is used as the default account2 on an imported transaction
+	Uncategorized = "uncategorized"
+
 	// Ledger account types
 	AssetAccount     = "assets"
 	LiabilityAccount = "liabilities"

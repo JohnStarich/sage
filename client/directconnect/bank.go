@@ -1,15 +1,17 @@
 package directconnect
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
 	"github.com/aclindsa/ofxgo"
 	"github.com/johnstarich/sage/client/model"
+	sErrors "github.com/johnstarich/sage/errors"
 )
 
 type bankAccount struct {
-	*directAccount
+	directAccount
 	AccountType   string
 	RoutingNumber string
 }
@@ -40,7 +42,7 @@ func newBankAccount(accountType, id, bankID, description string, connector Conne
 	return &bankAccount{
 		AccountType:   strings.ToUpper(accountType),
 		RoutingNumber: bankID,
-		directAccount: &directAccount{
+		directAccount: directAccount{
 			AccountID:          id,
 			AccountDescription: description,
 			DirectConnect:      connector,
@@ -54,6 +56,14 @@ func (b *bankAccount) BankID() string {
 
 func (b *bankAccount) isBank() bool {
 	return b.RoutingNumber != ""
+}
+
+func (b *bankAccount) Validate() error {
+	var errs sErrors.Errors
+	errs.AddErr(b.directAccount.Validate())
+	errs.ErrIf(b.RoutingNumber == "", "Routing number must not be empty")
+	errs.ErrIf(b.AccountType != checkingType && b.AccountType != savingsType, "Account type must be %s or %s", checkingType, savingsType)
+	return errs.ErrOrNil()
 }
 
 // Statement implements Requestor
@@ -94,6 +104,21 @@ func generateBankStatement(
 
 func (b *bankAccount) Type() string {
 	return model.AssetAccount
+}
+
+func (b *bankAccount) UnmarshalJSON(data []byte) error {
+	var bank struct {
+		AccountType   string
+		RoutingNumber string
+	}
+
+	if err := json.Unmarshal(data, &bank); err != nil {
+		return err
+	}
+
+	b.AccountType = bank.AccountType
+	b.RoutingNumber = bank.RoutingNumber
+	return json.Unmarshal(data, &b.directAccount)
 }
 
 /*

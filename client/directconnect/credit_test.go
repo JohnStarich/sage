@@ -67,7 +67,7 @@ func TestGenerateCCStatement(t *testing.T) {
 
 func TestCreditCardStatement(t *testing.T) {
 	var req ofxgo.Request
-	err := (&CreditCard{directAccount: &directAccount{}}).Statement(&req, someStartTime, someEndTime)
+	err := (&CreditCard{}).Statement(&req, someStartTime, someEndTime)
 	require.NoError(t, err)
 	require.Len(t, req.CreditCard, 1)
 	assert.IsType(t, &ofxgo.CCStatementRequest{}, req.CreditCard[0])

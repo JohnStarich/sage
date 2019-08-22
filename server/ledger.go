@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
+	"github.com/johnstarich/sage/client/directconnect"
 	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
@@ -121,14 +122,14 @@ type txnToAccountMap map[string]map[string]model.Account
 func newAccountIDMap(accountStore *client.AccountStore) txnToAccountMap {
 	// inst name -> account ID suffix -> account
 	accountIDMap := make(txnToAccountMap)
-	accountStore.Iterate(func(clientAccount client.Account) bool {
+	accountStore.Iterate(func(clientAccount model.Account) bool {
 		instName := clientAccount.Institution().Org()
 		id := clientAccount.ID()
-		if len(id) > client.RedactSuffixLength {
-			id = id[len(id)-client.RedactSuffixLength:]
+		if len(id) > model.RedactSuffixLength {
+			id = id[len(id)-model.RedactSuffixLength:]
 		}
 		if accountIDMap[instName] == nil {
-			accountIDMap[instName] = make(map[string]client.Account)
+			accountIDMap[instName] = make(map[string]model.Account)
 		}
 		accountIDMap[instName][id] = clientAccount
 		return true
@@ -136,13 +137,13 @@ func newAccountIDMap(accountStore *client.AccountStore) txnToAccountMap {
 	return accountIDMap
 }
 
-func (t txnToAccountMap) Find(accountName string) (account client.Account, found bool) {
+func (t txnToAccountMap) Find(accountName string) (account model.Account, found bool) {
 	components := strings.Split(accountName, ":")
 	if len(components) == 0 {
 		return nil, false
 	}
 	accountType := components[0]
-	if accountType != client.AssetAccount && accountType != client.LiabilityAccount {
+	if accountType != model.AssetAccount && accountType != model.LiabilityAccount {
 		return nil, false
 	}
 	if len(components) < 3 {
@@ -152,8 +153,8 @@ func (t txnToAccountMap) Find(accountName string) (account client.Account, found
 	institutionName, accountID := components[1], strings.Join(components[2:], ":")
 
 	idSuffix := accountID
-	if len(idSuffix) > client.RedactSuffixLength {
-		idSuffix = idSuffix[len(idSuffix)-client.RedactSuffixLength:]
+	if len(idSuffix) > model.RedactSuffixLength {
+		idSuffix = idSuffix[len(idSuffix)-model.RedactSuffixLength:]
 	}
 	clientAccount, found := t[institutionName][idSuffix]
 	return clientAccount, found
@@ -171,8 +172,8 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 		accountTypes := map[string]bool{
 			// return assets and liabilities by default
 			// useful for a simple balance table
-			client.AssetAccount:     true,
-			client.LiabilityAccount: true,
+			model.AssetAccount:     true,
+			model.LiabilityAccount: true,
 		}
 		if accountTypesQueryArray := c.QueryArray(accountTypesQuery); len(accountTypesQueryArray) > 0 {
 			accountTypes = make(map[string]bool, len(accountTypesQueryArray))
@@ -202,7 +203,7 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 				Balances:       balances,
 			}
 
-			format, err := client.ParseLedgerFormat(accountName)
+			format, err := model.ParseLedgerFormat(accountName)
 			if err != nil || format.AccountType == "" {
 				continue
 			}
@@ -213,7 +214,7 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 
 			account.AccountType = format.AccountType
 			switch format.AccountType {
-			case client.AssetAccount, client.LiabilityAccount:
+			case model.AssetAccount, model.LiabilityAccount:
 				account.Account = format.Institution + " " + format.AccountID
 				account.Institution = format.Institution
 				if clientAccount, found := accountIDMap.Find(accountName); found {
@@ -227,16 +228,16 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 			resp.Accounts = append(resp.Accounts, account)
 		}
 
-		var accounts []client.Account
-		accountStore.Iterate(func(a client.Account) bool {
-			format := client.LedgerFormat(a)
+		var accounts []model.Account
+		accountStore.Iterate(func(a model.Account) bool {
+			format := model.LedgerFormat(a)
 			if len(accountTypes) == 0 || accountTypes[format.AccountType] {
 				accounts = append(accounts, a)
 			}
 			return true
 		})
 		for _, account := range accounts {
-			ledgerAccount := client.LedgerFormat(account)
+			ledgerAccount := model.LedgerFormat(account)
 			accountName := ledgerAccount.String()
 			if _, inBalances := balanceMap[accountName]; !inBalances {
 				resp.Accounts = append(resp.Accounts, AccountResponse{
@@ -260,7 +261,7 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 	}
 }
 
-func getOpeningBalanceMessages(ldg *ledger.Ledger, accounts []client.Account) []AccountMessage {
+func getOpeningBalanceMessages(ldg *ledger.Ledger, accounts []model.Account) []AccountMessage {
 	var messages []AccountMessage
 	var openingPostings []ledger.Posting
 	if openingBalances, ok := ldg.OpeningBalances(); ok {
@@ -273,7 +274,7 @@ func getOpeningBalanceMessages(ldg *ledger.Ledger, accounts []client.Account) []
 		}
 	}
 	for _, account := range accounts {
-		id := client.LedgerAccountName(account)
+		id := model.LedgerAccountName(account)
 		if !openingBalAccounts[id] {
 			messages = append(messages, AccountMessage{
 				AccountID:   id,
@@ -289,9 +290,9 @@ func getExpenseAndRevenueAccounts(ldg *ledger.Ledger, rulesStore *rules.Store) g
 	return func(c *gin.Context) {
 		_, _, balanceMap := ldg.Balances()
 		accounts := make(map[string]bool, len(balanceMap)+1)
-		accounts[client.Uncategorized] = true
+		accounts[model.Uncategorized] = true
 		for account := range balanceMap {
-			if strings.HasPrefix(account, client.ExpenseAccount+":") || strings.HasPrefix(account, client.RevenueAccount+":") {
+			if strings.HasPrefix(account, model.ExpenseAccount+":") || strings.HasPrefix(account, model.RevenueAccount+":") {
 				accounts[account] = true
 			}
 		}
@@ -350,7 +351,7 @@ func updateOpeningBalances(ledgerFileName string, ldg *ledger.Ledger, accountSto
 
 		var total decimal.Decimal
 		for _, p := range opening.Postings {
-			format, err := client.ParseLedgerFormat(p.Account)
+			format, err := model.ParseLedgerFormat(p.Account)
 			if err != nil || format.AccountType == "" {
 				abortWithClientError(c, http.StatusBadRequest, errors.Wrap(err, "Invalid ledger account ID"))
 				return
@@ -385,7 +386,7 @@ func updateOpeningBalances(ledgerFileName string, ldg *ledger.Ledger, accountSto
 
 func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		txns, err := client.ReadOFX(c.Request.Body)
+		txns, err := directconnect.ReadOFX(c.Request.Body)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return

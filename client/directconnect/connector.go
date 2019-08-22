@@ -12,9 +12,6 @@ import (
 )
 
 const (
-	// Uncategorized is used as the default account2 on an imported transaction
-	Uncategorized = "uncategorized"
-
 	ofxAuthFailed = 15500
 )
 
@@ -30,6 +27,7 @@ type Connector interface {
 	URL() string
 	Username() string
 	Password() string
+	SetPassword(string)
 	Config() Config
 }
 
@@ -99,6 +97,10 @@ func (d *directConnect) Username() string {
 
 func (d *directConnect) Password() string {
 	return d.ConnectorPassword
+}
+
+func (d *directConnect) SetPassword(password string) {
+	d.ConnectorPassword = password
 }
 
 func (d *directConnect) Config() Config {
@@ -273,7 +275,7 @@ func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeT
 				Tags:     map[string]string{"id": id},
 			},
 			{
-				Account:  Uncategorized,
+				Account:  model.Uncategorized,
 				Amount:   amount.Neg(),
 				Currency: currency,
 			},

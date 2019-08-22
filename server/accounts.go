@@ -122,9 +122,15 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore, l
 			return
 		}
 
-		if pass := account.Institution().Password(); pass == "" {
-			// if no password provided, use existing password
-			pass.Set(currentAccount.Institution().Password())
+		{
+			connector, ok := account.Institution().(directconnect.Connector)
+			currentConnector, currentOK := currentAccount.Institution().(directconnect.Connector)
+			if ok && currentOK {
+				if pass := connector.Password(); pass == "" {
+					// if no password provided, use existing password
+					connector.SetPassword(currentConnector.Password())
+				}
+			}
 		}
 
 		if err := accountStore.Update(accountID, account); err != nil {
@@ -132,8 +138,8 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore, l
 			return
 		}
 
-		oldAccountName := client.LedgerAccountName(currentAccount)
-		newAccountName := client.LedgerAccountName(account)
+		oldAccountName := model.LedgerAccountName(currentAccount)
+		newAccountName := model.LedgerAccountName(account)
 		// TODO handle condition where account store was updated but ledger rename failed?
 		if oldAccountName != newAccountName {
 			if err := ldg.UpdateAccount(oldAccountName, newAccountName); err != nil {
@@ -199,8 +205,18 @@ func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 			return
 		}
 
-		if err := client.Verify(account); err != nil {
-			if err == client.ErrAuthFailed {
+		connector, isConn := account.Institution().(directconnect.Connector)
+		if !isConn {
+			abortWithClientError(c, http.StatusBadRequest, errors.New("Cannot verify account: no direct connect details"))
+			return
+		}
+		requestor, isReq := account.(directconnect.Requestor)
+		if !isReq {
+			abortWithClientError(c, http.StatusBadRequest, errors.Errorf("Cannot verify account: account is invalid type: %T", account))
+			return
+		}
+		if err := directconnect.Verify(connector, requestor); err != nil {
+			if err == directconnect.ErrAuthFailed {
 				abortWithClientError(c, http.StatusUnauthorized, err)
 				return
 			}
@@ -209,16 +225,24 @@ func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 		}
 
 		accountID := c.Param("id")
-		inst := account.Institution()
-		pass := account.Institution().Password()
-		if pass.IsEmpty() {
+		pass := connector.Password()
+		if pass == "" {
 			currentAccount, exists := accountStore.Find(accountID)
-			if !exists && !client.IsLocalhostTestURL(inst.URL()) {
-				abortWithClientError(c, http.StatusBadRequest, errors.New("Institution password is required"))
-				return
-			}
-			if exists {
-				pass.Set(currentAccount.Institution().Password())
+			errPasswordRequired := errors.New("Institution password is required")
+			isLocal := directconnect.IsLocalhostTestURL(connector.URL())
+			if !isLocal {
+				if !exists {
+					abortWithClientError(c, http.StatusBadRequest, errPasswordRequired)
+					return
+				}
+				currentConnector, isConn := currentAccount.Institution().(directconnect.Connector)
+				if isConn {
+					pass = currentConnector.Password()
+				}
+				if pass == "" {
+					abortWithClientError(c, http.StatusBadRequest, errPasswordRequired)
+					return
+				}
 			}
 		}
 

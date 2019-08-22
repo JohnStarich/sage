@@ -9,13 +9,13 @@ import (
 
 // CreditCard represents a credit card account
 type CreditCard struct {
-	*directAccount
+	directAccount
 }
 
 // NewCreditCard creates an account from credit card details
 func NewCreditCard(id, description string, connector Connector) Account {
 	return &CreditCard{
-		directAccount: &directAccount{
+		directAccount: directAccount{
 			AccountID:          id,
 			AccountDescription: description,
 			DirectConnect:      connector,

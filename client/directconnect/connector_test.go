@@ -288,7 +288,7 @@ func TestFetchTransactions(t *testing.T) {
 
 			account := mockAccount{
 				bankAccount: &bankAccount{
-					directAccount: &directAccount{
+					directAccount: directAccount{
 						DirectConnect: &directConnect{
 							ConnectorPassword: "some password",
 							ConnectorURL:      "some URL",
@@ -410,7 +410,7 @@ func TestParseTransaction(t *testing.T) {
 				Payee: "Some transaction",
 				Postings: []ledger.Posting{
 					{Account: "assets:Bank 1", Currency: usd, Amount: decimal.NewFromFloat(1.25)},
-					{Account: Uncategorized, Currency: usd, Amount: decimal.NewFromFloat(-1.25)},
+					{Account: model.Uncategorized, Currency: usd, Amount: decimal.NewFromFloat(-1.25)},
 				},
 			},
 		},
@@ -427,7 +427,7 @@ func TestParseTransaction(t *testing.T) {
 				Payee: "Hey there",
 				Postings: []ledger.Posting{
 					{Account: "assets:Bank 1", Currency: usd, Amount: decimal.NewFromFloat(1.25)},
-					{Account: Uncategorized, Currency: usd, Amount: decimal.NewFromFloat(-1.25)},
+					{Account: model.Uncategorized, Currency: usd, Amount: decimal.NewFromFloat(-1.25)},
 				},
 			},
 		},

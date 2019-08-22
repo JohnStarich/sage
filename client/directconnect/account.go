@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/johnstarich/sage/client/model"
+	sErrors "github.com/johnstarich/sage/errors"
 )
 
 // Account is a direct connect enabled account
@@ -31,6 +32,39 @@ func (d *directAccount) Description() string {
 // Institution implements model.Account
 func (d *directAccount) Institution() model.Institution {
 	return d.DirectConnect
+}
+
+func (d *directAccount) UnmarshalJSON(b []byte) error {
+	var account struct {
+		AccountID          string
+		AccountDescription string
+		DirectConnect      *json.RawMessage
+	}
+
+	if err := json.Unmarshal(b, &account); err != nil {
+		return err
+	}
+	d.AccountID = account.AccountID
+	d.AccountDescription = account.AccountDescription
+	if account.DirectConnect == nil {
+		return nil // defer validation to caller
+	}
+	var dc directConnect
+	if err := json.Unmarshal(*account.DirectConnect, &dc); err != nil {
+		return err
+	}
+	d.DirectConnect = &dc
+	return nil
+}
+
+func (d *directAccount) Validate() error {
+	var errs sErrors.Errors
+	if errs.ErrIf(d.DirectConnect == nil, "Direct connect must not be empty") {
+		errs.AddErr(Validate(d.DirectConnect))
+	}
+	errs.ErrIf(d.AccountID == "", "Account ID must not be empty")
+	errs.ErrIf(d.AccountDescription == "", "Account description must not be empty")
+	return errs.ErrOrNil()
 }
 
 /*
@@ -61,19 +95,35 @@ func (b directAccount) MarshalWithPassword() ([]byte, error) {
 }
 */
 
-// UnmarshalAccount attempts to unmarshal the given bytes into a known Direct Connect account type
+// Validate checks connector for invalid data
+func Validate(connector Connector) error {
+	var errs sErrors.Errors
+	errs.ErrIf(connector.Description() == "", "Institution description must not be empty")
+	errs.ErrIf(connector.FID() == "", "Institution FID must not be empty")
+	errs.ErrIf(connector.Org() == "", "Institution org must not be empty")
+	errs.ErrIf(connector.URL() == "", "Institution URL must not be empty")
+	errs.ErrIf(connector.Username() == "", "Institution username must not be empty")
+	errs.ErrIf(connector.Password() == "" && !IsLocalhostTestURL(connector.URL()), "Institution password must not be empty")
+	config := connector.Config()
+	errs.ErrIf(config.AppID == "", "Institution app ID must not be empty")
+	errs.ErrIf(config.AppVersion == "", "Institution app ID must not be empty")
+	errs.ErrIf(config.OFXVersion == "", "Institution OFX version must not be empty")
+	return errs.ErrOrNil()
+}
+
+// UnmarshalAccount attempts to unmarshal the given bytes into a known Direct Connect account type and validate it
 func UnmarshalAccount(b []byte) (Account, error) {
 	var maybeBank bankAccount
 	if err := json.Unmarshal(b, &maybeBank); err != nil {
 		return nil, err
 	}
 	if maybeBank.isBank() {
-		return &maybeBank, nil
+		return &maybeBank, maybeBank.Validate()
 	}
 
 	var creditCard CreditCard
 	if err := json.Unmarshal(b, &creditCard); err != nil {
 		return nil, err
 	}
-	return &creditCard, nil
+	return &creditCard, creditCard.Validate()
 }

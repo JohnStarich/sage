@@ -25,7 +25,7 @@ export default function Accounts({ match }) {
   const accountUpdated = (originalAccountID, account) => {
     let newAccounts = Array.from(accounts)
     for (let i in newAccounts) {
-      if (newAccounts[i].ID === originalAccountID) {
+      if (newAccounts[i].AccountID === originalAccountID) {
         newAccounts[i] = account
       }
     }
@@ -33,14 +33,14 @@ export default function Accounts({ match }) {
   }
 
   const deleteAccount = accountID => {
-    let account = accounts.find(a => a.ID === accountID)
-    if (!window.confirm(`Are you sure you want to delete your account '${account.Description}'?`)) {
+    let account = accounts.find(a => a.AccountID === accountID)
+    if (!window.confirm(`Are you sure you want to delete your account '${account.AccountDescription}'?`)) {
       return
     }
     axios.delete(`/api/v1/accounts/${accountID}`)
       .then(() =>
         setAccounts(
-          accounts.filter(a => a.ID !== accountID)))
+          accounts.filter(a => a.AccountID !== accountID)))
       .catch(e => {
         if (e.response.status !== 400) {
           throw e
@@ -65,11 +65,11 @@ export default function Accounts({ match }) {
               </Col>
             </Row>
             {accounts.map(a =>
-              <Row key={a.ID}>
-                <Col>{a.Description}</Col>
+              <Row key={a.AccountID}>
+                <Col>{a.AccountDescription}</Col>
                 <Col className="account-buttons">
-                  <Link to={`${match.url}/edit/${a.ID}`} className="btn btn-outline-secondary">Edit</Link>
-                  <Button variant="outline-danger" onClick={() => deleteAccount(a.ID)}>Delete</Button>
+                  <Link to={`${match.url}/edit/${a.AccountID}`} className="btn btn-outline-secondary">Edit</Link>
+                  <Button variant="outline-danger" onClick={() => deleteAccount(a.AccountID)}>Delete</Button>
                 </Col>
               </Row>
             )}
@@ -114,7 +114,7 @@ function AccountEditor({ updated, match }) {
 
   return (
     <>
-      <Crumb title={account ? account.Description : 'Loading...'} match={match} />
+      <Crumb title={account ? account.AccountDescription : 'Loading...'} match={match} />
       <Account account={account} editable updated={updated} />
     </>
   )
