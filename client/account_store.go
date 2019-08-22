@@ -171,7 +171,7 @@ func (s *AccountStore) marshalJSON(encodePasswords bool) ([]byte, error) {
 		}
 		accounts = append(accounts, data)
 	}
-	return json.Marshal(accounts)
+	return json.MarshalIndent(accounts, "", "    ")
 }
 
 // MarshalWithPassword marshals into a sorted list of accounts with their passwords. Only use this when persisting the accounts, never pass this back through an API call
