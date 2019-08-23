@@ -6,6 +6,7 @@ import (
 
 	"github.com/aclindsa/ofxgo"
 	"github.com/johnstarich/sage/client/model"
+	"github.com/johnstarich/sage/client/redactor"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -26,8 +27,8 @@ type Connector interface {
 
 	URL() string
 	Username() string
-	Password() string
-	SetPassword(string)
+	Password() redactor.String
+	SetPassword(redactor.String)
 	Config() Config
 }
 
@@ -41,7 +42,7 @@ type directConnect struct {
 
 	ConnectorURL      string
 	ConnectorUsername string
-	ConnectorPassword string
+	ConnectorPassword redactor.String `json:",omitempty"`
 	ConnectorConfig   Config
 }
 
@@ -61,31 +62,11 @@ func New(
 			InstOrg:         org,
 		},
 		ConnectorConfig:   config,
-		ConnectorPassword: password,
+		ConnectorPassword: redactor.String(password),
 		ConnectorURL:      url,
 		ConnectorUsername: username,
 	}
 }
-
-/*
-func newFromInterface(d Connector) *directConnect {
-	var pass *Password
-	if interfacePass := d.Password(); interfacePass != nil {
-		pass = NewPassword(interfacePass.passwordString())
-	}
-	return directConnect{
-		BasicInstitution: model.BasicInstitution{
-			Description: d.Description(),
-			FID:         d.InstitutionFID(),
-			Org:         d.InstitutionOrg(),
-		},
-		config:   d.Config(),
-		password: pass,
-		url:      d.URL(),
-		username: d.Username(),
-	}
-}
-*/
 
 func (d *directConnect) URL() string {
 	return d.ConnectorURL
@@ -95,66 +76,17 @@ func (d *directConnect) Username() string {
 	return d.ConnectorUsername
 }
 
-func (d *directConnect) Password() string {
+func (d *directConnect) Password() redactor.String {
 	return d.ConnectorPassword
 }
 
-func (d *directConnect) SetPassword(password string) {
+func (d *directConnect) SetPassword(password redactor.String) {
 	d.ConnectorPassword = password
 }
 
 func (d *directConnect) Config() Config {
 	return d.ConnectorConfig
 }
-
-/*
-type directConnectJSON struct {
-	Description string
-	FID         string
-	Org         string
-	URL         string
-	Username    string
-	Password    string
-	Config
-}
-
-func (d *directConnect) UnmarshalJSON(b []byte) error {
-	var direct directConnectJSON
-	if err := json.Unmarshal(b, &direct); err != nil {
-		return err
-	}
-	d.InstDescription = direct.Description
-	d.FID = direct.FID
-	d.Org = direct.Org
-	d.URL = direct.URL
-	d.Username = direct.Username
-	d.Password = NewPassword(direct.Password)
-	d.Config = direct.Config
-	return nil
-}
-
-func (d directConnect) prepMarshal() directConnectJSON {
-	return directConnectJSON{
-		Description: d.description,
-		FID:         d.fid,
-		Org:         d.org,
-		URL:         d.url,
-		Username:    d.username,
-		Config:      d.config,
-		// no password
-	}
-}
-
-func (d directConnect) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.prepMarshal())
-}
-
-func (d directConnect) MarshalWithPassword() ([]byte, error) {
-	data := d.prepMarshal()
-	data.Password = d.password.passwordString()
-	return json.Marshal(data)
-}
-*/
 
 // Statement downloads and returns transactions from a connector for the given time period
 func Statement(connector Connector, start, end time.Time, requestors []Requestor) ([]ledger.Transaction, error) {

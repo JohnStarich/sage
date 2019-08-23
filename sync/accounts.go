@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"io/ioutil"
 	"os"
 	"sync"
 
@@ -17,10 +16,14 @@ var (
 func Accounts(fileName string, accounts *client.AccountStore) error {
 	accountsMu.Lock()
 	defer accountsMu.Unlock()
-	b, err := accounts.MarshalWithPassword()
+	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0700)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(fileName, b, os.ModePerm)
-	return errors.Wrap(err, "Error writing account store to disk")
+	writeErr := accounts.WriteTo(file)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return errors.Wrap(err, "Error writing account store to disk")
+	}
+	return closeErr
 }

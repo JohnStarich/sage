@@ -67,34 +67,6 @@ func (d *directAccount) Validate() error {
 	return errs.ErrOrNil()
 }
 
-/*
-func (b directAccount) MarshalJSON() ([]byte, error) {
-	return b.marshalJSON(false)
-}
-
-func (b directAccount) marshalJSON(withPassword bool) ([]byte, error) {
-	var connector json.RawMessage
-	var err error
-	if withPassword {
-		connector, err = b.DirectConnect.MarshalWithPassword()
-	} else {
-		connector, err = json.Marshal(b.DirectConnect)
-	}
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(directAccount{
-		AccountID:          b.AccountID,
-		AccountDescription: b.AccountDescription,
-		DirectConnect:      &connector,
-	})
-}
-
-func (b directAccount) MarshalWithPassword() ([]byte, error) {
-	return b.marshalJSON(true)
-}
-*/
-
 // Validate checks connector for invalid data
 func Validate(connector Connector) error {
 	var errs sErrors.Errors

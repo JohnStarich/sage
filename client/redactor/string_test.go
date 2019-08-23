@@ -1,6 +1,7 @@
-package password
+package redactor
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
@@ -8,34 +9,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ json.Marshaler = &Password{}
-var _ json.Unmarshaler = &Password{}
-
 func TestPasswordMarshalsToNothing(t *testing.T) {
-	result, err := json.Marshal(New("testing"))
+	result, err := json.Marshal(String("testing"))
 	require.NoError(t, err)
 	assert.Equal(t, "null", string(result))
 }
 
+func TestPasswordMarshalsToSomething(t *testing.T) {
+	var buf bytes.Buffer
+	encoder := NewEncoder(&buf)
+	require.NoError(t, encoder.Encode(String("testing")))
+	assert.Contains(t, buf.String(), "testing")
+}
+
 func TestPasswordUnmarshals(t *testing.T) {
-	var p Password
+	var p String
 	err := json.Unmarshal([]byte(`"hey there"`), &p)
 	require.NoError(t, err)
-	assert.Equal(t, New("hey there"), &p)
+	assert.Equal(t, String("hey there"), p)
 
 	someStruct := struct {
 		Username string
-		Password *Password
+		Password String
 	}{}
 	err = json.Unmarshal([]byte(`{"Username":"username", "Password":"password"}`), &someStruct)
 	require.NoError(t, err)
 
 	assert.Equal(t, "username", someStruct.Username)
-	assert.Equal(t, New("password"), someStruct.Password)
-}
-
-func TestPasswordSet(t *testing.T) {
-	p := New("some password")
-	p.Set(New("some other password"))
-	assert.Equal(t, New("some other password"), p)
+	assert.Equal(t, String("password"), someStruct.Password)
 }

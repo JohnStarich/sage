@@ -9,7 +9,7 @@ import (
 
 	"github.com/johnstarich/sage/client/directconnect"
 	"github.com/johnstarich/sage/client/model"
-	"github.com/johnstarich/sage/client/password"
+	"github.com/johnstarich/sage/client/redactor"
 	"github.com/pkg/errors"
 )
 
@@ -146,10 +146,10 @@ func (s *AccountStore) UnmarshalJSON(b []byte) error {
 
 // MarshalJSON marshals into a sorted list of accounts
 func (s *AccountStore) MarshalJSON() ([]byte, error) {
-	return s.marshalJSON(false)
+	return json.Marshal(s.sortedAccounts())
 }
 
-func (s *AccountStore) marshalJSON(encodePasswords bool) ([]byte, error) {
+func (s *AccountStore) sortedAccounts() []model.Account {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	accountIDs := make([]string, 0, len(s.accounts))
@@ -157,24 +157,16 @@ func (s *AccountStore) marshalJSON(encodePasswords bool) ([]byte, error) {
 		accountIDs = append(accountIDs, id)
 	}
 	sort.Strings(accountIDs)
-	accounts := make([]json.RawMessage, 0, len(s.accounts))
+	accounts := make([]model.Account, 0, len(s.accounts))
 	for _, id := range accountIDs {
-		var data json.RawMessage
-		var err error
-		if impl, ok := s.accounts[id].(password.Marshaler); encodePasswords && ok {
-			data, err = impl.MarshalWithPassword()
-		} else {
-			data, err = json.Marshal(s.accounts[id])
-		}
-		if err != nil {
-			return nil, err
-		}
-		accounts = append(accounts, data)
+		accounts = append(accounts, s.accounts[id])
 	}
-	return json.MarshalIndent(accounts, "", "    ")
+	return accounts
 }
 
-// MarshalWithPassword marshals into a sorted list of accounts with their passwords. Only use this when persisting the accounts, never pass this back through an API call
-func (s *AccountStore) MarshalWithPassword() ([]byte, error) {
-	return s.marshalJSON(true)
+// WriteTo marshals into a sorted list of accounts with their passwords and writes to 'w'. Only use this when persisting the accounts, never pass this back through an API call
+func (s *AccountStore) WriteTo(w io.Writer) error {
+	encoder := redactor.NewEncoder(w)
+	encoder.SetIndent("", "    ")
+	return encoder.Encode(s.sortedAccounts())
 }

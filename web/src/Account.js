@@ -21,7 +21,7 @@ export default function Account(props) {
   const [verified, setVerified] = React.useState(null)
   const [testFeedback, setTestFeedback] = React.useState(null)
   const [institutionURL, setInstitutionURL] = React.useState(null)
-  const [directConnectEnabled, setDirectConnectEnabled] = React.useState(false)
+  const [directConnectEnabled, setDirectConnectEnabled] = React.useState(null)
 
   if (account === null) {
     // prop was defined but hasn't loaded
@@ -33,13 +33,12 @@ export default function Account(props) {
       setIsBank(account && account.RoutingNumber && account.RoutingNumber !== "")
       return null
     }
+    if (directConnectEnabled === null) {
+      setDirectConnectEnabled(!!account.DirectConnect)
+    }
     if (account.DirectConnect) {
-      if (!directConnectEnabled) {
-        //TODO
-        //setDirectConnectEnabled
-      }
       if (institutionURL === null) {
-        setInstitutionURL(account.DirectConnect ? account.DirectConnect.ConnectorURL : "")
+        setInstitutionURL(account.DirectConnect.ConnectorURL)
         return null
       }
     }
@@ -175,52 +174,7 @@ export default function Account(props) {
           }
         </Form.Group>
 
-        <RadioGroup
-          choices={['Yes', 'No']}
-          defaultChoice={isBank ? 'Yes' : 'No'}
-          label="Use Direct Connect?"
-          onSelect={choice => setDirectConnectEnabled(choice === 'Yes')}
-          smColumns={[labelWidth, inputWidth]}
-        />
-        {!directConnectEnabled ? null :
-          <Form.Group>
-            <Form.Group controlId={makeID("institutionUsername")} as={Row}>
-              <Form.Label column sm={labelWidth}>Username</Form.Label>
-              <Col sm={inputWidth}>
-                <Form.Control type="text" defaultValue={account ? account.DirectConnect.ConnectorUsername : null} {...formControlDefaults} required />
-                <Form.Control.Feedback type="invalid">
-                  Please choose a username.
-                </Form.Control.Feedback>
-              </Col>
-            </Form.Group>
-
-            <Form.Group controlId={makeID("institutionPassword")} as={Row}>
-              <Form.Label column sm={labelWidth}>Password</Form.Label>
-              <Col sm={inputWidth}>
-                <Form.Control
-                  type="text"
-                  placeholder="••••••••"
-                  required={!account && !(institutionURL && institutionURL.startsWith("http://"))}
-                  {...formControlDefaults}
-                />
-                <p><em>If your normal password doesn't work, try a PIN instead.</em></p>
-                <Form.Control.Feedback type="invalid">
-                  <p>A password is required when adding a new account</p>
-                </Form.Control.Feedback>
-              </Col>
-            </Form.Group>
-          </Form.Group>
-        }
-
         <Form.Group>
-          <p>To fill out these fields, look up your institution's details on <a href="https://www.ofxhome.com/index.php/home/directory" target="_blank" rel="noopener noreferrer">ofxhome.com</a></p>
-          <Form.Group controlId={makeID("institutionDescription")} as={Row}>
-            <Form.Label column sm={labelWidth}>Institution name</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.DirectConnect.InstDescription : null} {...formControlDefaults} required />
-            </Col>
-          </Form.Group>
-
           <Form.Group controlId={makeID("institutionFID")} as={Row}>
             <Form.Label column sm={labelWidth}>FID</Form.Label>
             <Col sm={inputWidth}>
@@ -234,16 +188,62 @@ export default function Account(props) {
               <Form.Control type="text" defaultValue={account ? account.DirectConnect.InstOrg : null} {...formControlDefaults} required />
             </Col>
           </Form.Group>
+        </Form.Group>
 
-          <Form.Group controlId={makeID("institutionURL")} as={Row}>
-            <Form.Label column sm={labelWidth}>URL</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="url" defaultValue={institutionURL} pattern="(https://|http://localhost).*" {...formControlDefaults} onChange={e => setInstitutionURL(e.target.value)} required />
-              <Form.Control.Feedback type="invalid">
-                Provide a valid URL. <code>https://</code> is required.
+        <Form.Group>
+          <RadioGroup
+            choices={['Yes', 'No']}
+            defaultChoice={directConnectEnabled ? 'Yes' : 'No'}
+            label="Use Direct Connect?"
+            onSelect={choice => setDirectConnectEnabled(choice === 'Yes')}
+            smColumns={[labelWidth, inputWidth]}
+          />
+          {!directConnectEnabled ? null :
+            <Form.Group>
+              <Form.Group controlId={makeID("institutionUsername")} as={Row}>
+                <Form.Label column sm={labelWidth}>Username</Form.Label>
+                <Col sm={inputWidth}>
+                  <Form.Control type="text" defaultValue={account ? account.DirectConnect.ConnectorUsername : null} {...formControlDefaults} required />
+                  <Form.Control.Feedback type="invalid">
+                    Please choose a username.
+                  </Form.Control.Feedback>
+                </Col>
+              </Form.Group>
+
+              <Form.Group controlId={makeID("institutionPassword")} as={Row}>
+                <Form.Label column sm={labelWidth}>Password</Form.Label>
+                <Col sm={inputWidth}>
+                  <Form.Control
+                    type="text"
+                    placeholder="••••••••"
+                    required={!account && !(institutionURL && institutionURL.startsWith("http://"))}
+                    {...formControlDefaults}
+                  />
+                  <p><em>If your normal password doesn't work, try a PIN instead.</em></p>
+                  <Form.Control.Feedback type="invalid">
+                    <p>A password is required when adding a new account</p>
+                  </Form.Control.Feedback>
+                </Col>
+              </Form.Group>
+
+              <p>To fill out these fields, look up your institution's details on <a href="https://www.ofxhome.com/index.php/home/directory" target="_blank" rel="noopener noreferrer">ofxhome.com</a></p>
+              <Form.Group controlId={makeID("institutionDescription")} as={Row}>
+                <Form.Label column sm={labelWidth}>Institution name</Form.Label>
+                <Col sm={inputWidth}>
+                  <Form.Control type="text" defaultValue={account ? account.DirectConnect.InstDescription : null} {...formControlDefaults} required />
+                </Col>
+              </Form.Group>
+              <Form.Group controlId={makeID("institutionURL")} as={Row}>
+                <Form.Label column sm={labelWidth}>URL</Form.Label>
+                <Col sm={inputWidth}>
+                  <Form.Control type="url" defaultValue={institutionURL} pattern="(https://|http://localhost).*" {...formControlDefaults} onChange={e => setInstitutionURL(e.target.value)} required />
+                  <Form.Control.Feedback type="invalid">
+                    Provide a valid URL. <code>https://</code> is required.
               </Form.Control.Feedback>
-            </Col>
-          </Form.Group>
+                </Col>
+              </Form.Group>
+            </Form.Group>
+          }
         </Form.Group>
 
         <Form.Group>
@@ -324,8 +324,8 @@ function accountFromForm(originalAccountID, form) {
     return null
   }
   return {
-    ID: valueFromID("id"),
-    Description: valueFromID("description"),
+    AccountID: valueFromID("id"),
+    AccountDescription: valueFromID("description"),
     RoutingNumber: valueFromID("routingNumber"),
     AccountType: valueFromName("accountType"),
     DirectConnect: {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/aclindsa/ofxgo"
 	"github.com/johnstarich/sage/client/model"
+	"github.com/johnstarich/sage/client/redactor"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -478,7 +479,7 @@ func TestInstitution(t *testing.T) {
 	assert.Equal(t, "some org", i.Org())
 	assert.Equal(t, "1234", i.FID())
 	assert.Equal(t, "some user", i.Username())
-	assert.Equal(t, "some password", i.Password())
+	assert.Equal(t, redactor.String("some password"), i.Password())
 	assert.Equal(t, "Some important place", i.Description())
 	assert.Equal(t, c, i.Config())
 }
