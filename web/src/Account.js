@@ -392,5 +392,5 @@ function updateAccount(originalAccountID, account) {
 }
 
 function verifyAccount(account) {
-  return axios.post(`/api/v1/accounts/${account.ID}/verify`, account)
+  return axios.post(`/api/v1/accounts/${account.AccountID}/verify`, account)
 }
