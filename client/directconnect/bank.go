@@ -7,17 +7,19 @@ import (
 
 	"github.com/aclindsa/ofxgo"
 	"github.com/johnstarich/sage/client/model"
-	sErrors "github.com/johnstarich/sage/errors"
 )
 
 type accountType int
 
 const (
+	// CheckingType refers to a bank checking account
 	CheckingType accountType = iota + 1
+	// SavingsType refers to a bank savings account
 	SavingsType
 )
 
-func ParseAccountType(s string) accountType {
+// ParseAccountType parses s as a bank account type, like checking or savings
+func ParseAccountType(s string) accountType { // nolint - intentionally do not allow custom account types
 	switch strings.ToUpper(s) {
 	case CheckingType.String():
 		return CheckingType
@@ -80,15 +82,6 @@ func (b *bankAccount) BankID() string {
 
 func (b *bankAccount) isBank() bool {
 	return b.RoutingNumber != ""
-}
-
-func (b *bankAccount) Validate() error {
-	var errs sErrors.Errors
-	errs.AddErr(b.directAccount.Validate())
-	errs.ErrIf(b.RoutingNumber == "", "Routing number must not be empty")
-	kind := ParseAccountType(b.BankAccountType)
-	errs.ErrIf(kind != CheckingType && kind != SavingsType, "Account type must be %s or %s", CheckingType, SavingsType)
-	return errs.ErrOrNil()
 }
 
 // Statement implements Requestor

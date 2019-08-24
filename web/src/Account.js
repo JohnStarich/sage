@@ -30,7 +30,10 @@ export default function Account(props) {
   // account prop is either not set or has finished loading
   if (account) {
     if (isBank === null) {
-      setIsBank(account && account.RoutingNumber && account.RoutingNumber !== "")
+      setIsBank(account && (
+        (account.RoutingNumber && account.RoutingNumber !== "") ||
+        account.AccountType === "assets"
+      ))
       return null
     }
     if (directConnectEnabled === null) {
@@ -41,6 +44,11 @@ export default function Account(props) {
         setInstitutionURL(account.DirectConnect.ConnectorURL)
         return null
       }
+    }
+  } else {
+    // account is not set, this is for new accounts
+    if (directConnectEnabled === null) {
+      setDirectConnectEnabled(true)
     }
   }
 
@@ -62,6 +70,13 @@ export default function Account(props) {
     },
   }
 
+  const processErr = err => {
+      setTestFeedback((err.response.data && err.response.data.Error) || "An internal server error occurred")
+      if (!err.response.data || !err.response.data.Error) {
+        throw err
+      }
+  }
+
   const testClicked = () => {
     const form = document.getElementById(makeID("form"))
     if (form.checkValidity() === false) {
@@ -78,10 +93,7 @@ export default function Account(props) {
       .catch(e => {
         // this case should be impossible due to client-side validation
         setVerified(false)
-        setTestFeedback((e.response.data && e.response.data.Error) || "An internal server error occurred")
-        if (!e.response.data || !e.response.data.Error) {
-          throw e
-        }
+        processErr(e)
       })
   }
 
@@ -137,13 +149,7 @@ export default function Account(props) {
                   updated(id, newAccount)
                 }
               })
-              .catch(e => {
-                // this case should be impossible due to client-side validation
-                if (e.response.status !== 400) {
-                  throw e
-                }
-                alert(e.response.data.Error)
-              })
+              .catch(e => processErr(e))
           }
           setValidated(true)
         }}
@@ -154,7 +160,7 @@ export default function Account(props) {
             <Col><Form.Control id={makeID("description")} type="text" defaultValue={account ? account.AccountDescription : null} {...formControlDefaults} required /></Col>
           </Row>
           <RadioGroup
-            name="accountType"
+            name={makeID("accountType")}
             choices={['Bank', 'Credit Card']}
             defaultChoice={isBank ? 'Bank' : 'Credit Card'}
             label="Type of account?"
@@ -213,7 +219,7 @@ export default function Account(props) {
                   </Form.Group>
                   <RadioGroup
                     choices={['Checking', 'Savings']}
-                    defaultChoice={account ? account.AccountType : null}
+                    defaultChoice={account ? account.BankAccountType : null}
                     name={makeID("bankAccountType")}
                     label="Account type"
                     smColumns={[labelWidth, inputWidth]}
@@ -311,7 +317,7 @@ export default function Account(props) {
               {!testFeedback ? null :
                 <Col className="account-test-failed">
                   {testFeedback.trim().split("\n").map(line =>
-                    <>{line}<br /></>
+                    <span key={line}>{line}<br /></span>
                   )}
                 </Col>
               }

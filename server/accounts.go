@@ -1,54 +1,19 @@
 package server
 
 import (
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
 	"github.com/johnstarich/sage/client/directconnect"
 	"github.com/johnstarich/sage/client/model"
-	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/sync"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
-
-func validateAccount(account model.Account) error {
-	var errs sErrors.Errors
-	errs.ErrIf(account.ID() == "", "Account ID is required")
-	errs.ErrIf(account.Description() == "", "Account description is required")
-	inst := account.Institution()
-	if errs.ErrIf(inst == nil, "Institution is required") {
-		return errs
-	}
-
-	errs.ErrIf(inst.Description() == "", "Institution description is required")
-	errs.ErrIf(inst.FID() == "", "Institution FID is required")
-	errs.ErrIf(inst.Org() == "", "Institution Org is required")
-
-	switch impl := account.(type) {
-	case directconnect.Bank:
-		errs.ErrIf(impl.BankID() == "", "Bank ID is required")
-	}
-
-	if connector, ok := inst.(directconnect.Connector); ok {
-		errs.ErrIf(connector.URL() == "", "Institution URL is required")
-		errs.ErrIf(connector.Username() == "", "Institution username is required")
-		u, err := url.Parse(connector.URL())
-		if err != nil {
-			errs.AddErr(errors.Wrap(err, "Institution URL is malformed"))
-		} else {
-			errs.ErrIf(u.Scheme != "https" && u.Hostname() != "localhost", "Institution URL is required to use HTTPS")
-		}
-	}
-
-	return errs.ErrOrNil()
-}
 
 func abortWithClientError(c *gin.Context, status int, err error) {
 	logger := c.MustGet(loggerKey).(*zap.Logger)
@@ -63,40 +28,12 @@ func abortWithClientError(c *gin.Context, status int, err error) {
 	})
 }
 
-type institutionJSONDetector struct {
-	BasicInstitution *model.BasicInstitution
-	DirectConnect    *json.RawMessage
-}
-
 func readAndValidateAccount(r io.ReadCloser) (model.Account, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
-	var instDetector institutionJSONDetector
-	if err := json.Unmarshal(b, &instDetector); err != nil {
-		return nil, err
-	}
-	switch {
-	case instDetector.BasicInstitution != nil:
-		var account model.BasicAccount
-		if err := json.Unmarshal(b, &account); err != nil {
-			return nil, err
-		}
-		return &account, model.ValidateAccount(&account)
-	case instDetector.DirectConnect != nil:
-		account, err := directconnect.UnmarshalAccount(b)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := validateAccount(account); err != nil {
-			return nil, err
-		}
-		return account, nil
-	default:
-		return nil, errors.New("Unrecognized account type")
-	}
+	return client.UnmarshalAccount(b)
 }
 
 func getAccount(accountStore *client.AccountStore) gin.HandlerFunc {

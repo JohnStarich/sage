@@ -11,6 +11,7 @@ import (
 	"github.com/johnstarich/sage/client/directconnect"
 	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/client/redactor"
+	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/pkg/errors"
 )
 
@@ -205,6 +206,50 @@ func (s *AccountStore) Iterate(f func(model.Account) (keepGoing bool)) bool {
 	return true
 }
 
+// ValidateAccount checks account for invalid data, runs validation for direct connect too
+func ValidateAccount(account model.Account) error {
+	var errs sErrors.Errors
+	if dcAccount, ok := account.(directconnect.Account); ok {
+		errs.AddErr(directconnect.Validate(dcAccount))
+	} else {
+		errs.AddErr(model.ValidateAccount(account))
+	}
+	return errs.ErrOrNil()
+}
+
+type institutionDetector struct {
+	BasicInstitution *model.BasicInstitution
+	DirectConnect    *json.RawMessage
+}
+
+// UnmarshalAccount attempts to unmarshal JSON accounts from b and validate the result
+func UnmarshalAccount(b []byte) (model.Account, error) {
+	var instDetector institutionDetector
+	if err := json.Unmarshal(b, &instDetector); err != nil {
+		return nil, err
+	}
+	switch {
+	case instDetector.BasicInstitution != nil:
+		var account model.BasicAccount
+		if err := json.Unmarshal(b, &account); err != nil {
+			return nil, err
+		}
+		return &account, model.ValidateAccount(&account)
+	case instDetector.DirectConnect != nil:
+		account, err := directconnect.UnmarshalAccount(b)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := ValidateAccount(account); err != nil {
+			return nil, err
+		}
+		return account, nil
+	default:
+		return nil, errors.New("Unrecognized account type")
+	}
+}
+
 // UnmarshalJSON unmarshals from a list of accounts
 func (s *AccountStore) UnmarshalJSON(b []byte) error {
 	var rawAccounts []json.RawMessage
@@ -213,7 +258,7 @@ func (s *AccountStore) UnmarshalJSON(b []byte) error {
 	}
 	var accounts []model.Account
 	for _, rawAccount := range rawAccounts {
-		account, err := directconnect.UnmarshalAccount(rawAccount)
+		account, err := UnmarshalAccount(rawAccount)
 		if err != nil {
 			return err
 		}

@@ -2,10 +2,13 @@ package directconnect
 
 import (
 	"encoding/json"
+	"net/url"
 	"strings"
 
+	"github.com/aclindsa/ofxgo"
 	"github.com/johnstarich/sage/client/model"
 	sErrors "github.com/johnstarich/sage/errors"
+	"github.com/pkg/errors"
 )
 
 // Account is a direct connect enabled account
@@ -58,29 +61,51 @@ func (d *directAccount) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (d *directAccount) Validate() error {
+// Validate checks the direct connect account for invalid data
+func Validate(account Account) error {
 	var errs sErrors.Errors
-	errs.AddErr(model.ValidatePartialAccount(d))
-	errs.AddErr(Validate(d.DirectConnect))
-	errs.ErrIf(d.AccountID == "", "Account ID must not be empty")
-	errs.ErrIf(d.AccountDescription == "", "Account description must not be empty")
+	errs.AddErr(model.ValidateAccount(account))
+	if connector, ok := account.Institution().(Connector); ok {
+		errs.AddErr(validateConnector(connector))
+	}
+
+	switch impl := account.(type) {
+	case Bank:
+		errs.ErrIf(impl.BankID() == "", "Routing number must not be empty")
+	case *bankAccount:
+		errs.ErrIf(impl.BankID() == "", "Routing number must not be empty")
+		kind := ParseAccountType(impl.BankAccountType)
+		errs.ErrIf(kind != CheckingType && kind != SavingsType, "Account type must be %s or %s", CheckingType, SavingsType)
+	case *CreditCard:
+		// no additional validation required
+	}
+
 	return errs.ErrOrNil()
 }
 
-// Validate checks connector for invalid data
-func Validate(connector Connector) error {
+func validateConnector(connector Connector) error {
 	var errs sErrors.Errors
 	if errs.ErrIf(connector == nil, "Direct connect must not be empty") {
 		return errs.ErrOrNil()
 	}
 	errs.AddErr(model.ValidateInstitution(connector))
 	errs.ErrIf(connector.URL() == "", "Institution URL must not be empty")
+	u, err := url.Parse(connector.URL())
+	if err != nil {
+		errs.AddErr(errors.Wrap(err, "Institution URL is malformed"))
+	} else {
+		errs.ErrIf(u.Scheme != "https" && u.Hostname() != "localhost", "Institution URL is required to use HTTPS")
+	}
+
 	errs.ErrIf(connector.Username() == "", "Institution username must not be empty")
 	errs.ErrIf(connector.Password() == "" && !IsLocalhostTestURL(connector.URL()), "Institution password must not be empty")
 	config := connector.Config()
 	errs.ErrIf(config.AppID == "", "Institution app ID must not be empty")
 	errs.ErrIf(config.AppVersion == "", "Institution app ID must not be empty")
-	errs.ErrIf(config.OFXVersion == "", "Institution OFX version must not be empty")
+	if !errs.ErrIf(config.OFXVersion == "", "Institution OFX version must not be empty") {
+		_, err := ofxgo.NewOfxVersion(config.OFXVersion)
+		errs.AddErr(err)
+	}
 	return errs.ErrOrNil()
 }
 
@@ -92,12 +117,12 @@ func UnmarshalAccount(b []byte) (Account, error) {
 	}
 	if maybeBank.isBank() {
 		maybeBank.BankAccountType = strings.ToUpper(maybeBank.BankAccountType)
-		return &maybeBank, maybeBank.Validate()
+		return &maybeBank, Validate(&maybeBank)
 	}
 
 	var creditCard CreditCard
 	if err := json.Unmarshal(b, &creditCard); err != nil {
 		return nil, err
 	}
-	return &creditCard, creditCard.Validate()
+	return &creditCard, Validate(&creditCard)
 }
