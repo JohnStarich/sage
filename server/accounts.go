@@ -10,50 +10,43 @@ import (
 	"github.com/johnstarich/sage/client"
 	"github.com/johnstarich/sage/client/directconnect"
 	"github.com/johnstarich/sage/client/model"
-	sageErrors "github.com/johnstarich/sage/errors"
+	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/sync"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
-func validateAccount(account model.Account) sageErrors.Errors {
-	var errs sageErrors.Errors
-	check := func(condition bool, msg string) bool {
-		if condition {
-			errs = append(errs, errors.New(msg))
-		}
-		return condition
-	}
-
-	check(account.ID() == "", "Account ID is required")
-	check(account.Description() == "", "Account description is required")
+func validateAccount(account model.Account) error {
+	var errs sErrors.Errors
+	errs.ErrIf(account.ID() == "", "Account ID is required")
+	errs.ErrIf(account.Description() == "", "Account description is required")
 	inst := account.Institution()
-	if check(inst == nil, "Institution is required") {
+	if errs.ErrIf(inst == nil, "Institution is required") {
 		return errs
 	}
 
-	check(inst.Description() == "", "Institution description is required")
-	check(inst.FID() == "", "Institution FID is required")
-	check(inst.Org() == "", "Institution Org is required")
+	errs.ErrIf(inst.Description() == "", "Institution description is required")
+	errs.ErrIf(inst.FID() == "", "Institution FID is required")
+	errs.ErrIf(inst.Org() == "", "Institution Org is required")
 
 	switch impl := account.(type) {
 	case directconnect.Bank:
-		check(impl.BankID() == "", "Bank ID is required")
+		errs.ErrIf(impl.BankID() == "", "Bank ID is required")
 	}
 
 	if connector, ok := inst.(directconnect.Connector); ok {
-		check(connector.URL() == "", "Institution URL is required")
-		check(connector.Username() == "", "Institution username is required")
+		errs.ErrIf(connector.URL() == "", "Institution URL is required")
+		errs.ErrIf(connector.Username() == "", "Institution username is required")
 		u, err := url.Parse(connector.URL())
 		if err != nil {
-			errs = append(errs, errors.Wrap(err, "Institution URL is malformed"))
+			errs.AddErr(errors.Wrap(err, "Institution URL is malformed"))
 		} else {
-			check(u.Scheme != "https" && u.Hostname() != "localhost", "Institution URL is required to use HTTPS")
+			errs.ErrIf(u.Scheme != "https" && u.Hostname() != "localhost", "Institution URL is required to use HTTPS")
 		}
 	}
 
-	return errs
+	return errs.ErrOrNil()
 }
 
 func abortWithClientError(c *gin.Context, status int, err error) {
