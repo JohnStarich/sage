@@ -25,5 +25,5 @@ func Accounts(fileName string, accounts *client.AccountStore) error {
 	if writeErr != nil {
 		return errors.Wrap(err, "Error writing account store to disk")
 	}
-	return closeErr
+	return errors.Wrap(closeErr, "Error closing accounts file")
 }
