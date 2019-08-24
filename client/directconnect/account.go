@@ -2,6 +2,7 @@ package directconnect
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/johnstarich/sage/client/model"
 	sErrors "github.com/johnstarich/sage/errors"
@@ -90,6 +91,7 @@ func UnmarshalAccount(b []byte) (Account, error) {
 		return nil, err
 	}
 	if maybeBank.isBank() {
+		maybeBank.AccountType = strings.ToUpper(maybeBank.AccountType)
 		return &maybeBank, maybeBank.Validate()
 	}
 

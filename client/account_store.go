@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"sort"
 	"strings"
 	"sync"
@@ -37,15 +38,97 @@ func newAccountsFromSlice(accounts []model.Account) (map[string]model.Account, e
 	return accountMap, nil
 }
 
+type accountStoreContainer struct {
+	Version int
+	Data    json.RawMessage
+}
+
 // NewAccountStoreFromReader returns a new account store loaded from the provided JSON-encoded reader
 func NewAccountStoreFromReader(r io.Reader) (*AccountStore, error) {
-	decoder := json.NewDecoder(r)
-	if decoder.More() {
-		var accountStore AccountStore
-		err := decoder.Decode(&accountStore)
-		return &accountStore, err
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
 	}
-	return NewAccountStore(nil)
+	if len(data) == 0 {
+		return NewAccountStore(nil)
+	}
+	var container accountStoreContainer
+	if err := json.Unmarshal(data, &container); err != nil {
+		if _, ok := err.(*json.UnmarshalTypeError); !ok {
+			return nil, err
+		}
+	}
+
+	switch container.Version {
+	case 0:
+		return decodeAccountsV0(data)
+	case 1:
+		var store AccountStore
+		err := json.Unmarshal(container.Data, &store)
+		return &store, err
+	}
+	return nil, errors.Errorf("Unknown accounts file spec: version %d", container.Version)
+}
+
+func decodeAccountsV0(b []byte) (*AccountStore, error) {
+	type AccountV0 struct {
+		ID            string
+		Description   string
+		AccountType   string
+		RoutingNumber string
+		Institution   struct {
+			Description string
+			FID         string
+			Org         string
+			URL         string
+			Username    string
+			Password    string
+			ClientID    string
+			AppID       string
+			AppVersion  string
+			OFXVersion  string
+		}
+	}
+
+	var v0Accounts []AccountV0
+	if err := json.Unmarshal(b, &v0Accounts); err != nil {
+		return nil, err
+	}
+
+	var accounts []model.Account
+	for _, v0 := range v0Accounts {
+		var account model.Account
+		inst := directconnect.New(
+			v0.Institution.Description,
+			v0.Institution.FID,
+			v0.Institution.Org,
+			v0.Institution.URL,
+			v0.Institution.Username,
+			v0.Institution.Password,
+			directconnect.Config{
+				ClientID:   v0.Institution.ClientID,
+				AppID:      v0.Institution.AppID,
+				AppVersion: v0.Institution.AppVersion,
+				OFXVersion: v0.Institution.OFXVersion,
+			},
+		)
+		if v0.RoutingNumber != "" {
+			// bank account
+			switch directconnect.ParseAccountType(v0.AccountType) {
+			case directconnect.CheckingType:
+				account = directconnect.NewCheckingAccount(v0.ID, v0.RoutingNumber, v0.Description, inst)
+			case directconnect.SavingsType:
+				account = directconnect.NewSavingsAccount(v0.ID, v0.RoutingNumber, v0.Description, inst)
+			default:
+				return nil, errors.Errorf("Unrecognized bank account type: %s", v0.AccountType)
+			}
+		} else {
+			// credit card account
+			account = directconnect.NewCreditCard(v0.ID, v0.Description, inst)
+		}
+		accounts = append(accounts, account)
+	}
+	return NewAccountStore(accounts)
 }
 
 // Find returns the account with the given ID if it exists, otherwise found is false
@@ -164,9 +247,18 @@ func (s *AccountStore) sortedAccounts() []model.Account {
 	return accounts
 }
 
-// WriteTo marshals into a sorted list of accounts with their passwords and writes to 'w'. Only use this when persisting the accounts, never pass this back through an API call
+// WriteTo marshals into a sorted list of accounts with their passwords and writes to 'w'.
+// Only use this when persisting the accounts, never pass this back through an API call.
+// Writes the current file format version into the file to enable format upgrade.
 func (s *AccountStore) WriteTo(w io.Writer) error {
+	type accountStoreJSON struct {
+		Version int
+		Data    interface{}
+	}
 	encoder := redactor.NewEncoder(w)
 	encoder.SetIndent("", "    ")
-	return encoder.Encode(s.sortedAccounts())
+	return encoder.Encode(accountStoreJSON{
+		Version: 1,
+		Data:    s.sortedAccounts(),
+	})
 }

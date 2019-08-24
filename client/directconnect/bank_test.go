@@ -21,7 +21,7 @@ var (
 
 func TestBankStatementFromAccountType(t *testing.T) {
 	b := bankAccount{
-		AccountType:   checkingType,
+		AccountType:   CheckingType.String(),
 		directAccount: directAccount{},
 	}
 	var req ofxgo.Request
@@ -50,19 +50,19 @@ func TestBankGenerateStatement(t *testing.T) {
 		{
 			description:         "happy path savings",
 			account:             savings,
-			inputAccountType:    savingsType,
-			expectedAccountType: savingsType,
+			inputAccountType:    SavingsType.String(),
+			expectedAccountType: SavingsType.String(),
 		},
 		{
 			description:         "happy path checking",
 			account:             checking,
-			inputAccountType:    checkingType,
-			expectedAccountType: checkingType,
+			inputAccountType:    CheckingType.String(),
+			expectedAccountType: CheckingType.String(),
 		},
 		{
 			description:      "UID error",
 			account:          checking,
-			inputAccountType: checkingType,
+			inputAccountType: CheckingType.String(),
 			uidErr:           true,
 			expectErr:        true,
 		},
@@ -114,11 +114,11 @@ func TestBankGenerateStatement(t *testing.T) {
 
 func TestBankStatement(t *testing.T) {
 	var req ofxgo.Request
-	b := bankAccount{AccountType: checkingType}
+	b := bankAccount{AccountType: CheckingType.String()}
 	err := b.Statement(&req, someStartTime, someEndTime)
 	require.NoError(t, err)
 	require.Len(t, req.Bank, 1)
 	require.IsType(t, &ofxgo.StatementRequest{}, req.Bank[0])
 	acctType := req.Bank[0].(*ofxgo.StatementRequest).BankAcctFrom.AcctType.String()
-	assert.Equal(t, checkingType, acctType)
+	assert.Equal(t, CheckingType.String(), acctType)
 }

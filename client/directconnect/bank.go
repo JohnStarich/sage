@@ -10,6 +10,35 @@ import (
 	sErrors "github.com/johnstarich/sage/errors"
 )
 
+type accountType int
+
+const (
+	CheckingType accountType = iota + 1
+	SavingsType
+)
+
+func ParseAccountType(s string) accountType {
+	switch strings.ToUpper(s) {
+	case CheckingType.String():
+		return CheckingType
+	case SavingsType.String():
+		return SavingsType
+	default:
+		return 0
+	}
+}
+
+func (a accountType) String() string {
+	switch a {
+	case CheckingType:
+		return "CHECKING"
+	case SavingsType:
+		return "SAVINGS"
+	default:
+		return ""
+	}
+}
+
 type bankAccount struct {
 	directAccount
 	AccountType   string
@@ -23,24 +52,19 @@ type Bank interface {
 	BankID() string
 }
 
-const (
-	checkingType = "CHECKING"
-	savingsType  = "SAVINGS"
-)
-
 // NewCheckingAccount creates an account from checking details
 func NewCheckingAccount(id, bankID, description string, institution Connector) Account {
-	return newBankAccount(checkingType, id, bankID, description, institution)
+	return newBankAccount(CheckingType, id, bankID, description, institution)
 }
 
 // NewSavingsAccount creates an account from savings details
 func NewSavingsAccount(id, bankID, description string, institution Connector) Account {
-	return newBankAccount(savingsType, id, bankID, description, institution)
+	return newBankAccount(SavingsType, id, bankID, description, institution)
 }
 
-func newBankAccount(accountType, id, bankID, description string, connector Connector) Account {
+func newBankAccount(kind accountType, id, bankID, description string, connector Connector) Account {
 	return &bankAccount{
-		AccountType:   strings.ToUpper(accountType),
+		AccountType:   kind.String(),
 		RoutingNumber: bankID,
 		directAccount: directAccount{
 			AccountID:          id,
@@ -62,7 +86,8 @@ func (b *bankAccount) Validate() error {
 	var errs sErrors.Errors
 	errs.AddErr(b.directAccount.Validate())
 	errs.ErrIf(b.RoutingNumber == "", "Routing number must not be empty")
-	errs.ErrIf(b.AccountType != checkingType && b.AccountType != savingsType, "Account type must be %s or %s", checkingType, savingsType)
+	kind := ParseAccountType(b.AccountType)
+	errs.ErrIf(kind != CheckingType && kind != SavingsType, "Account type must be %s or %s", CheckingType, SavingsType)
 	return errs.ErrOrNil()
 }
 
