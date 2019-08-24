@@ -10,8 +10,8 @@ import (
 
 	"github.com/johnstarich/sage/client/direct"
 	"github.com/johnstarich/sage/client/model"
-	"github.com/johnstarich/sage/client/redactor"
 	sErrors "github.com/johnstarich/sage/errors"
+	"github.com/johnstarich/sage/redactor"
 	"github.com/pkg/errors"
 )
 

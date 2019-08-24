@@ -6,8 +6,8 @@ import (
 
 	"github.com/aclindsa/ofxgo"
 	"github.com/johnstarich/sage/client/model"
-	"github.com/johnstarich/sage/client/redactor"
 	"github.com/johnstarich/sage/ledger"
+	"github.com/johnstarich/sage/redactor"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 )

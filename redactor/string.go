@@ -45,7 +45,7 @@ func isRedacted() bool {
 	ok := true
 	for caller := 0; ok; caller++ { // start by skipping the current function
 		pc, _, _, ok = runtime.Caller(caller)
-		if ok && runtime.FuncForPC(pc).Name() == "github.com/johnstarich/sage/client/redactor.(*Encoder).Encode" {
+		if ok && runtime.FuncForPC(pc).Name() == "github.com/johnstarich/sage/redactor.(*Encoder).Encode" {
 			return false
 		}
 	}
