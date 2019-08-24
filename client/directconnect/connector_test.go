@@ -338,11 +338,11 @@ func TestFetchTransactions(t *testing.T) {
 			someTransactions := []ledger.Transaction{
 				{Comment: "some parsed txn"},
 			}
-			importTransactions := func(resp *ofxgo.Response, parser transactionParser) ([]ledger.Transaction, error) {
+			importTransactions := func(resp *ofxgo.Response, parser transactionParser) ([]model.Account, []ledger.Transaction, error) {
 				if tc.responseErr {
-					return nil, errors.New("some resp error")
+					return nil, nil, errors.New("some resp error")
 				}
-				return someTransactions, nil
+				return nil, someTransactions, nil
 			}
 
 			txns, err := fetchTransactions(

@@ -1,6 +1,7 @@
 package directconnect
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/aclindsa/ofxgo"
@@ -12,10 +13,10 @@ import (
 func importTransactions(
 	resp *ofxgo.Response,
 	parseTransaction transactionParser,
-) ([]ledger.Transaction, error) {
+) (skeletonAccounts []model.Account, allTxns []ledger.Transaction, importErr error) {
 	messages := append(resp.Bank, resp.CreditCard...)
 	if len(messages) == 0 {
-		return nil, errors.Errorf("No messages received")
+		return nil, nil, errors.Errorf("No messages received")
 	}
 	fid := resp.Signon.Fid.String()
 	org := resp.Signon.Org.String()
@@ -41,22 +42,33 @@ func importTransactions(
 			}
 			currency = normalizeCurrency(statement.CurDef.String())
 		default:
-			return nil, errors.Errorf("Invalid statement type: %T", message)
+			return nil, nil, errors.Errorf("Invalid statement type: %T", message)
 		}
 
 		for _, ofxTxn := range ofxTxns {
 			parsedTxn := parseTransaction(ofxTxn, currency, account.String(), makeUniqueTxnID(fid, account.AccountID))
 			txns = append(txns, parsedTxn)
 		}
+
+		skeletonAccounts = append(skeletonAccounts, &model.BasicAccount{
+			AccountDescription: fmt.Sprintf("%s - %s", org, account.AccountID),
+			AccountID:          account.AccountID,
+			AccountType:        account.AccountType,
+			BasicInstitution: model.BasicInstitution{
+				InstDescription: org,
+				InstFID:         fid,
+				InstOrg:         org,
+			},
+		})
 	}
-	return txns, nil
+	return skeletonAccounts, txns, nil
 }
 
 // ReadOFX reads r and parses it for an OFX file's transactions
-func ReadOFX(r io.Reader) ([]ledger.Transaction, error) {
+func ReadOFX(r io.Reader) ([]model.Account, []ledger.Transaction, error) {
 	resp, err := ofxgo.ParseResponse(r)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return importTransactions(resp, parseTransaction)
 }

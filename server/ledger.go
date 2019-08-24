@@ -384,9 +384,10 @@ func updateOpeningBalances(ledgerFileName string, ldg *ledger.Ledger, accountSto
 	}
 }
 
-func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
+func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountsFileName string, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		txns, err := directconnect.ReadOFX(c.Request.Body)
+		logger := c.MustGet(loggerKey).(*zap.Logger)
+		skeletonAccounts, txns, err := directconnect.ReadOFX(c.Request.Body)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
@@ -399,6 +400,21 @@ func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountStore *clie
 		if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
+		}
+
+		accountsAdded := 0
+		for _, account := range skeletonAccounts {
+			if err := accountStore.Add(account); err != nil {
+				logger.Warn("Failed to add bare-bones account from imported file", zap.String("error", err.Error()))
+			} else {
+				accountsAdded++
+			}
+		}
+		if accountsAdded > 0 {
+			if err := sync.Accounts(accountsFileName, accountStore); err != nil {
+				abortWithClientError(c, http.StatusInternalServerError, err)
+				return
+			}
 		}
 		c.Status(http.StatusNoContent)
 	}

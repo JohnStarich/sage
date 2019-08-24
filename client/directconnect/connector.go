@@ -111,7 +111,7 @@ func fetchTransactions(
 	start, end time.Time,
 	requestors []Requestor,
 	doRequest func(*ofxgo.Request) (*ofxgo.Response, error),
-	importTransactions func(*ofxgo.Response, transactionParser) ([]ledger.Transaction, error),
+	importTransactions func(*ofxgo.Response, transactionParser) ([]model.Account, []ledger.Transaction, error),
 ) ([]ledger.Transaction, error) {
 	var query ofxgo.Request
 	for _, r := range requestors {
@@ -150,7 +150,8 @@ func fetchTransactions(
 		return nil, errors.Errorf("Nonzero signon status (%d: %s) with message: %s", response.Signon.Status.Code, meaning, response.Signon.Status.Message)
 	}
 
-	return importTransactions(response, parseTransaction)
+	_, txns, err := importTransactions(response, parseTransaction)
+	return txns, err
 }
 
 // Verify attempts to sign in with the given account. Returns any encountered errors
