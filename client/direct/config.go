@@ -1,4 +1,4 @@
-package directconnect
+package direct
 
 // Config contains financial institution connection details
 type Config struct {

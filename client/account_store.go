@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/johnstarich/sage/client/directconnect"
+	"github.com/johnstarich/sage/client/direct"
 	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/client/redactor"
 	sErrors "github.com/johnstarich/sage/errors"
@@ -99,14 +99,14 @@ func decodeAccountsV0(b []byte) (*AccountStore, error) {
 	var accounts []model.Account
 	for _, v0 := range v0Accounts {
 		var account model.Account
-		inst := directconnect.New(
+		inst := direct.New(
 			v0.Institution.Description,
 			v0.Institution.FID,
 			v0.Institution.Org,
 			v0.Institution.URL,
 			v0.Institution.Username,
 			v0.Institution.Password,
-			directconnect.Config{
+			direct.Config{
 				ClientID:   v0.Institution.ClientID,
 				AppID:      v0.Institution.AppID,
 				AppVersion: v0.Institution.AppVersion,
@@ -115,17 +115,17 @@ func decodeAccountsV0(b []byte) (*AccountStore, error) {
 		)
 		if v0.RoutingNumber != "" {
 			// bank account
-			switch directconnect.ParseAccountType(v0.AccountType) {
-			case directconnect.CheckingType:
-				account = directconnect.NewCheckingAccount(v0.ID, v0.RoutingNumber, v0.Description, inst)
-			case directconnect.SavingsType:
-				account = directconnect.NewSavingsAccount(v0.ID, v0.RoutingNumber, v0.Description, inst)
+			switch direct.ParseAccountType(v0.AccountType) {
+			case direct.CheckingType:
+				account = direct.NewCheckingAccount(v0.ID, v0.RoutingNumber, v0.Description, inst)
+			case direct.SavingsType:
+				account = direct.NewSavingsAccount(v0.ID, v0.RoutingNumber, v0.Description, inst)
 			default:
 				return nil, errors.Errorf("Unrecognized bank account type: %s", v0.AccountType)
 			}
 		} else {
 			// credit card account
-			account = directconnect.NewCreditCard(v0.ID, v0.Description, inst)
+			account = direct.NewCreditCard(v0.ID, v0.Description, inst)
 		}
 		accounts = append(accounts, account)
 	}
@@ -209,8 +209,8 @@ func (s *AccountStore) Iterate(f func(model.Account) (keepGoing bool)) bool {
 // ValidateAccount checks account for invalid data, runs validation for direct connect too
 func ValidateAccount(account model.Account) error {
 	var errs sErrors.Errors
-	if dcAccount, ok := account.(directconnect.Account); ok {
-		errs.AddErr(directconnect.Validate(dcAccount))
+	if dcAccount, ok := account.(direct.Account); ok {
+		errs.AddErr(direct.Validate(dcAccount))
 	} else {
 		errs.AddErr(model.ValidateAccount(account))
 	}
@@ -236,7 +236,7 @@ func UnmarshalAccount(b []byte) (model.Account, error) {
 		}
 		return &account, model.ValidateAccount(&account)
 	case instDetector.DirectConnect != nil:
-		account, err := directconnect.UnmarshalAccount(b)
+		account, err := direct.UnmarshalAccount(b)
 		if err != nil {
 			return nil, err
 		}

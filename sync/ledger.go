@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/johnstarich/sage/client"
-	"github.com/johnstarich/sage/client/directconnect"
+	"github.com/johnstarich/sage/client/direct"
 	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
@@ -126,14 +126,14 @@ func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) 
 		})
 		var allTxns []ledger.Transaction
 		for inst, accounts := range instMap {
-			if connector, isConn := inst.(directconnect.Connector); isConn {
-				var requestors []directconnect.Requestor
+			if connector, isConn := inst.(direct.Connector); isConn {
+				var requestors []direct.Requestor
 				for _, account := range accounts {
-					if requestor, isRequestor := account.(directconnect.Requestor); isRequestor {
+					if requestor, isRequestor := account.(direct.Requestor); isRequestor {
 						requestors = append(requestors, requestor)
 					}
 				}
-				txns, err := directconnect.Statement(connector, start, end, requestors)
+				txns, err := direct.Statement(connector, start, end, requestors)
 				if err != nil {
 					return nil, err
 				}

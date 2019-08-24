@@ -1,4 +1,4 @@
-package directconnect
+package direct
 
 import (
 	"encoding/json"

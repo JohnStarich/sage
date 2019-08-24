@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
-	"github.com/johnstarich/sage/client/directconnect"
+	"github.com/johnstarich/sage/client/direct"
 	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/sync"
@@ -74,8 +74,8 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore, l
 		}
 
 		{
-			connector, ok := account.Institution().(directconnect.Connector)
-			currentConnector, currentOK := currentAccount.Institution().(directconnect.Connector)
+			connector, ok := account.Institution().(direct.Connector)
+			currentConnector, currentOK := currentAccount.Institution().(direct.Connector)
 			if ok && currentOK {
 				if pass := connector.Password(); pass == "" {
 					// if no password provided, use existing password
@@ -156,18 +156,18 @@ func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 			return
 		}
 
-		connector, isConn := account.Institution().(directconnect.Connector)
+		connector, isConn := account.Institution().(direct.Connector)
 		if !isConn {
 			abortWithClientError(c, http.StatusBadRequest, errors.New("Cannot verify account: no direct connect details"))
 			return
 		}
-		requestor, isReq := account.(directconnect.Requestor)
+		requestor, isReq := account.(direct.Requestor)
 		if !isReq {
 			abortWithClientError(c, http.StatusBadRequest, errors.Errorf("Cannot verify account: account is invalid type: %T", account))
 			return
 		}
-		if err := directconnect.Verify(connector, requestor); err != nil {
-			if err == directconnect.ErrAuthFailed {
+		if err := direct.Verify(connector, requestor); err != nil {
+			if err == direct.ErrAuthFailed {
 				abortWithClientError(c, http.StatusUnauthorized, err)
 				return
 			}
@@ -180,13 +180,13 @@ func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 		if pass == "" {
 			currentAccount, exists := accountStore.Find(accountID)
 			errPasswordRequired := errors.New("Institution password is required")
-			isLocal := directconnect.IsLocalhostTestURL(connector.URL())
+			isLocal := direct.IsLocalhostTestURL(connector.URL())
 			if !isLocal {
 				if !exists {
 					abortWithClientError(c, http.StatusBadRequest, errPasswordRequired)
 					return
 				}
-				currentConnector, isConn := currentAccount.Institution().(directconnect.Connector)
+				currentConnector, isConn := currentAccount.Institution().(direct.Connector)
 				if isConn {
 					pass = currentConnector.Password()
 				}
