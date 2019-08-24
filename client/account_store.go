@@ -288,10 +288,10 @@ func (s *AccountStore) sortedAccounts() []model.Account {
 	return accounts
 }
 
-// WriteTo marshals into a sorted list of accounts with their passwords and writes to 'w'.
+// Write marshals into a sorted list of accounts with their passwords and writes to 'w'.
 // Only use this when persisting the accounts, never pass this back through an API call.
 // Writes the current file format version into the file to enable format upgrade.
-func (s *AccountStore) WriteTo(w io.Writer) error {
+func (s *AccountStore) Write(w io.Writer) error {
 	type accountStoreJSON struct {
 		Version int
 		Data    interface{}

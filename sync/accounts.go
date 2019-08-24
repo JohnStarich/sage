@@ -20,7 +20,7 @@ func Accounts(fileName string, accounts *client.AccountStore) error {
 	if err != nil {
 		return err
 	}
-	writeErr := accounts.WriteTo(file)
+	writeErr := accounts.Write(file)
 	closeErr := file.Close()
 	if writeErr != nil {
 		return errors.Wrap(err, "Error writing account store to disk")

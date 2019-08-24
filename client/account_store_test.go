@@ -245,12 +245,10 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 			store, err := NewAccountStoreFromReader(strings.NewReader(tc.v0))
 			require.NoError(t, err, "Error type: %T", err)
 			var buf bytes.Buffer
-			store.WriteTo(&buf)
+			store.Write(&buf)
 			expected := strings.Replace(strings.TrimSpace(tc.v1), "\t", "    ", -1)
 			output := strings.TrimSpace(buf.String())
 			assert.Equal(t, expected, output)
 		})
 	}
 }
-
-// ,{"ID":"1234","Description":"Bro Card","Institution":{"Description":"Bro Cards for All","FID":"1234","Org":"BRO","URL":"http://localhost:8000/","Username":"brotato","Password":"","AppID":"QWIN","AppVersion":"2500","OFXVersion":"102"}}
