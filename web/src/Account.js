@@ -78,10 +78,10 @@ export default function Account(props) {
       .catch(e => {
         // this case should be impossible due to client-side validation
         setVerified(false)
+        setTestFeedback((e.response.data && e.response.data.Error) || "An internal server error occurred")
         if (!e.response.data || !e.response.data.Error) {
           throw e
         }
-        setTestFeedback(e.response.data.Error)
       })
   }
 
@@ -292,7 +292,11 @@ export default function Account(props) {
         <Form.Row className="account-test">
           <Col sm={labelWidth}>{testButton}</Col>
           {!testFeedback ? null :
-            <Col className="account-test-failed">{testFeedback}</Col>
+            <Col className="account-test-failed">
+              {testFeedback.trim().split("\n").map(line =>
+                <>{line}<br /></>
+              )}
+            </Col>
           }
         </Form.Row>
         &nbsp;
