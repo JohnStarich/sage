@@ -28,12 +28,25 @@ func abortWithClientError(c *gin.Context, status int, err error) {
 	})
 }
 
-func readAndValidateAccount(r io.ReadCloser) (model.Account, error) {
+func readAndValidateAccount(r io.ReadCloser, accountStore *client.AccountStore) (model.Account, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
-	return client.UnmarshalAccount(b)
+	account, err := client.UnmarshalAccount(b)
+	if err != nil {
+		return nil, err
+	}
+
+	if connector, ok := account.Institution().(direct.Connector); ok && connector.Password() == "" {
+		currentAccount, found := accountStore.Find(account.ID())
+		if currentConn, currentOK := currentAccount.Institution().(direct.Connector); found && currentOK {
+			connector.SetPassword(currentConn.Password())
+		}
+	}
+
+	err = client.ValidateAccount(account)
+	return account, err
 }
 
 func getAccount(accountStore *client.AccountStore) gin.HandlerFunc {
@@ -67,21 +80,10 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore, l
 			return
 		}
 
-		account, err := readAndValidateAccount(c.Request.Body)
+		account, err := readAndValidateAccount(c.Request.Body, accountStore)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
-		}
-
-		{
-			connector, ok := account.Institution().(direct.Connector)
-			currentConnector, currentOK := currentAccount.Institution().(direct.Connector)
-			if ok && currentOK {
-				if pass := connector.Password(); pass == "" {
-					// if no password provided, use existing password
-					connector.SetPassword(currentConnector.Password())
-				}
-			}
 		}
 
 		if err := accountStore.Update(accountID, account); err != nil {
@@ -112,7 +114,7 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore, l
 
 func addAccount(accountsFileName string, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		account, err := readAndValidateAccount(c.Request.Body)
+		account, err := readAndValidateAccount(c.Request.Body, accountStore)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
@@ -150,7 +152,7 @@ func removeAccount(accountsFileName string, accountStore *client.AccountStore) g
 
 func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		account, err := readAndValidateAccount(c.Request.Body)
+		account, err := readAndValidateAccount(c.Request.Body, accountStore)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return

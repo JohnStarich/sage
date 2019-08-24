@@ -109,7 +109,7 @@ func validateConnector(connector Connector) error {
 	return errs.ErrOrNil()
 }
 
-// UnmarshalAccount attempts to unmarshal the given bytes into a known Direct Connect account type and validate it
+// UnmarshalAccount attempts to unmarshal the given bytes into a known Direct Connect account type
 func UnmarshalAccount(b []byte) (Account, error) {
 	var maybeBank bankAccount
 	if err := json.Unmarshal(b, &maybeBank); err != nil {
@@ -117,12 +117,12 @@ func UnmarshalAccount(b []byte) (Account, error) {
 	}
 	if maybeBank.isBank() {
 		maybeBank.BankAccountType = strings.ToUpper(maybeBank.BankAccountType)
-		return &maybeBank, Validate(&maybeBank)
+		return &maybeBank, nil
 	}
 
 	var creditCard CreditCard
 	if err := json.Unmarshal(b, &creditCard); err != nil {
 		return nil, err
 	}
-	return &creditCard, Validate(&creditCard)
+	return &creditCard, nil
 }

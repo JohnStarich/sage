@@ -222,7 +222,7 @@ type institutionDetector struct {
 	DirectConnect    *json.RawMessage
 }
 
-// UnmarshalAccount attempts to unmarshal JSON accounts from b and validate the result
+// UnmarshalAccount attempts to unmarshal JSON accounts from b
 func UnmarshalAccount(b []byte) (model.Account, error) {
 	var instDetector institutionDetector
 	if err := json.Unmarshal(b, &instDetector); err != nil {
@@ -234,14 +234,10 @@ func UnmarshalAccount(b []byte) (model.Account, error) {
 		if err := json.Unmarshal(b, &account); err != nil {
 			return nil, err
 		}
-		return &account, model.ValidateAccount(&account)
+		return &account, nil
 	case instDetector.DirectConnect != nil:
 		account, err := direct.UnmarshalAccount(b)
 		if err != nil {
-			return nil, err
-		}
-
-		if err := ValidateAccount(account); err != nil {
 			return nil, err
 		}
 		return account, nil
