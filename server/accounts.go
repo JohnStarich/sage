@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -62,20 +63,40 @@ func abortWithClientError(c *gin.Context, status int, err error) {
 	})
 }
 
+type institutionJSONDetector struct {
+	BasicInstitution *model.BasicInstitution
+	DirectConnect    *json.RawMessage
+}
+
 func readAndValidateAccount(r io.ReadCloser) (model.Account, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
-	account, err := directconnect.UnmarshalAccount(b)
-	if err != nil {
+	var instDetector institutionJSONDetector
+	if err := json.Unmarshal(b, &instDetector); err != nil {
 		return nil, err
 	}
+	switch {
+	case instDetector.BasicInstitution != nil:
+		var account model.BasicAccount
+		if err := json.Unmarshal(b, &account); err != nil {
+			return nil, err
+		}
+		return &account, model.ValidateAccount(&account)
+	case instDetector.DirectConnect != nil:
+		account, err := directconnect.UnmarshalAccount(b)
+		if err != nil {
+			return nil, err
+		}
 
-	if err := validateAccount(account); err != nil {
-		return nil, err
+		if err := validateAccount(account); err != nil {
+			return nil, err
+		}
+		return account, nil
+	default:
+		return nil, errors.New("Unrecognized account type")
 	}
-	return account, nil
 }
 
 func getAccount(accountStore *client.AccountStore) gin.HandlerFunc {

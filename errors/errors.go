@@ -18,13 +18,19 @@ func (e *Errors) ErrIf(condition bool, failureMessage string, formatArgs ...inte
 	return condition
 }
 
+// AddErr appends an error if it is not nil. Smartly combines errors of type Errors
 func (e *Errors) AddErr(err error) bool {
 	if err != nil {
-		*e = append(*e, err)
+		if errs, ok := err.(Errors); ok {
+			*e = append(*e, errs...)
+		} else {
+			*e = append(*e, err)
+		}
 	}
 	return err == nil
 }
 
+// ErrOrNil returns e if an error is present, otherwise returns nil
 func (e Errors) ErrOrNil() error {
 	if len(e) > 0 {
 		return e
@@ -34,8 +40,10 @@ func (e Errors) ErrOrNil() error {
 
 func (e Errors) Error() string {
 	var buf strings.Builder
-	for _, err := range e {
-		buf.WriteRune('\n')
+	for i, err := range e {
+		if i != 0 {
+			buf.WriteRune('\n')
+		}
 		buf.WriteString(err.Error())
 	}
 	return buf.String()

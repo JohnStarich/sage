@@ -3,6 +3,8 @@ package model
 import (
 	"errors"
 	"strings"
+
+	sErrors "github.com/johnstarich/sage/errors"
 )
 
 const (
@@ -29,27 +31,56 @@ type Account interface {
 	Type() string
 }
 
-type basicAccount struct {
+type BasicAccount struct {
 	AccountDescription string
 	AccountID          string
 	AccountType        string
 	BasicInstitution   BasicInstitution
 }
 
-func (b basicAccount) Institution() Institution {
+func (b *BasicAccount) Institution() Institution {
 	return b.BasicInstitution
 }
 
-func (b basicAccount) ID() string {
+func (b *BasicAccount) ID() string {
 	return b.AccountID
 }
 
-func (b basicAccount) Description() string {
+func (b *BasicAccount) Description() string {
 	return b.AccountDescription
 }
 
-func (b basicAccount) Type() string {
+// Type returns the ledger account type, such as 'assets' or 'liabilities'
+func (b *BasicAccount) Type() string {
 	return b.AccountType
+}
+
+func ValidatePartialAccount(account interface {
+	ID() string
+	Description() string
+}) error {
+	var errs sErrors.Errors
+	errs.ErrIf(account.Description() == "", "Account description must not be empty")
+	errs.ErrIf(account.ID() == "", "Account ID must not be empty")
+	return errs.ErrOrNil()
+}
+
+func ValidateAccount(account Account) error {
+	var errs sErrors.Errors
+	errs.AddErr(ValidatePartialAccount(account))
+	if !errs.ErrIf(account.Type() == "", "Account type must not be empty") {
+		errs.ErrIf(account.Type() != AssetAccount && account.Type() != LiabilityAccount, "Account type must be '%s' or '%s': %s", AssetAccount, LiabilityAccount, account.Type())
+	}
+	errs.AddErr(ValidateInstitution(account.Institution()))
+	return errs.ErrOrNil()
+}
+
+func ValidateInstitution(inst Institution) error {
+	var errs sErrors.Errors
+	errs.ErrIf(inst.Description() == "", "Institution name must not be empty")
+	errs.ErrIf(inst.FID() == "", "Institution FID must not be empty")
+	errs.ErrIf(inst.Org() == "", "Institution org must not be empty")
+	return errs.ErrOrNil()
 }
 
 // LedgerAccountFormat represents an account's structured name for a ledger account format

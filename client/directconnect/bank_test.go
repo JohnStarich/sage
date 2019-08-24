@@ -21,8 +21,8 @@ var (
 
 func TestBankStatementFromAccountType(t *testing.T) {
 	b := bankAccount{
-		AccountType:   CheckingType.String(),
-		directAccount: directAccount{},
+		BankAccountType: CheckingType.String(),
+		directAccount:   directAccount{},
 	}
 	var req ofxgo.Request
 	err := b.Statement(&req, someStartTime, someEndTime)
@@ -114,7 +114,7 @@ func TestBankGenerateStatement(t *testing.T) {
 
 func TestBankStatement(t *testing.T) {
 	var req ofxgo.Request
-	b := bankAccount{AccountType: CheckingType.String()}
+	b := bankAccount{BankAccountType: CheckingType.String()}
 	err := b.Statement(&req, someStartTime, someEndTime)
 	require.NoError(t, err)
 	require.Len(t, req.Bank, 1)

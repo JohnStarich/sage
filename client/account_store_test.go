@@ -65,7 +65,7 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 					"OFXVersion": "202"
 				}
 			},
-			"AccountType": "CHECKING",
+			"BankAccountType": "CHECKING",
 			"RoutingNumber": "1234567890"
 		}
 	]
@@ -112,7 +112,7 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 					"OFXVersion": "202"
 				}
 			},
-			"AccountType": "SAVINGS",
+			"BankAccountType": "SAVINGS",
 			"RoutingNumber": "1234567890"
 		}
 	]
@@ -234,7 +234,7 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 					"OFXVersion": "202"
 				}
 			},
-			"AccountType": "SAVINGS",
+			"BankAccountType": "SAVINGS",
 			"RoutingNumber": "1234567890"
 		}
 	]

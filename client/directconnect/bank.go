@@ -41,8 +41,8 @@ func (a accountType) String() string {
 
 type bankAccount struct {
 	directAccount
-	AccountType   string
-	RoutingNumber string
+	BankAccountType string
+	RoutingNumber   string
 }
 
 // Bank is an account with a bank's routing number or 'bank ID'
@@ -64,8 +64,8 @@ func NewSavingsAccount(id, bankID, description string, institution Connector) Ac
 
 func newBankAccount(kind accountType, id, bankID, description string, connector Connector) Account {
 	return &bankAccount{
-		AccountType:   kind.String(),
-		RoutingNumber: bankID,
+		BankAccountType: kind.String(),
+		RoutingNumber:   bankID,
 		directAccount: directAccount{
 			AccountID:          id,
 			AccountDescription: description,
@@ -86,14 +86,14 @@ func (b *bankAccount) Validate() error {
 	var errs sErrors.Errors
 	errs.AddErr(b.directAccount.Validate())
 	errs.ErrIf(b.RoutingNumber == "", "Routing number must not be empty")
-	kind := ParseAccountType(b.AccountType)
+	kind := ParseAccountType(b.BankAccountType)
 	errs.ErrIf(kind != CheckingType && kind != SavingsType, "Account type must be %s or %s", CheckingType, SavingsType)
 	return errs.ErrOrNil()
 }
 
 // Statement implements Requestor
 func (b *bankAccount) Statement(req *ofxgo.Request, start, end time.Time) error {
-	return generateBankStatement(b, req, start, end, b.AccountType, ofxgo.RandomUID)
+	return generateBankStatement(b, req, start, end, b.BankAccountType, ofxgo.RandomUID)
 }
 
 func generateBankStatement(
@@ -133,15 +133,15 @@ func (b *bankAccount) Type() string {
 
 func (b *bankAccount) UnmarshalJSON(data []byte) error {
 	var bank struct {
-		AccountType   string
-		RoutingNumber string
+		BankAccountType string
+		RoutingNumber   string
 	}
 
 	if err := json.Unmarshal(data, &bank); err != nil {
 		return err
 	}
 
-	b.AccountType = bank.AccountType
+	b.BankAccountType = bank.BankAccountType
 	b.RoutingNumber = bank.RoutingNumber
 	return json.Unmarshal(data, &b.directAccount)
 }

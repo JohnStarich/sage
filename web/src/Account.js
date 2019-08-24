@@ -68,7 +68,7 @@ export default function Account(props) {
       setValidated(true)
       return
     }
-    const newAccount = accountFromForm(id, form)
+    const newAccount = accountFromForm(id, { directConnectEnabled })
     setValidated(true)
     return verifyAccount(newAccount)
       .then(res => {
@@ -103,6 +103,20 @@ export default function Account(props) {
   }
   const testButton = <LoadingButton {...testButtonData.props}>{testButtonData.text}</LoadingButton>
 
+  let fid = null, org = null, instDescription = null
+  if (account) {
+    if (account.BasicInstitution) {
+      fid = account.BasicInstitution.InstFID
+      org = account.BasicInstitution.InstOrg
+      instDescription = account.BasicInstitution.InstDescription
+    }
+    if (account.DirectConnect) {
+      fid = account.DirectConnect.InstFID
+      org = account.DirectConnect.InstOrg
+      instDescription = account.DirectConnect.InstDescription
+    }
+  }
+
   return (
     <Container className="account">
       {redirect}
@@ -115,9 +129,9 @@ export default function Account(props) {
           e.stopPropagation()
           const form = e.currentTarget
           if (form.checkValidity() !== false) {
-            const newAccount = accountFromForm(id, form)
+            const newAccount = accountFromForm(id, { directConnectEnabled })
             updateAccount(account ? account.AccountID : null, newAccount)
-              .then(res => {
+              .then(() => {
                 setRedirect(<Redirect to="/accounts" />)
                 if (updated) {
                   updated(id, newAccount)
@@ -139,53 +153,42 @@ export default function Account(props) {
             <Form.Label column sm={labelWidth}>Account Description</Form.Label>
             <Col><Form.Control id={makeID("description")} type="text" defaultValue={account ? account.AccountDescription : null} {...formControlDefaults} required /></Col>
           </Row>
-          <Form.Group controlId={makeID("id")} as={Row}>
-            <Form.Label column sm={labelWidth}>Account ID</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.AccountID : null} {...formControlDefaults} required />
-              <p><em>credit card or bank account number</em></p>
-            </Col>
-          </Form.Group>
-
           <RadioGroup
-            choices={['Yes', 'No']}
-            defaultChoice={isBank ? 'Yes' : 'No'}
-            label="Is this a bank account?"
-            onSelect={choice => setIsBank(choice === 'Yes')}
+            name="accountType"
+            choices={['Bank', 'Credit Card']}
+            defaultChoice={isBank ? 'Bank' : 'Credit Card'}
+            label="Type of account?"
+            onSelect={choice => setIsBank(choice === 'Bank')}
             smColumns={[labelWidth, inputWidth]}
           />
-          {!isBank ? null :
-            <>
-              <Form.Group controlId={makeID("routingNumber")} as={Row}>
-                <Form.Label column sm={labelWidth}>Routing number</Form.Label>
-                <Col sm={inputWidth}>
-                  <Form.Control type="text" defaultValue={account ? account.RoutingNumber : null} {...formControlDefaults} required />
-                </Col>
-              </Form.Group>
-              <RadioGroup
-                choices={['Checking', 'Savings']}
-                defaultChoice={account ? account.AccountType : null}
-                name={makeID("accountType")}
-                label="Account type"
-                smColumns={[labelWidth, inputWidth]}
-                required
-              />
-            </>
-          }
+          <Form.Group controlId={makeID("id")} as={Row}>
+            <Form.Label column sm={labelWidth}>{isBank ? 'Bank account' : 'Credit card'} number</Form.Label>
+            <Col sm={inputWidth}>
+              <Form.Control type="text" defaultValue={account ? account.AccountID : null} {...formControlDefaults} required />
+            </Col>
+          </Form.Group>
         </Form.Group>
 
         <Form.Group>
+          <Form.Group controlId={makeID("institutionDescription")} as={Row}>
+            <Form.Label column sm={labelWidth}>Institution name</Form.Label>
+            <Col sm={inputWidth}>
+              <Form.Control type="text" defaultValue={instDescription} {...formControlDefaults} required />
+            </Col>
+          </Form.Group>
+
+          <p>To look up your institution's FID, Org, and Direct Connect details, visit <a href="https://www.ofxhome.com/index.php/home/directory" target="_blank" rel="noopener noreferrer">ofxhome.com</a>.</p>
           <Form.Group controlId={makeID("institutionFID")} as={Row}>
             <Form.Label column sm={labelWidth}>FID</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.DirectConnect.InstFID : null} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={fid} {...formControlDefaults} required />
             </Col>
           </Form.Group>
 
           <Form.Group controlId={makeID("institutionOrg")} as={Row}>
             <Form.Label column sm={labelWidth}>Org</Form.Label>
             <Col sm={inputWidth}>
-              <Form.Control type="text" defaultValue={account ? account.DirectConnect.InstOrg : null} {...formControlDefaults} required />
+              <Form.Control type="text" defaultValue={org} {...formControlDefaults} required />
             </Col>
           </Form.Group>
         </Form.Group>
@@ -200,10 +203,29 @@ export default function Account(props) {
           />
           {!directConnectEnabled ? null :
             <Form.Group>
+              {!isBank ? null :
+                <>
+                  <Form.Group controlId={makeID("routingNumber")} as={Row}>
+                    <Form.Label column sm={labelWidth}>Routing number</Form.Label>
+                    <Col sm={inputWidth}>
+                      <Form.Control type="text" defaultValue={account ? account.RoutingNumber : null} {...formControlDefaults} required />
+                    </Col>
+                  </Form.Group>
+                  <RadioGroup
+                    choices={['Checking', 'Savings']}
+                    defaultChoice={account ? account.AccountType : null}
+                    name={makeID("bankAccountType")}
+                    label="Account type"
+                    smColumns={[labelWidth, inputWidth]}
+                    required
+                  />
+                </>
+              }
+
               <Form.Group controlId={makeID("institutionUsername")} as={Row}>
                 <Form.Label column sm={labelWidth}>Username</Form.Label>
                 <Col sm={inputWidth}>
-                  <Form.Control type="text" defaultValue={account ? account.DirectConnect.ConnectorUsername : null} {...formControlDefaults} required />
+                  <Form.Control type="text" defaultValue={account && account.DirectConnect ? account.DirectConnect.ConnectorUsername : null} {...formControlDefaults} required />
                   <Form.Control.Feedback type="invalid">
                     Please choose a username.
                   </Form.Control.Feedback>
@@ -226,15 +248,8 @@ export default function Account(props) {
                 </Col>
               </Form.Group>
 
-              <p>To fill out these fields, look up your institution's details on <a href="https://www.ofxhome.com/index.php/home/directory" target="_blank" rel="noopener noreferrer">ofxhome.com</a></p>
-              <Form.Group controlId={makeID("institutionDescription")} as={Row}>
-                <Form.Label column sm={labelWidth}>Institution name</Form.Label>
-                <Col sm={inputWidth}>
-                  <Form.Control type="text" defaultValue={account ? account.DirectConnect.InstDescription : null} {...formControlDefaults} required />
-                </Col>
-              </Form.Group>
               <Form.Group controlId={makeID("institutionURL")} as={Row}>
-                <Form.Label column sm={labelWidth}>URL</Form.Label>
+                <Form.Label column sm={labelWidth}>Direct Connect URL</Form.Label>
                 <Col sm={inputWidth}>
                   <Form.Control type="url" defaultValue={institutionURL} pattern="(https://|http://localhost).*" {...formControlDefaults} onChange={e => setInstitutionURL(e.target.value)} required />
                   <Form.Control.Feedback type="invalid">
@@ -242,64 +257,68 @@ export default function Account(props) {
               </Form.Control.Feedback>
                 </Col>
               </Form.Group>
+
+              <Form.Group>
+                <Accordion>
+                  <Card>
+                    <Card.Header>
+                      <Accordion.Toggle as={Button} variant="link" eventKey="0">
+                        Advanced Options
+                </Accordion.Toggle>
+                    </Card.Header>
+                    <Accordion.Collapse eventKey="0">
+                      <Card.Body>
+                        <Form.Group controlId={makeID("institutionClientID")} as={Row}>
+                          <Form.Label column sm={labelWidth}>Client ID</Form.Label>
+                          <Col sm={inputWidth}>
+                            <Form.Control type="text" defaultValue={account && account.DirectConnect ? account.DirectConnect.ConnectorConfig.ClientID : null} {...formControlDefaults} placeholder="Optional" />
+                          </Col>
+                        </Form.Group>
+
+                        <Form.Group controlId={makeID("institutionAppID")} as={Row}>
+                          <Form.Label column sm={labelWidth}>Client App ID</Form.Label>
+                          <Col sm={inputWidth}>
+                            <Form.Control type="text" defaultValue={account && account.DirectConnect ? account.DirectConnect.ConnectorConfig.AppID : "QWIN"} placeholder="QWIN" {...formControlDefaults} required />
+                          </Col>
+                        </Form.Group>
+
+                        <Form.Group controlId={makeID("institutionAppVersion")} as={Row}>
+                          <Form.Label column sm={labelWidth}>Client Version</Form.Label>
+                          <Col sm={inputWidth}>
+                            <Form.Control type="text" defaultValue={account && account.DirectConnect ? account.DirectConnect.ConnectorConfig.AppVersion : "2500"} placeholder="2500" {...formControlDefaults} required />
+                          </Col>
+                        </Form.Group>
+
+                        <Form.Group controlId={makeID("institutionOFXVersion")} as={Row}>
+                          <Form.Label column sm={labelWidth}>OFX Version</Form.Label>
+                          <Col sm={inputWidth}>
+                            <Form.Control type="text" defaultValue={account && account.DirectConnect ? account.DirectConnect.ConnectorConfig.OFXVersion : "102"} placeholder="102" {...formControlDefaults} required />
+                          </Col>
+                        </Form.Group>
+                      </Card.Body>
+                    </Accordion.Collapse>
+                  </Card>
+                </Accordion>
+              </Form.Group>
             </Form.Group>
           }
         </Form.Group>
 
-        <Form.Group>
-          <Accordion>
-            <Card>
-              <Card.Header>
-                <Accordion.Toggle as={Button} variant="link" eventKey="0">
-                  Advanced Options
-                </Accordion.Toggle>
-              </Card.Header>
-              <Accordion.Collapse eventKey="0">
-                <Card.Body>
-                  <Form.Group controlId={makeID("institutionClientID")} as={Row}>
-                    <Form.Label column sm={labelWidth}>Client ID</Form.Label>
-                    <Col sm={inputWidth}>
-                      <Form.Control type="text" defaultValue={account ? account.DirectConnect.ConnectorConfig.ClientID : null} {...formControlDefaults} placeholder="Optional" />
-                    </Col>
-                  </Form.Group>
-
-                  <Form.Group controlId={makeID("institutionAppID")} as={Row}>
-                    <Form.Label column sm={labelWidth}>Client App ID</Form.Label>
-                    <Col sm={inputWidth}>
-                      <Form.Control type="text" defaultValue={account ? account.DirectConnect.ConnectorConfig.AppID : "QWIN"} placeholder="QWIN" {...formControlDefaults} required />
-                    </Col>
-                  </Form.Group>
-
-                  <Form.Group controlId={makeID("institutionAppVersion")} as={Row}>
-                    <Form.Label column sm={labelWidth}>Client Version</Form.Label>
-                    <Col sm={inputWidth}>
-                      <Form.Control type="text" defaultValue={account ? account.DirectConnect.ConnectorConfig.AppVersion : "2500"} placeholder="2500" {...formControlDefaults} required />
-                    </Col>
-                  </Form.Group>
-
-                  <Form.Group controlId={makeID("institutionOFXVersion")} as={Row}>
-                    <Form.Label column sm={labelWidth}>OFX Version</Form.Label>
-                    <Col sm={inputWidth}>
-                      <Form.Control type="text" defaultValue={account ? account.DirectConnect.ConnectorConfig.OFXVersion : "102"} placeholder="102" {...formControlDefaults} required />
-                    </Col>
-                  </Form.Group>
-                </Card.Body>
-              </Accordion.Collapse>
-            </Card>
-          </Accordion>
-        </Form.Group>
-
-        <Form.Row className="account-test">
-          <Col sm={labelWidth}>{testButton}</Col>
-          {!testFeedback ? null :
-            <Col className="account-test-failed">
-              {testFeedback.trim().split("\n").map(line =>
-                <>{line}<br /></>
-              )}
-            </Col>
-          }
-        </Form.Row>
-        &nbsp;
+        {!directConnectEnabled ? null :
+          <>
+            <Form.Row className="account-test">
+              <Col sm={labelWidth}>{testButton}</Col>
+              {!testFeedback ? null :
+                <Col className="account-test-failed">
+                  {testFeedback.trim().split("\n").map(line =>
+                    <>{line}<br /></>
+                  )}
+                </Col>
+              }
+            </Form.Row>
+            &nbsp;
+          </>
+        }
         <Form.Row>
           <Col><Button type="submit">{account ? 'Save' : 'Add'}</Button></Col>
         </Form.Row>
@@ -312,7 +331,7 @@ function formIDFactory(accountID) {
   return name => `account-${accountID}-${name}`
 }
 
-function accountFromForm(originalAccountID, form) {
+function accountFromForm(originalAccountID, { directConnectEnabled }) {
   const makeID = formIDFactory(originalAccountID)
   const valueFromID = name => {
     const elem = document.getElementById(makeID(name))
@@ -327,12 +346,14 @@ function accountFromForm(originalAccountID, form) {
     }
     return null
   }
-  return {
+  let account = {
     AccountID: valueFromID("id"),
     AccountDescription: valueFromID("description"),
-    RoutingNumber: valueFromID("routingNumber"),
-    AccountType: valueFromName("accountType"),
-    DirectConnect: {
+  }
+  if (directConnectEnabled) {
+    account.RoutingNumber = valueFromID("routingNumber")
+    account.BankAccountType = valueFromName("bankAccountType")
+    account.DirectConnect = {
       InstDescription: valueFromID("institutionDescription"),
       InstFID: valueFromID("institutionFID"),
       InstOrg: valueFromID("institutionOrg"),
@@ -346,7 +367,15 @@ function accountFromForm(originalAccountID, form) {
         OFXVersion: valueFromID("institutionOFXVersion"),
       },
     }
+  } else {
+    account.AccountType = valueFromName("accountType") === "Bank" ? "assets" : "liabilities"
+    account.BasicInstitution = {
+      InstDescription: valueFromID("institutionDescription"),
+      InstFID: valueFromID("institutionFID"),
+      InstOrg: valueFromID("institutionOrg"),
+    }
   }
+  return account
 }
 
 function updateAccount(originalAccountID, account) {

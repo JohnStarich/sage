@@ -32,7 +32,7 @@ func TestLedgerAccountFormat(t *testing.T) {
 
 func TestBaseAccount(t *testing.T) {
 	inst := BasicInstitution{}
-	a := basicAccount{
+	a := BasicAccount{
 		AccountDescription: "some description",
 		AccountID:          "some ID",
 		BasicInstitution:   inst,

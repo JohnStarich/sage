@@ -60,9 +60,8 @@ func (d *directAccount) UnmarshalJSON(b []byte) error {
 
 func (d *directAccount) Validate() error {
 	var errs sErrors.Errors
-	if errs.ErrIf(d.DirectConnect == nil, "Direct connect must not be empty") {
-		errs.AddErr(Validate(d.DirectConnect))
-	}
+	errs.AddErr(model.ValidatePartialAccount(d))
+	errs.AddErr(Validate(d.DirectConnect))
 	errs.ErrIf(d.AccountID == "", "Account ID must not be empty")
 	errs.ErrIf(d.AccountDescription == "", "Account description must not be empty")
 	return errs.ErrOrNil()
@@ -71,9 +70,10 @@ func (d *directAccount) Validate() error {
 // Validate checks connector for invalid data
 func Validate(connector Connector) error {
 	var errs sErrors.Errors
-	errs.ErrIf(connector.Description() == "", "Institution description must not be empty")
-	errs.ErrIf(connector.FID() == "", "Institution FID must not be empty")
-	errs.ErrIf(connector.Org() == "", "Institution org must not be empty")
+	if errs.ErrIf(connector == nil, "Direct connect must not be empty") {
+		return errs.ErrOrNil()
+	}
+	errs.AddErr(model.ValidateInstitution(connector))
 	errs.ErrIf(connector.URL() == "", "Institution URL must not be empty")
 	errs.ErrIf(connector.Username() == "", "Institution username must not be empty")
 	errs.ErrIf(connector.Password() == "" && !IsLocalhostTestURL(connector.URL()), "Institution password must not be empty")
@@ -91,7 +91,7 @@ func UnmarshalAccount(b []byte) (Account, error) {
 		return nil, err
 	}
 	if maybeBank.isBank() {
-		maybeBank.AccountType = strings.ToUpper(maybeBank.AccountType)
+		maybeBank.BankAccountType = strings.ToUpper(maybeBank.BankAccountType)
 		return &maybeBank, maybeBank.Validate()
 	}
 
