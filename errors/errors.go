@@ -32,6 +32,10 @@ func (e *Errors) AddErr(err error) bool {
 
 // ErrOrNil returns e if an error is present, otherwise returns nil
 func (e Errors) ErrOrNil() error {
+	if len(e) == 1 {
+		// simplify result if there's only one error
+		return e[0]
+	}
 	if len(e) > 0 {
 		return e
 	}
