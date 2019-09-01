@@ -8,6 +8,7 @@ import Button from 'react-bootstrap/Button';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Crumb from './Breadcrumb';
+import FetchAccounts from './FetchAccounts';
 import ImportAccounts from './ImportAccounts';
 import Row from 'react-bootstrap/Row';
 
@@ -18,8 +19,8 @@ export default function Accounts({ match }) {
       .then(res => setAccounts(res.data.Accounts))
   }, [])
 
-  const accountCreated = account => {
-    setAccounts([account].concat(accounts))
+  const accountCreated = (...newAccounts) => {
+    setAccounts(newAccounts.concat(accounts))
   }
 
   const accountUpdated = (originalAccountID, account) => {
@@ -77,7 +78,7 @@ export default function Accounts({ match }) {
             )}
             <Row>
               <Col className="account-actions">
-                <Link to={`${match.url}/new`} className="btn btn-primary add-new">Add new Direct Connect</Link>
+                <Link to={`${match.url}/express`} className="btn btn-primary add-new">Add new Direct Connect</Link>
                 <Link to={`${match.url}/import`} className="btn btn-secondary import">Import OFX/QFX</Link>
               </Col>
             </Row>
@@ -85,6 +86,7 @@ export default function Accounts({ match }) {
         </>
       } />
       <Route path={`${match.path}/edit/:id`} component={props => <AccountEditor updated={accountUpdated} {...props} />} />
+      <Route path={`${match.path}/express`} component={props => <ExpressAccounts created={accountCreated} {...props} />} />
       <Route path={`${match.path}/new`} component={props => <NewAccount created={accountCreated} {...props} />} />
       <Route path={`${match.path}/import`} component={Import} />
     </>
@@ -101,6 +103,15 @@ function NewAccount({ created, match }) {
     <>
       <Crumb title="New" match={match} />
       <Account editable updated={updated} />
+    </>
+  )
+}
+
+function ExpressAccounts({ created, match }) {
+  return (
+    <>
+      <Crumb title="Quick Add" match={match} />
+      <FetchAccounts created={created} />
     </>
   )
 }

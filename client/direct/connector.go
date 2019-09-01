@@ -303,3 +303,89 @@ func addSignonRequest(connector Connector, req *ofxgo.Request) {
 		UserPass:  ofxgo.String(connector.Password()),
 	}
 }
+
+// Accounts fetches available accounts at the connector's institution
+func Accounts(connector Connector, logger *zap.Logger) ([]model.Account, error) {
+	client, err := newSimpleClient(connector.URL(), connector.Config())
+	if err != nil {
+		return nil, err
+	}
+
+	var query ofxgo.Request
+	uid, err := ofxgo.RandomUID()
+	if err != nil {
+		return nil, err
+	}
+	query.Signup = append(query.Signup, &ofxgo.AcctInfoRequest{
+		TrnUID: *uid,
+	})
+	addSignonRequest(connector, &query)
+
+	resp, err := client.Request(&query)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Signup) == 0 {
+		return nil, errors.New("Response did not contain any messages")
+	}
+
+	acctInfoResp, ok := resp.Signup[0].(*ofxgo.AcctInfoResponse)
+	if !ok {
+		return nil, errors.Errorf("Unknown account info response type: %T", resp.Signup[0])
+	}
+	var accounts []model.Account
+	for _, acctInfo := range acctInfoResp.AcctInfo {
+		if account, ok := parseAcctInfo(connector, acctInfo, logger); ok {
+			accounts = append(accounts, account)
+		}
+	}
+	return accounts, nil
+}
+
+func parseAcctInfo(connector Connector, acctInfo ofxgo.AcctInfo, logger *zap.Logger) (model.Account, bool) {
+	accountName := acctInfo.Desc.String()
+	if accountName == "" {
+		accountName = acctInfo.Name.String()
+	}
+	logger = logger.With(zap.String("name", accountName))
+	switch {
+	case acctInfo.BankAcctInfo != nil:
+		bankID := acctInfo.BankAcctInfo.BankAcctFrom.BankID.String()
+		accountID := acctInfo.BankAcctInfo.BankAcctFrom.AcctID.String()
+		accountTypeStr := acctInfo.BankAcctInfo.BankAcctFrom.AcctType.String()
+		accountType := ParseAccountType(accountTypeStr)
+		// TODO add branch ID, acct key support for non-USA
+
+		logger = logger.With(zap.String("accountID", accountID))
+		if !acctInfo.BankAcctInfo.SupTxDl {
+			logger.Warn("Bank account does not support downloading transactions")
+			return nil, false
+		}
+		if accountName == "" {
+			accountName = accountID
+		}
+		switch accountType {
+		case CheckingType:
+			return NewCheckingAccount(accountID, bankID, accountName, connector), true
+		case SavingsType:
+			return NewSavingsAccount(accountID, bankID, accountName, connector), true
+		default:
+			logger.Warn("Bank account is of unsupported type", zap.String("type", accountTypeStr))
+			return nil, false
+		}
+	case acctInfo.CCAcctInfo != nil:
+		accountID := acctInfo.CCAcctInfo.CCAcctFrom.AcctID.String()
+		logger = logger.With(zap.String("accountID", accountID))
+		if !acctInfo.CCAcctInfo.SupTxDl {
+			logger.Warn("Credit card account does not support downloading transactions")
+			return nil, false
+		}
+		if accountName == "" {
+			accountName = accountID
+		}
+		return NewCreditCard(accountID, accountName, connector), true
+	default:
+		logger.Warn("Account was not a bank or credit card account")
+		return nil, false
+	}
+}

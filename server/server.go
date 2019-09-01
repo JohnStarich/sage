@@ -130,6 +130,7 @@ func setupAPI(
 	router.GET("/deleteAccount", removeAccount(accountsFileName, accountStore))
 
 	router.POST("/direct/verifyAccount", verifyAccount(accountStore))
+	router.POST("/direct/fetchAccounts", fetchDirectConnectAccounts())
 
 	router.GET("/getTransactions", getTransactions(ldg, accountStore))
 	router.POST("/updateTransaction", updateTransaction(ledgerFileName, ldg))

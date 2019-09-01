@@ -40,8 +40,11 @@ func readAndValidateAccount(r io.ReadCloser, accountStore *client.AccountStore) 
 
 	if connector, ok := account.Institution().(direct.Connector); ok && connector.Password() == "" {
 		currentAccount, found := accountStore.Find(account.ID())
-		if currentConn, currentOK := currentAccount.Institution().(direct.Connector); found && currentOK {
-			connector.SetPassword(currentConn.Password())
+		if found {
+			currentConn, currentOK := currentAccount.Institution().(direct.Connector)
+			if currentOK {
+				connector.SetPassword(currentConn.Password())
+			}
 		}
 	}
 
@@ -210,5 +213,24 @@ func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 		}
 
 		c.Status(http.StatusNoContent)
+	}
+}
+
+func fetchDirectConnectAccounts() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		logger := c.MustGet(loggerKey).(*zap.Logger)
+
+		connector, err := readAndValidateDirectConnector(c.Request.Body)
+		if err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+
+		accounts, err := direct.Accounts(connector, logger)
+		if err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		c.JSON(http.StatusOK, accounts)
 	}
 }
