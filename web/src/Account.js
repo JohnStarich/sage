@@ -6,6 +6,7 @@ import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
 import LoadingButton from './LoadingButton';
+import Password from './Password';
 import RadioGroup from './RadioGroup';
 import React from 'react';
 import Row from 'react-bootstrap/Row';
@@ -241,9 +242,7 @@ export default function Account(props) {
               <Form.Group controlId={makeID("institutionPassword")} as={Row}>
                 <Form.Label column sm={labelWidth}>Password</Form.Label>
                 <Col sm={inputWidth}>
-                  <Form.Control
-                    type="text"
-                    placeholder="••••••••"
+                  <Password
                     required={!account && !(institutionURL && institutionURL.startsWith("http://"))}
                     {...formControlDefaults}
                   />
