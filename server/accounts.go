@@ -49,9 +49,21 @@ func readAndValidateAccount(r io.ReadCloser, accountStore *client.AccountStore) 
 	return account, err
 }
 
+func readAndValidateDirectConnector(r io.ReadCloser) (direct.Connector, error) {
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	connector, err := direct.UnmarshalConnector(b)
+	if err != nil {
+		return nil, err
+	}
+	return connector, direct.ValidateConnector(connector)
+}
+
 func getAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		accountID := c.Param("id")
+		accountID := c.Query("id")
 		account, exists := accountStore.Find(accountID)
 		if !exists {
 			c.AbortWithStatus(http.StatusNotFound)
@@ -73,20 +85,19 @@ func getAccounts(accountStore *client.AccountStore) gin.HandlerFunc {
 
 func updateAccount(accountsFileName string, accountStore *client.AccountStore, ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		accountID := c.Param("id")
-		currentAccount, exists := accountStore.Find(accountID)
-		if !exists {
-			c.AbortWithStatus(http.StatusNotFound)
-			return
-		}
-
 		account, err := readAndValidateAccount(c.Request.Body, accountStore)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
 
-		if err := accountStore.Update(accountID, account); err != nil {
+		currentAccount, exists := accountStore.Find(account.ID())
+		if !exists {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
+		if err := accountStore.Update(account.ID(), account); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
@@ -135,7 +146,7 @@ func addAccount(accountsFileName string, accountStore *client.AccountStore) gin.
 
 func removeAccount(accountsFileName string, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		accountID := c.Param("id")
+		accountID := c.Query("id")
 
 		if err := accountStore.Remove(accountID); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
@@ -177,10 +188,9 @@ func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 			return
 		}
 
-		accountID := c.Param("id")
 		pass := connector.Password()
 		if pass == "" {
-			currentAccount, exists := accountStore.Find(accountID)
+			currentAccount, exists := accountStore.Find(account.ID())
 			errPasswordRequired := errors.New("Institution password is required")
 			isLocal := direct.IsLocalhostTestURL(connector.URL())
 			if !isLocal {

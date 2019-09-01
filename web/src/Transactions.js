@@ -96,7 +96,7 @@ export default function Transactions(props) {
       setPage(1)
       setSearch(searchText)
     }
-    axios.get('/api/v1/transactions', {
+    axios.get('/api/v1/getTransactions', {
       params: { page, results: sizePerPage, search: searchText },
     })
       .then(res => {
@@ -120,7 +120,7 @@ export default function Transactions(props) {
       throw Error(`Tried to update invalid transaction: ${txn}`)
     }
     let { Postings } = txn
-    axios.patch(`/api/v1/transactions/${txn.ID}`, { Postings })
+    axios.post('/api/v1/updateTransaction', { ID: txn.ID, Postings })
       .then(res => {
         newTransactions[txnIndex] = Object.assign({}, newTransactions[txnIndex], txn)
         setTransactions(newTransactions)

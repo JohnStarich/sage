@@ -14,7 +14,7 @@ export default function Balances({ syncTime }) {
   const [messages, setMessages] = React.useState([])
 
   React.useEffect(() => {
-    axios.get('/api/v1/balances')
+    axios.get('/api/v1/getBalances')
       .then(res => {
         setAccounts(res.data.Accounts || [])
         setMessages(res.data.Messages || [])

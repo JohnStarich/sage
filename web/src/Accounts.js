@@ -14,7 +14,7 @@ import Row from 'react-bootstrap/Row';
 export default function Accounts({ match }) {
   const [accounts, setAccounts] = React.useState([])
   React.useEffect(() => {
-    axios.get('/api/v1/accounts')
+    axios.get('/api/v1/getAccounts')
       .then(res => setAccounts(res.data.Accounts))
   }, [])
 
@@ -37,7 +37,9 @@ export default function Accounts({ match }) {
     if (!window.confirm(`Are you sure you want to delete your account '${account.AccountDescription}'?`)) {
       return
     }
-    axios.delete(`/api/v1/accounts/${accountID}`)
+    axios.get('/api/v1/deleteAccount', {
+      params: { id: accountID },
+    })
       .then(() =>
         setAccounts(
           accounts.filter(a => a.AccountID !== accountID)))
@@ -106,7 +108,9 @@ function NewAccount({ created, match }) {
 function AccountEditor({ updated, match }) {
   const [account, setAccount] = React.useState(null)
   React.useEffect(() => {
-    axios.get(`/api/v1/accounts/${match.params.id}`)
+    axios.get('/api/v1/getAccount', {
+      params: { id: match.params.id },
+    })
       .then(res => {
         setAccount(res.data.Account)
       })

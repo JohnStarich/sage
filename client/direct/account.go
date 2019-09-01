@@ -2,13 +2,10 @@ package direct
 
 import (
 	"encoding/json"
-	"net/url"
 	"strings"
 
-	"github.com/aclindsa/ofxgo"
 	"github.com/johnstarich/sage/client/model"
 	sErrors "github.com/johnstarich/sage/errors"
-	"github.com/pkg/errors"
 )
 
 // Account is a direct connect enabled account
@@ -66,7 +63,7 @@ func Validate(account Account) error {
 	var errs sErrors.Errors
 	errs.AddErr(model.ValidateAccount(account))
 	if connector, ok := account.Institution().(Connector); ok {
-		errs.AddErr(validateConnector(connector))
+		errs.AddErr(ValidateConnector(connector))
 	}
 
 	switch impl := account.(type) {
@@ -80,32 +77,6 @@ func Validate(account Account) error {
 		// no additional validation required
 	}
 
-	return errs.ErrOrNil()
-}
-
-func validateConnector(connector Connector) error {
-	var errs sErrors.Errors
-	if errs.ErrIf(connector == nil, "Direct connect must not be empty") {
-		return errs.ErrOrNil()
-	}
-	errs.AddErr(model.ValidateInstitution(connector))
-	errs.ErrIf(connector.URL() == "", "Institution URL must not be empty")
-	u, err := url.Parse(connector.URL())
-	if err != nil {
-		errs.AddErr(errors.Wrap(err, "Institution URL is malformed"))
-	} else {
-		errs.ErrIf(u.Scheme != "https" && u.Hostname() != "localhost", "Institution URL is required to use HTTPS")
-	}
-
-	errs.ErrIf(connector.Username() == "", "Institution username must not be empty")
-	errs.ErrIf(connector.Password() == "" && !IsLocalhostTestURL(connector.URL()), "Institution password must not be empty")
-	config := connector.Config()
-	errs.ErrIf(config.AppID == "", "Institution app ID must not be empty")
-	errs.ErrIf(config.AppVersion == "", "Institution app ID must not be empty")
-	if !errs.ErrIf(config.OFXVersion == "", "Institution OFX version must not be empty") {
-		_, err := ofxgo.NewOfxVersion(config.OFXVersion)
-		errs.AddErr(err)
-	}
 	return errs.ErrOrNil()
 }
 

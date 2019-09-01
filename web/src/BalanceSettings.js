@@ -28,7 +28,7 @@ export default function BalanceSettings({ match }) {
   const [postings, setPostings] = React.useState([])
 
   React.useEffect(() => {
-    axios.get('/api/v1/balances')
+    axios.get('/api/v1/getBalances')
       .then(res => {
         window.setTimeout(() => {
           if (res.data.Accounts) {
@@ -51,7 +51,7 @@ export default function BalanceSettings({ match }) {
       return
     }
 
-    axios.put('/api/v1/balances/opening', { Postings: postings, Date: start })
+    axios.post('/api/v1/updateOpeningBalance', { Postings: postings, Date: start })
       .catch(e => alert(e))
   }
 
@@ -122,7 +122,7 @@ export default function BalanceSettings({ match }) {
             variant="outline-danger"
             onClick={() => {
               if (window.confirm(`Sync from the beginning of the ledger (${dateFormatter.format(start)})? This is a very time-consuming operation.`)) {
-                return axios.post('/api/v1/sync?fromLedgerStart')
+                return axios.post('/api/v1/syncLedger?fromLedgerStart')
               }
             }}>
             Sync from start

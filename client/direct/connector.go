@@ -1,15 +1,19 @@
 package direct
 
 import (
+	"encoding/json"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/aclindsa/ofxgo"
 	"github.com/johnstarich/sage/client/model"
+	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/redactor"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
+	"go.uber.org/zap"
 )
 
 const (
@@ -88,6 +92,40 @@ func (d *directConnect) Config() Config {
 	return d.ConnectorConfig
 }
 
+// UnmarshalConnector unmarshals the given bytes into a connector
+func UnmarshalConnector(b []byte) (Connector, error) {
+	var dc directConnect
+	err := json.Unmarshal(b, &dc)
+	return &dc, err
+}
+
+// ValidateConnector checks the state of the connector for correctness
+func ValidateConnector(connector Connector) error {
+	var errs sErrors.Errors
+	if errs.ErrIf(connector == nil, "Direct connect must not be empty") {
+		return errs.ErrOrNil()
+	}
+	errs.AddErr(model.ValidateInstitution(connector))
+	errs.ErrIf(connector.URL() == "", "Institution URL must not be empty")
+	u, err := url.Parse(connector.URL())
+	if err != nil {
+		errs.AddErr(errors.Wrap(err, "Institution URL is malformed"))
+	} else {
+		errs.ErrIf(u.Scheme != "https" && u.Hostname() != "localhost", "Institution URL is required to use HTTPS")
+	}
+
+	errs.ErrIf(connector.Username() == "", "Institution username must not be empty")
+	errs.ErrIf(connector.Password() == "" && !IsLocalhostTestURL(connector.URL()), "Institution password must not be empty")
+	config := connector.Config()
+	errs.ErrIf(config.AppID == "", "Institution app ID must not be empty")
+	errs.ErrIf(config.AppVersion == "", "Institution app ID must not be empty")
+	if !errs.ErrIf(config.OFXVersion == "", "Institution OFX version must not be empty") {
+		_, err := ofxgo.NewOfxVersion(config.OFXVersion)
+		errs.AddErr(err)
+	}
+	return errs.ErrOrNil()
+}
+
 // Statement downloads and returns transactions from a connector for the given time period
 func Statement(connector Connector, start, end time.Time, requestors []Requestor) ([]ledger.Transaction, error) {
 	client, err := newSimpleClient(connector.URL(), connector.Config())
@@ -123,16 +161,7 @@ func fetchTransactions(
 		return nil, errors.Errorf("Invalid statement query: does not contain any statement requests: %+v", query)
 	}
 
-	config := connector.Config()
-
-	query.URL = connector.URL()
-	query.Signon = ofxgo.SignonRequest{
-		ClientUID: ofxgo.UID(config.ClientID),
-		Org:       ofxgo.String(connector.Org()),
-		Fid:       ofxgo.String(connector.FID()),
-		UserID:    ofxgo.String(connector.Username()),
-		UserPass:  ofxgo.String(connector.Password()),
-	}
+	addSignonRequest(connector, &query)
 
 	response, err := doRequest(&query)
 	if err != nil {
@@ -260,5 +289,17 @@ func makeUniqueTxnID(fid, accountID string) func(txnID string) string {
 		id = strings.Replace(id, ",", "", -1)
 		id = strings.Replace(id, ":", "", -1)
 		return id
+	}
+}
+
+func addSignonRequest(connector Connector, req *ofxgo.Request) {
+	config := connector.Config()
+	req.URL = connector.URL()
+	req.Signon = ofxgo.SignonRequest{
+		ClientUID: ofxgo.UID(config.ClientID),
+		Org:       ofxgo.String(connector.Org()),
+		Fid:       ofxgo.String(connector.FID()),
+		UserID:    ofxgo.String(connector.Username()),
+		UserPass:  ofxgo.String(connector.Password()),
 	}
 }

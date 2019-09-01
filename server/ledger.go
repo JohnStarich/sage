@@ -1,6 +1,8 @@
 package server
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"sort"
 	"strconv"
@@ -315,10 +317,23 @@ func getExpenseAndRevenueAccounts(ldg *ledger.Ledger, rulesStore *rules.Store) g
 
 func updateTransaction(ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id := c.Param("id")
+		body, err := ioutil.ReadAll(c.Request.Body)
+		if err != nil {
+			c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+
+		var txnJSON struct {
+			ID string
+		}
+		if err := json.Unmarshal(body, &txnJSON); err != nil {
+			c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		id := txnJSON.ID
 
 		var txn ledger.Transaction
-		if err := c.BindJSON(&txn); err != nil {
+		if err := json.Unmarshal(body, &txn); err != nil {
 			c.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
@@ -341,7 +356,7 @@ func updateTransaction(ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFun
 	}
 }
 
-func updateOpeningBalances(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
+func updateOpeningBalance(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var opening ledger.Transaction
 		if err := c.ShouldBindJSON(&opening); err != nil {

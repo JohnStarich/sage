@@ -83,7 +83,7 @@ export default function Categories({ match }) {
   const [rules, setRules] = React.useState([])
 
   React.useEffect(() => {
-    axios.get('/api/v1/rules').then(res => {
+    axios.get('/api/v1/getRules').then(res => {
       let newRules = res.data.Rules || []
       newRules = newRules.map((rule, i) => {
         rule.ID = i + 1
@@ -99,7 +99,7 @@ export default function Categories({ match }) {
       ID: undefined,
       Conditions: rule.Conditions.split('\n'),
     }))
-    axios.put('/api/v1/rules', apiRules)
+    axios.post('/api/v1/updateRules', apiRules)
       .then(() => setRules(newRules))
       .catch(e => alert(`Error saving rules. ${e.response.data.Error || ""}`))
   }

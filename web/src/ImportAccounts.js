@@ -27,7 +27,7 @@ export default function ImportAccounts() {
             if (files.length !== 1) {
               throw Error("Must provide one file to import")
             }
-            axios.post('/api/v1/import', files[0])
+            axios.post('/api/v1/importOFX', files[0])
               .then(() => window.location.reload())
               .catch(e => {
                 if (!e.response.data || !e.response.data.Error) {

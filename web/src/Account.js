@@ -385,11 +385,11 @@ function accountFromForm(originalAccountID, { directConnectEnabled }) {
 
 function updateAccount(originalAccountID, account) {
   if (originalAccountID) {
-    return axios.put(`/api/v1/accounts/${originalAccountID}`, account)
+    return axios.post('/api/v1/updateAccount', Object.assign({}, { AccountID: originalAccountID }, account))
   }
-  return axios.post(`/api/v1/accounts`, account)
+  return axios.post('/api/v1/addAccount', account)
 }
 
 function verifyAccount(account) {
-  return axios.post(`/api/v1/accounts/${account.AccountID}/verify`, account)
+  return axios.post('/api/v1/direct/verifyAccount', account)
 }

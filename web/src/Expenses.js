@@ -21,7 +21,7 @@ export default function Expenses(props) {
   const [end, setEnd] = React.useState(null)
 
   React.useEffect(() => {
-    axios.get('/api/v1/balances', {
+    axios.get('/api/v1/getBalances', {
       params: {
         accountTypes: ['expenses', 'revenues', 'uncategorized'],
       },

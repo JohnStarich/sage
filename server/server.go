@@ -110,28 +110,30 @@ func setupAPI(
 	rulesFileName string,
 	rulesStore *rules.Store,
 ) {
-	router.GET("/version", func(c *gin.Context) {
+	router.GET("/getVersion", func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]string{
 			"version": consts.Version,
 		})
 	})
 
-	router.POST("/sync", syncLedger(ledgerFileName, ldg, accountStore, rulesStore))
-	router.POST("/import", importOFXFile(ledgerFileName, ldg, accountsFileName, accountStore, rulesStore))
-	router.GET("/balances", getBalances(ldg, accountStore))
-	router.PUT("/balances/opening", updateOpeningBalances(ledgerFileName, ldg, accountStore))
-	router.GET("/categories", getExpenseAndRevenueAccounts(ldg, rulesStore))
+	router.POST("/syncLedger", syncLedger(ledgerFileName, ldg, accountStore, rulesStore))
+	router.POST("/importOFX", importOFXFile(ledgerFileName, ldg, accountsFileName, accountStore, rulesStore))
 
-	router.GET("/accounts", getAccounts(accountStore))
-	router.GET("/accounts/:id", getAccount(accountStore))
-	router.PUT("/accounts/:id", updateAccount(accountsFileName, accountStore, ledgerFileName, ldg))
-	router.POST("/accounts", addAccount(accountsFileName, accountStore))
-	router.DELETE("/accounts/:id", removeAccount(accountsFileName, accountStore))
-	router.POST("/accounts/:id/verify", verifyAccount(accountStore))
+	router.GET("/getBalances", getBalances(ldg, accountStore))
+	router.POST("/updateOpeningBalance", updateOpeningBalance(ledgerFileName, ldg, accountStore))
+	router.GET("/getCategories", getExpenseAndRevenueAccounts(ldg, rulesStore))
 
-	router.GET("/transactions", getTransactions(ldg, accountStore))
-	router.PATCH("/transactions/:id", updateTransaction(ledgerFileName, ldg))
+	router.GET("/getAccounts", getAccounts(accountStore))
+	router.GET("/getAccount", getAccount(accountStore))
+	router.POST("/updateAccount", updateAccount(accountsFileName, accountStore, ledgerFileName, ldg))
+	router.POST("/addAccount", addAccount(accountsFileName, accountStore))
+	router.GET("/deleteAccount", removeAccount(accountsFileName, accountStore))
 
-	router.GET("/rules", getRules(rulesStore))
-	router.PUT("/rules", updateRules(rulesFileName, rulesStore))
+	router.POST("/direct/verifyAccount", verifyAccount(accountStore))
+
+	router.GET("/getTransactions", getTransactions(ldg, accountStore))
+	router.POST("/updateTransaction", updateTransaction(ledgerFileName, ldg))
+
+	router.GET("/getRules", getRules(rulesStore))
+	router.POST("/updateRules", updateRules(rulesFileName, rulesStore))
 }

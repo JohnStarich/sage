@@ -15,7 +15,7 @@ let categoriesPromise = null
 
 export const Categories = () => {
   if (categoriesPromise === null) {
-    categoriesPromise = axios.get('/api/v1/categories')
+    categoriesPromise = axios.get('/api/v1/getCategories')
       .then(res => res.data.Accounts)
       .then(accounts =>
         accounts.map(c => [c, c.replace(/:/g, ' > ')]))
