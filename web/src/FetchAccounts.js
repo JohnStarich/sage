@@ -32,7 +32,11 @@ export default function FetchAccounts({ created }) {
       <Row>
         <Col>
           <p>Find available accounts for Direct Connect at your institution.</p>
-          <p>If you have all of your connection details already, enter them manually <Link to="/accounts/new">here</Link>.</p>
+          <p>If accounts were not found, try checking your institution's website for instructions to use Quicken, Quickbooks, or Microsoft Money.</p>
+          <p>Sometimes the password is a PIN rather than the sign-in password, and the username could be an ID only provided in their instructions.</p>
+          &nbsp;
+          <p>If you're an advanced user, and have all of your connection details already, then enter them manually <Link to="/accounts/new">here</Link>.</p>
+          &nbsp;
         </Col>
       </Row>
       <Form
@@ -63,6 +67,10 @@ export default function FetchAccounts({ created }) {
               },
             })
               .then(res => {
+                if (! res.data || res.data.length === 0) {
+                  setFindFeedback("No accounts found")
+                  return
+                }
                 res.data.forEach(a => {
                   a.DirectConnect.ConnectorPassword = password // copy in password since API redacts it
                 })
@@ -168,7 +176,7 @@ export default function FetchAccounts({ created }) {
         <Form.Row>
           <Col sm={labelWidth}><Button type="submit">Find</Button></Col>
           <Col>
-            <Form.Control.Feedback type="invalid">{findFeedback}</Form.Control.Feedback>
+            <p>{findFeedback}</p>
             <p>{findResult}</p>
           </Col>
         </Form.Row>
