@@ -30,7 +30,7 @@ type Transaction struct {
 	Tags     map[string]string `json:",omitempty"`
 }
 
-type Transactions []Transaction
+type Transactions []*Transaction
 
 func readAllTransactions(scanner *bufio.Scanner) ([]Transaction, error) {
 	var transactions []Transaction

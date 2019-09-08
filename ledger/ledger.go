@@ -16,18 +16,19 @@ import (
 // Serializes into a "plain-text accounting" ledger file.
 type Ledger struct {
 	transactions Transactions
-	idSet        map[string]bool
+	idSet        map[string]*Transaction
 	mu           sync.RWMutex
 }
 
 // New creates a ledger with the given transactions. Must not contain any duplicate IDs
 func New(transactions []Transaction) (*Ledger, error) {
-	idSet, _, duplicates := makeIDSet(transactions)
+	transactionPtrs := makeTransactionPtrs(transactions)
+	idSet, _, duplicates := makeIDSet(transactionPtrs)
 	if len(duplicates) > 0 {
 		return nil, duplicateTransactionError(strings.Join(duplicates, ", "))
 	}
 	return &Ledger{
-		transactions: transactions,
+		transactions: transactionPtrs,
 		idSet:        idSet,
 	}, nil
 }
@@ -43,24 +44,41 @@ func NewFromReader(reader io.Reader) (*Ledger, error) {
 	return New(transactions)
 }
 
-func makeIDSet(transactions []Transaction) (idSet map[string]bool, uniqueTxns []Transaction, duplicates []string) {
-	idSet = make(map[string]bool, len(transactions)*2)
+// makeTransactionPtrs converts to a slice of txn pointers. NOTE: does not copy the underlying txn
+func makeTransactionPtrs(transactions []Transaction) []*Transaction {
+	transactionPtrs := make([]*Transaction, len(transactions))
+	for i := range transactions {
+		transactionPtrs[i] = &transactions[i]
+	}
+	return transactionPtrs
+}
+
+func dereferenceTransactions(transactionPtrs Transactions) []Transaction {
+	transactions := make([]Transaction, len(transactionPtrs))
+	for i := range transactionPtrs {
+		transactions[i] = *transactionPtrs[i]
+	}
+	return transactions
+}
+
+func makeIDSet(transactions []*Transaction) (idSet map[string]*Transaction, uniqueTxns []*Transaction, duplicates []string) {
+	idSet = make(map[string]*Transaction, len(transactions)*2)
 	for _, transaction := range transactions {
 		txnIsDupe := false
 		if id := transaction.ID(); id != "" {
-			if idSet[id] {
+			if idSet[id] != nil {
 				txnIsDupe = true
 				duplicates = append(duplicates, id)
 			}
-			idSet[id] = true
+			idSet[id] = transaction
 		}
 		for _, posting := range transaction.Postings {
 			if id := posting.ID(); id != "" {
-				if idSet[id] {
+				if idSet[id] != nil {
 					txnIsDupe = true
 					duplicates = append(duplicates, id)
 				}
-				idSet[id] = true
+				idSet[id] = transaction
 			}
 		}
 		if !txnIsDupe {
@@ -127,7 +145,7 @@ func (l *Ledger) Validate() error {
 		}
 	}
 
-	previousAccountTxn := make(map[string]Transaction, len(balances))
+	previousAccountTxn := make(map[string]*Transaction, len(balances))
 	for ix, txn := range transactions {
 		if err := txn.Validate(); err != nil {
 			return NewValidateError(ix, err)
@@ -197,7 +215,8 @@ func (l *Ledger) LastTransactionTime() time.Time {
 func (l *Ledger) AddTransactions(txns []Transaction) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	idSet, newTransactions, _ := makeIDSet(append(l.transactions, txns...))
+	transactionPtrs := makeTransactionPtrs(txns)
+	idSet, newTransactions, _ := makeIDSet(append(l.transactions, transactionPtrs...))
 	Transactions(newTransactions).Sort()
 	testLedger := &Ledger{
 		idSet:        idSet,
@@ -277,7 +296,7 @@ func timePtr(t time.Time) *time.Time {
 func (l *Ledger) UpdateTransaction(id string, transaction Transaction) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if !l.idSet[id] {
+	if l.idSet[id] == nil {
 		return errors.New("Transaction not found by ID: " + id)
 	}
 	txnIndex := -1
@@ -339,7 +358,7 @@ func (l *Ledger) OpeningBalances() (opening Transaction, found bool) {
 	defer l.mu.RUnlock()
 	for _, p := range l.transactions[0].Postings {
 		if p.IsOpeningBalance() {
-			return l.transactions[0], true
+			return *l.transactions[0], true
 		}
 	}
 	return
@@ -371,10 +390,16 @@ func (l *Ledger) UpdateOpeningBalance(opening Transaction) error {
 	}
 
 	newTransactions := []Transaction{newOpening}
-	if len(l.transactions) > 0 && isOpeningTransaction(l.transactions[0]) {
-		newTransactions = append(newTransactions, l.transactions[1:]...)
-	} else {
-		newTransactions = append(newTransactions, l.transactions...)
+	{
+		var appendTxns []*Transaction
+		if len(l.transactions) > 0 && isOpeningTransaction(*l.transactions[0]) {
+			appendTxns = l.transactions[1:]
+		} else {
+			appendTxns = l.transactions
+		}
+		for _, txn := range appendTxns {
+			newTransactions = append(newTransactions, *txn)
+		}
 	}
 	testLedger, err := New(newTransactions)
 	if err != nil {

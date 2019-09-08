@@ -247,7 +247,19 @@ func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeT
 
 // balanceTransactions sorts and adds balances to each transaction
 func balanceTransactions(txns []ledger.Transaction, balance decimal.Decimal, balanceDate time.Time, statementEndDate time.Time) {
-	ledger.Transactions(txns).Sort()
+	{
+		// convert to ptrs, sort, then copy back results
+		// TODO make more efficient should we add back auto-balances
+		txnPtrs := make(ledger.Transactions, len(txns))
+		for i := range txns {
+			txn := txns[i] // copy txn
+			txnPtrs[i] = &txn
+		}
+		txnPtrs.Sort()
+		for i := range txnPtrs {
+			txns[i] = *txnPtrs[i]
+		}
+	}
 
 	if balanceDate.After(statementEndDate) {
 		// don't trust this balance, it was recorded after the statement end date

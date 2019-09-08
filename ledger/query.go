@@ -6,18 +6,20 @@ import (
 	"github.com/johnstarich/sage/math"
 )
 
+// QueryResult is a paginated search result containing relevant transactions
 type QueryResult struct {
-	Count   int
-	Page    int
-	Results int
-	Transactions
+	Count        int
+	Page         int
+	Results      int
+	Transactions []Transaction
 }
 
 type transactionScore struct {
 	Score int
-	Transaction
+	*Transaction
 }
 
+// Query searches the ledger and paginates the results
 func (l *Ledger) Query(search string, page, results int) QueryResult {
 	if page < 1 || results < 1 {
 		panic("Page and results must >= 1")
@@ -53,7 +55,7 @@ func (l *Ledger) Query(search string, page, results int) QueryResult {
 		sort.Slice(txnScores, func(a, b int) bool {
 			return txnScores[a].Score < txnScores[b].Score
 		})
-		searchTxns := make([]Transaction, 0, results)
+		searchTxns := make([]*Transaction, 0, results)
 		start, end := paginateFromEnd(page, results, size)
 		for _, score := range txnScores[start:end] {
 			if len(searchTxns) == results {
@@ -71,7 +73,7 @@ func (l *Ledger) Query(search string, page, results int) QueryResult {
 		Count:        size,
 		Page:         page,
 		Results:      results,
-		Transactions: txns,
+		Transactions: dereferenceTransactions(txns),
 	}
 }
 
