@@ -103,5 +103,5 @@ func (p Posting) String() string {
 
 // IsOpeningBalance returns true if this matches an "opening balance" posting, false otherwise
 func (p Posting) IsOpeningBalance() bool {
-	return p.ID() == OpeningBalanceID || strings.HasPrefix(p.Account, "equity:Opening Balance")
+	return p.ID() == OpeningBalanceID
 }

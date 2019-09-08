@@ -179,19 +179,6 @@ func TestLedgerValidate(t *testing.T) {
 			},
 		},
 		{
-			description: "opening balance account and one txn valid",
-			txns: []Transaction{
-				{Postings: []Posting{
-					{Account: "account 1", Amount: *decFloat(2.25)},
-					{Account: "equity:Opening Balances", Amount: *decFloat(-2.25)},
-				}},
-				{Postings: []Posting{
-					{Account: "account 1", Amount: *decFloat(-1.25), Balance: decFloat(1)},
-					{Account: "expenses", Amount: *decFloat(1.25)},
-				}},
-			},
-		},
-		{
 			description: "opening balance ID and one txn valid",
 			txns: []Transaction{
 				{Postings: []Posting{
@@ -209,7 +196,7 @@ func TestLedgerValidate(t *testing.T) {
 			txns: []Transaction{
 				{Postings: []Posting{
 					{Account: "account 1", Amount: *decFloat(2.25)},
-					{Account: "equity:Opening Balances", Amount: *decFloat(-2.25)},
+					{Account: "equity:Opening Balances", Amount: *decFloat(-2.25), Tags: makeIDTag("Opening-Balance")},
 				}},
 				{Postings: []Posting{
 					{Account: "account 1", Amount: *decFloat(-1.25), Balance: decFloat(-5)},
@@ -223,7 +210,7 @@ func TestLedgerValidate(t *testing.T) {
 			txns: []Transaction{
 				{Postings: []Posting{
 					{Account: "account 1", Amount: *decFloat(2.25)},
-					{Account: "equity:Opening Balances", Amount: *decFloat(-1.25)},
+					{Account: "equity:Opening Balances", Amount: *decFloat(-1.25), Tags: makeIDTag("Opening-Balance")},
 				}},
 			},
 			expectedErr: "Transaction is not balanced - postings do not sum to zero:",
@@ -274,7 +261,7 @@ func TestLedgerValidate(t *testing.T) {
 			txns: []Transaction{
 				{Postings: []Posting{
 					{Account: "some other account", Amount: *decFloat(-1.25)},
-					{Account: "equity:Opening Balances", Amount: *decFloat(1.25)},
+					{Account: "equity:Opening Balances", Amount: *decFloat(1.25), Tags: makeIDTag("Opening-Balance")},
 				}},
 				{Postings: []Posting{
 					{Account: "account 1", Amount: *decFloat(-2.00), Balance: decFloat(2)},
@@ -290,7 +277,7 @@ func TestLedgerValidate(t *testing.T) {
 					{Account: "account 1", Amount: *decFloat(5.25)},
 					{Account: "account 2", Amount: *decFloat(5.25)},
 					{Account: "account 3", Amount: *decFloat(2.50)},
-					{Account: "equity:Opening Balances", Amount: *decFloat(-13)},
+					{Account: "equity:Opening Balances", Amount: *decFloat(-13), Tags: makeIDTag("Opening-Balance")},
 				}},
 				{Postings: []Posting{
 					{Account: "account 1", Amount: *decFloat(-2.25), Balance: decFloat(3)},
@@ -322,7 +309,7 @@ func TestLedgerValidate(t *testing.T) {
 					{Account: "account 1", Amount: *decFloat(5.25)},
 					{Account: "account 2", Amount: *decFloat(5.25)},
 					{Account: "account 3", Amount: *decFloat(2.50)},
-					{Account: "equity:Opening Balances", Amount: *decFloat(-13)},
+					{Account: "equity:Opening Balances", Amount: *decFloat(-13), Tags: makeIDTag("Opening-Balance")},
 				}},
 				{Postings: []Posting{
 					{Account: "account 1", Amount: *decFloat(-2.25), Balance: decFloat(3)},
@@ -341,7 +328,7 @@ func TestLedgerValidate(t *testing.T) {
 			txns: []Transaction{
 				{Postings: []Posting{
 					{Account: "account 1", Amount: *decFloat(1)},
-					{Account: "equity:Opening Balances", Amount: *decFloat(-1)},
+					{Account: "equity:Opening Balances", Amount: *decFloat(-1), Tags: makeIDTag("Opening-Balance")},
 				}},
 				{Postings: []Posting{
 					{Account: "account 1", Amount: *decFloat(-1.00), Balance: decFloat(0)},
