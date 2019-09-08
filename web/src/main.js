@@ -1,5 +1,10 @@
 // Electron entrypoint
-const { app, BrowserWindow } = require('electron');
+const {
+  BrowserWindow,
+  Menu,
+  app,
+  shell,
+} = require('electron');
 const { execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -11,6 +16,12 @@ const SagePort = 46745
 if (require('electron-squirrel-startup')) { // eslint-disable-line global-require
   app.quit();
 }
+
+// All user data is stored here
+const DataDirectory = path.join(app.getPath('userData'), "data")
+const LedgerFile = path.join(DataDirectory, "ledger.journal")
+const AccountsFile = path.join(DataDirectory, "accounts.json")
+const RulesFile = path.join(DataDirectory, "ledger.rules")
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -37,6 +48,34 @@ const createWindow = () => {
     // when you should delete the corresponding element.
     mainWindow = null;
   });
+
+  const defaultMenuItems = Menu.getApplicationMenu().items;
+  const firstMenus = [], remainingMenus = [];
+  let foundSplitMenu = false;
+  for (item of defaultMenuItems) {
+    if (! foundSplitMenu) {
+      firstMenus.push(item)
+      foundSplitMenu = item.label === 'View'
+    } else {
+      remainingMenus.push(item)
+    }
+  }
+  const newMenu = [].concat(
+    firstMenus,
+    [
+      {
+        label: 'Data',
+        submenu: [
+          {
+            label: 'Show data folder',
+            click: () => shell.showItemInFolder(LedgerFile),
+          },
+        ],
+      },
+    ],
+    remainingMenus,
+  );
+  Menu.setApplicationMenu(Menu.buildFromTemplate(newMenu))
 };
 
 // This method will be called when Electron has finished
@@ -72,14 +111,13 @@ let executable = path.join(app.getAppPath(), "..", sageServerName)
 if (process.platform === 'win32') {
   executable += ".exe"
 }
-let data = path.join(app.getPath('userData'), "data")
-fs.mkdirSync(data, {recursive: true})
+fs.mkdirSync(DataDirectory, {recursive: true})
 
 sageServer = execFile(executable, [
   '-server', '-port', SagePort,
-  '-ledger', path.join(data, "ledger.journal"),
-  '-accounts', path.join(data, "accounts.json"),
-  '-rules', path.join(data, "ledger.rules"),
+  '-ledger', LedgerFile,
+  '-accounts', AccountsFile,
+  '-rules', RulesFile,
 ], function(err) {
   if (err === null) {
     return
