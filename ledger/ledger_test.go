@@ -305,3 +305,183 @@ func TestAddTransactions(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateOpeningBalance(t *testing.T) {
+	makeOpeningBalance := func(amount float64) Posting {
+		return Posting{
+			Account:  "equity:Opening Balance",
+			Amount:   *decFloat(amount),
+			Currency: usd,
+			Tags:     makeIDTag(OpeningBalanceID),
+		}
+	}
+	makeOpeningTxn := func(date string, postings ...Posting) *Transaction {
+		return &Transaction{
+			Date:     parseDate(t, date),
+			Payee:    "* Opening Balance",
+			Postings: postings,
+		}
+	}
+	makeAsset := func(name string, amount float64) Posting {
+		return Posting{
+			Account:  "assets:" + name,
+			Amount:   *decFloat(amount),
+			Currency: usd,
+		}
+	}
+	makeExpenseTxn := func(date, name, assetName string, amount float64) *Transaction {
+		return &Transaction{
+			Date:  parseDate(t, date),
+			Payee: name,
+			Postings: []Posting{
+				{
+					Account:  "expenses:" + name,
+					Amount:   *decFloat(amount),
+					Currency: usd,
+				},
+				makeAsset(assetName, -amount),
+			},
+		}
+	}
+	for _, tc := range []struct {
+		description  string
+		txns         Transactions
+		openingTxn   *Transaction
+		expectedErr  bool
+		expectedTxns Transactions
+	}{
+		{
+			description: "no txns",
+			openingTxn: makeOpeningTxn("2019/01/01",
+				makeAsset("Bank 1", 1.25),
+				makeOpeningBalance(-1.25),
+			),
+			expectedTxns: Transactions{
+				makeOpeningTxn("2019/01/01",
+					makeAsset("Bank 1", 1.25),
+					makeOpeningBalance(-1.25),
+				),
+			},
+		},
+		{
+			description: "identical opening txn",
+			openingTxn: makeOpeningTxn("2019/01/01",
+				makeAsset("Bank 1", 1.25),
+				makeOpeningBalance(-1.25),
+			),
+			expectedTxns: Transactions{
+				makeOpeningTxn("2019/01/01",
+					makeAsset("Bank 1", 1.25),
+					makeOpeningBalance(-1.25),
+				),
+			},
+		},
+		{
+			description: "additional opening balance",
+			openingTxn: makeOpeningTxn("2019/01/01",
+				makeAsset("Bank 1", 1.25),
+				makeAsset("Bank 2", 2.50),
+				makeOpeningBalance(-3.75),
+			),
+			txns: Transactions{
+				makeOpeningTxn("2019/01/01",
+					makeAsset("Bank 2", 2.50),
+					makeOpeningBalance(-2.50),
+				),
+			},
+			expectedTxns: Transactions{
+				makeOpeningTxn("2019/01/01",
+					makeAsset("Bank 1", 1.25),
+					makeAsset("Bank 2", 2.50),
+					makeOpeningBalance(-3.75),
+				),
+			},
+		},
+		{
+			description: "different date",
+			openingTxn: makeOpeningTxn("2019/01/02",
+				makeAsset("Bank 1", 1.25),
+				makeOpeningBalance(-1.25),
+			),
+			txns: Transactions{
+				makeOpeningTxn("2019/01/01",
+					makeAsset("Bank 1", 1.25),
+					makeOpeningBalance(-1.25),
+				),
+			},
+			expectedTxns: Transactions{
+				makeOpeningTxn("2019/01/02",
+					makeAsset("Bank 1", 1.25),
+					makeOpeningBalance(-1.25),
+				),
+			},
+		},
+		{
+			description: "existing txns",
+			openingTxn: makeOpeningTxn("2019/01/01",
+				makeAsset("Bank 1", 2.00),
+				makeOpeningBalance(-2.00),
+			),
+			txns: Transactions{
+				makeExpenseTxn("2019/01/02", "Fast Food", "Bank 1", 1.00),
+			},
+			expectedTxns: Transactions{
+				makeOpeningTxn("2019/01/01",
+					makeAsset("Bank 1", 2.00),
+					makeOpeningBalance(-2.00),
+				),
+				makeExpenseTxn("2019/01/02", "Fast Food", "Bank 1", 1.00),
+			},
+		},
+		{
+			description: "opening after txns",
+			openingTxn: makeOpeningTxn("2019/01/02",
+				makeAsset("Bank 1", 2.00),
+				makeOpeningBalance(-2.00),
+			),
+			txns: Transactions{
+				makeExpenseTxn("2019/01/01", "Fast Food", "Bank 1", 1.00),
+			},
+			expectedTxns: Transactions{
+				makeExpenseTxn("2019/01/01", "Fast Food", "Bank 1", 1.00),
+				makeOpeningTxn("2019/01/02",
+					makeAsset("Bank 1", 2.00),
+					makeOpeningBalance(-2.00),
+				),
+			},
+		},
+		{
+			description: "update opening after txns",
+			openingTxn: makeOpeningTxn("2019/01/01",
+				makeAsset("Bank 1", 2.00),
+				makeOpeningBalance(-2.00),
+			),
+			txns: Transactions{
+				makeExpenseTxn("2019/01/02", "Fast Food", "Bank 1", 1.00),
+				makeOpeningTxn("2019/01/03",
+					makeAsset("Bank 1", 2.00),
+					makeOpeningBalance(-2.00),
+				),
+			},
+			expectedTxns: Transactions{
+				makeOpeningTxn("2019/01/01",
+					makeAsset("Bank 1", 2.00),
+					makeOpeningBalance(-2.00),
+				),
+				makeExpenseTxn("2019/01/02", "Fast Food", "Bank 1", 1.00),
+			},
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			ldg, err := New(dereferenceTransactions(tc.txns))
+			require.NoError(t, err)
+			err = ldg.UpdateOpeningBalance(*tc.openingTxn)
+			if tc.expectedErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedTxns, ldg.transactions)
+		})
+	}
+}

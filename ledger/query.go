@@ -27,11 +27,12 @@ func (l *Ledger) Query(search string, page, results int) QueryResult {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	txns := l.transactions
-	if len(txns) > 0 {
-		for _, p := range l.transactions[0].Postings {
-			if p.IsOpeningBalance() {
-				txns = l.transactions[1:]
-				break
+	if openingBalTxn := l.idSet[OpeningBalanceID]; openingBalTxn != nil {
+		// skip opening balance for queries
+		txns = make(Transactions, 0, len(l.transactions))
+		for _, txn := range l.transactions {
+			if txn != openingBalTxn {
+				txns = append(txns, txn)
 			}
 		}
 	}

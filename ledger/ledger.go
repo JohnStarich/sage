@@ -118,7 +118,7 @@ func duplicateTransactionError(id string) error {
 	return errors.Errorf("Duplicate transaction IDs found: %s", id)
 }
 
-// FirstTransactionTime returns the last transactions Date field. Returns 0 if there are no transactions
+// FirstTransactionTime returns the first transaction's Date field. Returns 0 if there are no transactions
 func (l *Ledger) FirstTransactionTime() time.Time {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -129,7 +129,7 @@ func (l *Ledger) FirstTransactionTime() time.Time {
 	return l.transactions[0].Date
 }
 
-// LastTransactionTime returns the last transactions Date field. Returns 0 if there are no transactions
+// LastTransactionTime returns the last transaction's Date field. Returns 0 if there are no transactions
 func (l *Ledger) LastTransactionTime() time.Time {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -147,6 +147,9 @@ func (l *Ledger) AddTransactions(txns []Transaction) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	transactionPtrs := makeTransactionPtrs(txns)
+	for i := range transactionPtrs {
+		transactionPtrs[i].Date = transactionPtrs[i].Date.UTC()
+	}
 	idSet, newTransactions, _ := makeIDSet(append(l.transactions, transactionPtrs...))
 	Transactions(newTransactions).Sort()
 	testLedger := &Ledger{
@@ -163,9 +166,6 @@ func (l *Ledger) AddTransactions(txns []Transaction) error {
 		} else {
 			return err
 		}
-	}
-	for i := range newTransactions {
-		newTransactions[i].Date = newTransactions[i].Date.UTC()
 	}
 	l.idSet = idSet
 	l.transactions = newTransactions
@@ -225,29 +225,24 @@ func timePtr(t time.Time) *time.Time {
 // UpdateTransaction replaces a transaction where ID is 'id' with 'transaction'
 // The new transaction must be valid
 func (l *Ledger) UpdateTransaction(id string, transaction Transaction) error {
+	if id == OpeningBalanceID {
+		return NewValidateError(0, errors.New("Update opening balances with /api/v1/updateOpeningBalance"))
+	}
+	return l.updateTransaction(id, transaction)
+}
+
+func (l *Ledger) updateTransaction(id string, transaction Transaction) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.idSet[id] == nil {
+	existingTxn := l.idSet[id]
+	if existingTxn == nil {
 		return errors.New("Transaction not found by ID: " + id)
 	}
-	txnIndex := -1
-	for ix, txn := range l.transactions {
-		if txn.ID() == id {
-			txnIndex = ix
-			break
-		}
-		for _, p := range txn.Postings {
-			if p.ID() == id {
-				txnIndex = ix
-				break
-			}
-		}
-	}
-	if txnIndex == -1 {
-		panic("ID set out of sync with ledger transactions")
-	}
 
-	txnCopy := l.transactions[txnIndex]
+	txnCopy := *existingTxn
+	if !transaction.Date.IsZero() {
+		txnCopy.Date = transaction.Date.UTC()
+	}
 	if transaction.Comment != "" {
 		txnCopy.Comment = transaction.Comment
 	}
@@ -258,7 +253,8 @@ func (l *Ledger) UpdateTransaction(id string, transaction Transaction) error {
 		return err
 	}
 
-	l.transactions[txnIndex] = txnCopy
+	*existingTxn = txnCopy
+	l.transactions.Sort()
 	return nil
 }
 
@@ -280,27 +276,18 @@ func (l *Ledger) UpdateAccount(oldAccount, newAccount string) error {
 }
 
 // OpeningBalances attempts to find the opening balances transaction and return it
-// Note: only checks the first transaction in the ledger
 func (l *Ledger) OpeningBalances() (opening Transaction, found bool) {
-	if len(l.transactions) == 0 {
-		return
-	}
 	l.mu.RLock()
 	defer l.mu.RUnlock()
-	for _, p := range l.transactions[0].Postings {
-		if p.IsOpeningBalance() {
-			return *l.transactions[0], true
-		}
+	existingTxn := l.idSet[OpeningBalanceID]
+	if existingTxn == nil {
+		return
 	}
-	return
+	return *existingTxn, true
 }
 
 // UpdateOpeningBalance inserts or updates an account's opening balance for this ledger.
-// The opening balance must be the first transaction in the ledger, if the ledger is non-empty.
 func (l *Ledger) UpdateOpeningBalance(opening Transaction) error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	if err := opening.Validate(); err != nil {
 		return err
 	}
@@ -315,34 +302,15 @@ func (l *Ledger) UpdateOpeningBalance(opening Transaction) error {
 
 	// only allow some fields in the update for now
 	newOpening := Transaction{
-		Date:     opening.Date.UTC(),
+		Date:     opening.Date,
 		Payee:    "* Opening Balance",
 		Postings: opening.Postings,
 	}
 
-	newTransactions := []Transaction{newOpening}
-	{
-		var appendTxns []*Transaction
-		if len(l.transactions) > 0 && isOpeningTransaction(*l.transactions[0]) {
-			appendTxns = l.transactions[1:]
-		} else {
-			appendTxns = l.transactions
-		}
-		for _, txn := range appendTxns {
-			newTransactions = append(newTransactions, *txn)
-		}
+	if l.idSet[OpeningBalanceID] == nil {
+		return l.AddTransactions([]Transaction{newOpening})
 	}
-	testLedger, err := New(newTransactions)
-	if err != nil {
-		return err
-	}
-	if err := testLedger.Validate(); err != nil {
-		return err
-	}
-
-	l.idSet = testLedger.idSet
-	l.transactions = testLedger.transactions
-	return nil
+	return l.updateTransaction(OpeningBalanceID, newOpening)
 }
 
 func isOpeningTransaction(txn Transaction) bool {
