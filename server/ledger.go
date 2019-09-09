@@ -364,28 +364,22 @@ func updateOpeningBalance(ledgerFileName string, ldg *ledger.Ledger, accountStor
 			return
 		}
 
-		nonZeroPostings := make([]ledger.Posting, 0, len(opening.Postings))
-		for _, p := range opening.Postings {
-			if !p.Amount.IsZero() {
-				nonZeroPostings = append(nonZeroPostings, p)
-			}
-		}
-		opening.Postings = nonZeroPostings
-
 		var total decimal.Decimal
-		for _, p := range opening.Postings {
-			format, err := model.ParseLedgerFormat(p.Account)
+		for i := range opening.Postings {
+			format, err := model.ParseLedgerFormat(opening.Postings[i].Account)
 			if err != nil || format.AccountType == "" {
 				abortWithClientError(c, http.StatusBadRequest, errors.Wrap(err, "Invalid ledger account ID"))
 				return
 			}
-			total = total.Sub(p.Amount)
+			total = total.Sub(opening.Postings[i].Amount)
+			opening.Postings[i].Currency = "$"
 		}
 
 		opening.Postings = append(opening.Postings, ledger.Posting{
-			Account: "equity:Opening Balances",
-			Amount:  total,
-			Tags:    map[string]string{"id": ledger.OpeningBalanceID},
+			Account:  "equity:Opening Balances",
+			Amount:   total,
+			Currency: "$",
+			Tags:     map[string]string{"id": ledger.OpeningBalanceID},
 		})
 
 		if err := ldg.UpdateOpeningBalance(opening); err != nil {
