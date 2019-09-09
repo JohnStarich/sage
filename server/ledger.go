@@ -364,17 +364,19 @@ func updateOpeningBalance(ledgerFileName string, ldg *ledger.Ledger, accountStor
 			return
 		}
 
+		nonZeroPostings := make([]ledger.Posting, 0, len(opening.Postings))
+		for _, p := range opening.Postings {
+			if !p.Amount.IsZero() {
+				nonZeroPostings = append(nonZeroPostings, p)
+			}
+		}
+		opening.Postings = nonZeroPostings
+
 		var total decimal.Decimal
 		for _, p := range opening.Postings {
 			format, err := model.ParseLedgerFormat(p.Account)
 			if err != nil || format.AccountType == "" {
 				abortWithClientError(c, http.StatusBadRequest, errors.Wrap(err, "Invalid ledger account ID"))
-				return
-			}
-
-			_, found := accountStore.FindLedger(format)
-			if !found {
-				abortWithClientError(c, http.StatusBadRequest, errors.New("Account could not be found with ID "+format.AccountID))
 				return
 			}
 			total = total.Sub(p.Amount)
