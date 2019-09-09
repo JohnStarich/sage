@@ -77,7 +77,7 @@ export default function BalanceSettings({ match }) {
       text: start ? `Balance as of ${dateFormatter.format(start)}` : "Balance",
       align: 'right',
       headerAlign: 'right',
-      formatter: amount => amount ? <Amount amount={Number(amount)} prefix="$" /> : <em>Click to edit...</em>,
+      formatter: amount => amount !== null ? <Amount amount={Number(amount)} prefix="$" /> : <em>Click to edit...</em>,
       editorRenderer: (props, value) => {
         return (
           <FunctionalEditor {...props}>
@@ -129,7 +129,7 @@ export default function BalanceSettings({ match }) {
           </LoadingButton></Col>
       </Row>
       <Row>
-        <Col><p>Click a balance cell to update an opening balance.</p></Col>
+        <Col><p>Click a balance cell to update an opening balance. Remember liability accounts, like credit cards, typically have negative balances.</p></Col>
       </Row>
       <Row>
         <BootstrapTable

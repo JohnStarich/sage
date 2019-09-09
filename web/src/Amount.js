@@ -4,12 +4,13 @@ import Form from 'react-bootstrap/Form';
 
 export default function (props) {
   const {
-    tagName,
     amount,
     className,
     editable,
     onChange,
+    onKeyDown,
     prefix,
+    tagName,
     ...remainingProps
   } = props
   const TagName = tagName || 'span';
@@ -33,8 +34,8 @@ export default function (props) {
       throw Error("Editable amounts must have an onChange prop")
     }
     const [currentAmount, setCurrentAmount] = React.useState(amount)
-    const onAmountChange = e => {
-      let amountStr = e.target.value
+
+    const parseAmountStr = amountStr => {
       if (prefix && prefix.length > 0 && amountStr.startsWith(prefix)) {
         // trim off prefix
         amountStr = amountStr.slice(prefix.length)
@@ -45,6 +46,11 @@ export default function (props) {
         // if input is just negative, assume it's 0
         amountNum = 0
       }
+      return {amountStr, amountNum}
+    }
+
+    const onAmountChange = e => {
+      let { amountStr, amountNum } = parseAmountStr(e.target.value)
       if (Number.isNaN(amountNum)) {
         return
       }
@@ -63,12 +69,26 @@ export default function (props) {
       }
     })
 
+    const keyDown = e => {
+      if (e.keyCode === 13) {
+        // enter pressed
+        let { amountNum } = parseAmountStr(e.target.value)
+        if (! Number.isNaN(amountNum)) {
+          onChange(amountNum)
+        }
+      }
+      if (onKeyDown) {
+        onKeyDown(e)
+      }
+    }
+
     return (
       <Form.Control
         className={fullClassName}
         type="text"
         value={`${prefix}${currentAmount}`}
         onChange={onAmountChange}
+        onKeyDown={keyDown}
         {...remainingProps}
       />
     )
