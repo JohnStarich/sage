@@ -18,3 +18,16 @@
 input.amount {
   text-align: right;
 }
+
+.amount.amount-finance .amount-sign {
+  display: none;
+}
+
+.amount.amount-finance.amount-negative:before {
+  content: "(";
+}
+
+.amount.amount-finance.amount-negative:after {
+  content: ")";
+}
+

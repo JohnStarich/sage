@@ -28,10 +28,6 @@
   font-weight: 600;
 }
 
-.balances .amount.amount-negative {
-  color: red;
-}
-
 .balances .balance-warning {
   text-align: right;
   width: 8em;

@@ -67,6 +67,7 @@ export default function Balances({ syncTime }) {
                   <Amount
                     amount={Number(account.Balances[account.Balances.length - 1])}
                     prefix="$"
+                    className="amount-finance"
                   />
                 }
               </td>

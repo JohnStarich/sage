@@ -45,17 +45,8 @@ const columns = [
     text: 'Amount',
     align: 'right',
     headerAlign: 'right',
-    formatter: (amount, txn) => {
-      let className = null
-      if (txn.Postings.length === 2) {
-        const account = txn.Postings[1].Account
-        const separatorIndex = account.indexOf(':')
-        if (separatorIndex !== -1 && account.slice(0, separatorIndex) === "revenues") {
-          className = "revenue"
-        }
-      }
-      return <Amount className={className} amount={amount} prefix={txn.SummaryCurrency} />
-    },
+    formatter: (amount, txn) =>
+      <Amount className="amount-finance" amount={amount} prefix={txn.SummaryCurrency} />,
   },
 ];
 
