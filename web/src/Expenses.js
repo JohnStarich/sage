@@ -73,11 +73,7 @@ const AmountTooltip = ({ active, payload, label }) => {
     return null
   }
   const revenues = [], expenses = []
-  const accounts =
-    payload
-      .filter(account => account.value !== 0)
-      .sort((a, b) => a.name.localeCompare(b.name))
-
+  const accounts = payload.filter(account => account.value !== 0)
   for (let account of accounts) {
     if (account.value > 0) {
       revenues.push(account)
@@ -85,6 +81,9 @@ const AmountTooltip = ({ active, payload, label }) => {
       expenses.push(account)
     }
   }
+  revenues.sort((a, b) => b.value - a.value)
+  expenses.sort((a, b) => a.value - b.value)
+
   const makeEntry = (account, i) =>
     <li key={i} className="entry" style={{ color: account.fill }}>
       <span className="account-name">{account.name}</span>
