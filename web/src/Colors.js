@@ -3,15 +3,15 @@ import React from 'react';
 const initialColors = [
   '#1e90ff',
   '#ff56a1',
-  '#95Eb6f',
   '#ffce5e',
+  '#95Eb6f',
   '#ae3eff',
 ]
 const brightnesses = [
-  1,
-  0.85,
-  0.7,
-  0.55,
+  1.15,
+  0.75,
+  0.6,
+  0.45,
 ]
 
 const orderedColors = (() => {
