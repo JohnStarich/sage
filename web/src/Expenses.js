@@ -72,21 +72,43 @@ const AmountTooltip = ({ active, payload, label }) => {
   if (!active) {
     return null
   }
+  const revenues = [], expenses = []
+  const accounts =
+    payload
+      .filter(account => account.value !== 0)
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+  for (let account of accounts) {
+    if (account.value > 0) {
+      revenues.push(account)
+    } else {
+      expenses.push(account)
+    }
+  }
+  const makeEntry = (account, i) =>
+    <li key={i} className="entry" style={{ color: account.fill }}>
+      <span className="account-name">{account.name}</span>
+      <Amount amount={account.value} prefix='$' />
+    </li>
+
   return (
     <div className="amount-tooltip">
       <p className="label">{label}</p>
-      <ul>
-        {
-          payload
-            .filter(account => account.value !== 0)
-            .map((account, i) =>
-              <li key={i} className="entry" style={{ color: account.fill }}>
-                <span className="account-name">{account.name} : </span>
-                <Amount amount={account.value} prefix='$' />
-              </li>
-            )
-        }
-      </ul>
+      {revenues.length === 0 ? null :
+        <>
+          <p className="group">Revenues:</p>
+          <ul>{revenues.map(makeEntry)}</ul>
+        </>
+      }
+      {expenses.length === 0 ? null :
+        <>
+          <p className="group">Expenses:</p>
+          <ul>{expenses.map(makeEntry)}</ul>
+        </>
+      }
+      {revenues.length === 0 && expenses.length === 0 ?
+        <em className="missing">Zero net expenses and revenues.</em>
+      : null}
     </div>
   )
 }

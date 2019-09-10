@@ -8,16 +8,21 @@
   font-size: 0.95em;
   box-sizing: border-box;
   background-color: #FCFCFC;
-  padding: 0.5em;
-  padding-left: 0;
-  padding-right: 1.5em;
+  padding: 0.5em 1.5em;
   border: 1px solid #EEE;
   border-radius: 0.25em;
 }
 
 .expenses .amount-tooltip ul {
-  list-style: square;
-  list-style-position: outside;
+  list-style: none;
+  padding-left: 0;
+}
+
+.expenses .amount-tooltip ul li {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
 .expenses .amount-tooltip .label {
@@ -26,4 +31,34 @@
   margin: 0.25em;
   margin-bottom: 0.5em;
   margin-left: 2em;
+}
+
+.expenses .amount-tooltip .account-name {
+  order: 1;
+}
+
+.expenses .amount-tooltip .entry:after {
+  content: "";
+  flex-grow: 1;
+  order: 2;
+
+  min-width: 0.85em;
+  margin: 0 0.3em;
+  background-image: radial-gradient(circle, currentcolor 1px, transparent 1px);
+  background-position-y: bottom;
+  background-size: 1ex 3px;
+  background-repeat: repeat-x;
+  height: 1em;
+}
+
+.expenses .amount-tooltip .amount {
+  order: 3;
+}
+
+.expenses .amount-tooltip .group {
+  margin-bottom: 0.25em;
+}
+
+.expenses .amount-tooltip .missing {
+  color: #888;
 }
