@@ -48,46 +48,37 @@ export default function Balances({ syncTime }) {
       .filter(id => !accountIDs.has(id))
       .map(id => messageMap[id])
 
+  const accountTypes = accounts.reduce((acc, account) => {
+    if (account.Balances) {
+      if (acc[account.AccountType] === undefined) {
+        acc[account.AccountType] = []
+      }
+      acc[account.AccountType].push(account)
+    }
+    return acc
+  }, {})
+
+  const balanceSections =
+    Object.entries(accountTypes)
+      .map(([type, accounts]) => <BalanceSection key={type} name={type} accounts={accounts} getMessages={account => messageMap[account.ID]} />)
+
   return (
     <div className="balances">
-      <Table responsive>
-        <tbody>
-          <tr><th>Account</th><th>Balance</th></tr>
-          {accounts.length !== 0 ? null :
+          {accounts.length === 0 ?
             <tr>
               <td><Link to="/accounts" className="btn btn-outline-primary">Add your first account</Link></td>
               <td></td>
             </tr>
-          }
-          {accounts.map(account =>
-            <tr key={account.ID}>
-              <td>{account.Account}</td>
-              <td>
-                {!account.Balances ? null :
-                  <Amount
-                    amount={Number(account.Balances[account.Balances.length - 1])}
-                    prefix="$"
-                    className="amount-finance"
-                  />
-                }
-              </td>
-              {!messageMap[account.ID] ? <td></td> :
-                <td className="balance-warning"><WarningTooltip messages={messageMap[account.ID].map(m => m.Message)} /></td>
-              }
-            </tr>
-          )}
+          : balanceSections}
           {remainingAccountMessages.map(msgs =>
-            <tr key={msgs[0].AccountID} className="message">
-              <td>{msgs[0].AccountName}</td>
-              <td></td>
-              <td className="balance-warning"><WarningTooltip messages={msgs.map(m => m.Message)} /></td>
-            </tr>
+            <p key={msgs[0].AccountID} className="message">
+              <strong>{msgs[0].AccountName}</strong>
+              <WarningTooltip messages={msgs.map(m => m.Message)} />
+            </p>
           )}
           {nonAccountMessages.map((m, i) =>
-            <tr key={i}><td colSpan="3">{m}</td></tr>
+            <p key={i}>{m}</p>
           )}
-        </tbody>
-      </Table>
     </div>
   )
 }
@@ -118,4 +109,50 @@ function WarningTooltip({ messages }) {
       </Button>
     </OverlayTrigger>
   );
+}
+
+function BalanceSection({ name, accounts, getMessages }) {
+  const nameRemappings = {
+    "assets": "Cash",
+    "liabilities": "Debts",
+  }
+  if (nameRemappings[name]) {
+    name = nameRemappings[name]
+  }
+  const total =
+    accounts
+      .map(a => Number(a.Balances[a.Balances.length - 1]))
+      .reduce((a, b) => a + b)
+  const balance = account => Number(account.Balances[account.Balances.length - 1])
+
+  let headerClass = "amount-finance"
+  if (total > 0 && name === "Cash") {
+    headerClass += " balance-cash"
+  }
+
+  const renderMessages = account => {
+    const messages = getMessages(account)
+    if (messages) {
+      return <td className="balance-warning"><WarningTooltip messages={messages.map(m => m.Message)} /></td>
+    }
+    return <td></td>
+  }
+  return (
+    <Table responsive>
+      <thead>
+        <tr><th>{name}</th><th><Amount prefix="$" amount={total} className={headerClass} /></th></tr>
+      </thead>
+      <tbody>
+        {accounts.map(account =>
+          <tr key={account.ID}>
+            <td>{account.Account}</td>
+            <td>
+              {account.Balances ? <Amount prefix="$" amount={balance(account)} className="amount-finance" /> : null}
+            </td>
+            {renderMessages(account)}
+          </tr>
+        )}
+      </tbody>
+    </Table>
+  )
 }

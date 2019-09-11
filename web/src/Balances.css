@@ -37,3 +37,7 @@
   list-style: none;
   padding: 0;
 }
+
+.balances .balance-cash {
+  color: #009900;
+}
