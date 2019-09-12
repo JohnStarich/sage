@@ -36,7 +36,7 @@
   padding-left: 2em;
 }
 
-.transactions .amount.amount-positive {
+.transactions .transaction.amount.amount-positive {
   color: #009900;
 }
 

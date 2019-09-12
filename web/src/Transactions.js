@@ -46,7 +46,7 @@ const columns = [
     align: 'right',
     headerAlign: 'right',
     formatter: (amount, txn) =>
-      <Amount className="amount-finance" amount={amount} prefix={txn.SummaryCurrency} />,
+      <Amount className="transaction amount-finance" amount={amount} prefix={txn.SummaryCurrency} />,
   },
 ];
 
