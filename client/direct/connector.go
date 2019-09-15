@@ -287,10 +287,6 @@ func balanceTransactions(txns []ledger.Transaction, balance decimal.Decimal, bal
 	}
 }
 
-func makeUniqueAccountTxnID(account Account) func(string) string {
-	return makeUniqueTxnID(account.Institution().FID(), account.ID())
-}
-
 func makeUniqueTxnID(fid, accountID string) func(txnID string) string {
 	// Follows FITID recommendation from OFX 102 Section 3.2.1
 	idPrefix := fid + "-" + accountID + "-"

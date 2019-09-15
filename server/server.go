@@ -19,12 +19,7 @@ import (
 
 const (
 	syncInterval = 4 * time.Hour
-	fullSyncKey  = "fullSyncFunc"
-	fileSyncKey  = "fileSyncFunc"
 	loggerKey    = "logger"
-	ledgerKey    = "ledger"
-	accountsKey  = "accounts"
-	rulesKey     = "rules"
 )
 
 // Run starts the server
