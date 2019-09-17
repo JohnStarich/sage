@@ -127,15 +127,17 @@ func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) 
 		var allTxns []ledger.Transaction
 		for inst, accounts := range instMap {
 			if connector, isConn := inst.(direct.Connector); isConn {
+				var descriptions []string
 				var requestors []direct.Requestor
 				for _, account := range accounts {
 					if requestor, isRequestor := account.(direct.Requestor); isRequestor {
 						requestors = append(requestors, requestor)
+						descriptions = append(descriptions, account.Description())
 					}
 				}
 				txns, err := direct.Statement(connector, start, end, requestors)
 				if err != nil {
-					return nil, err
+					return nil, errors.Wrapf(err, "Failed downloading transactions: %s", descriptions)
 				}
 				allTxns = append(allTxns, txns...)
 			}

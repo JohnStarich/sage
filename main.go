@@ -70,7 +70,11 @@ func start(
 		return sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore, false)
 	}
 	gin.SetMode(gin.ReleaseMode)
-	return server.Run(autoSync, fmt.Sprintf("0.0.0.0:%d", port), ledgerFileName, ldg, accountsFileName, accountStore, rulesFileName, rulesStore, logger)
+	err = server.Run(autoSync, fmt.Sprintf("0.0.0.0:%d", port), ledgerFileName, ldg, accountsFileName, accountStore, rulesFileName, rulesStore, logger)
+	if err != nil {
+		logger.Error("Server run failed", zap.Error(err))
+	}
+	return err
 }
 
 func usage(flagSet *flag.FlagSet) string {
