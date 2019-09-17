@@ -39,6 +39,11 @@ func (p *Encoder) SetIndent(prefix, indent string) {
 	p.toJSONEncoder().SetIndent(prefix, indent)
 }
 
+// SetEscapeHTML calls json.Encoder.SetEscapeHTML
+func (p *Encoder) SetEscapeHTML(on bool) {
+	p.toJSONEncoder().SetEscapeHTML(on)
+}
+
 func isRedacted() bool {
 	// poor man's redactor -- yes it's terrible, no I couldn't think of a better way
 	var pc uintptr

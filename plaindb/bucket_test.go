@@ -104,7 +104,7 @@ func TestBucketPutSave(t *testing.T) {
 		name:    "accounts",
 		path:    path,
 		version: "1",
-		saveFn:  saveBucket,
+		saver:   saveBucket,
 		data: map[string]interface{}{
 			"a": "some string",
 			"b": 1,
@@ -153,7 +153,7 @@ func TestBucketPut(t *testing.T) {
 			"a": "b",
 			"c": 1,
 		},
-		saveFn: func(saveB *bucket) error {
+		saver: func(saveB *bucket) error {
 			assert.Equal(t, b, saveB)
 			return nil
 		},
@@ -167,6 +167,12 @@ func TestBucketPut(t *testing.T) {
 	assert.True(t, found)
 	assert.NoError(t, err)
 	assert.Equal(t, "some value", value)
+
+	err = b.Put("some ID", nil)
+	require.NoError(t, err)
+	found, err = b.Get("some ID", &value)
+	assert.NoError(t, err)
+	assert.False(t, found)
 }
 
 func TestBucketIter(t *testing.T) {

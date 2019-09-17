@@ -2,12 +2,14 @@ package plaindb
 
 import (
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sync"
 
+	"github.com/johnstarich/sage/redactor"
 	"github.com/pkg/errors"
 )
 
@@ -17,15 +19,15 @@ type Bucket interface {
 	Iter(v interface{}, fn func(id string) (keepGoing bool)) error
 	// Get reads the record with key 'id' into 'v'
 	Get(id string, v interface{}) (found bool, err error)
-	// Put writes the record 'v' with key 'id'
+	// Put writes the record 'v' with key 'id'. If 'v' is nil, the record is deleted
 	Put(id string, v interface{}) error
 }
 
 type bucket struct {
-	name   string
-	path   string
-	mu     sync.RWMutex
-	saveFn func(*bucket) error
+	name  string
+	path  string
+	mu    sync.RWMutex
+	saver func(*bucket) error
 
 	version string
 	data    map[string]interface{}
@@ -33,7 +35,7 @@ type bucket struct {
 
 type unmarshalBucket struct {
 	Version string
-	Data    map[string]*json.RawMessage
+	Data    map[string]json.RawMessage
 }
 
 type marshalBucket struct {
@@ -67,9 +69,13 @@ func (b *bucket) Get(id string, v interface{}) (bool, error) {
 
 func (b *bucket) Put(id string, v interface{}) error {
 	b.mu.Lock()
-	b.data[id] = v
+	if v == nil {
+		delete(b.data, id)
+	} else {
+		b.data[id] = v
+	}
 	b.mu.Unlock()
-	return b.saveFn(b)
+	return b.saver(b)
 }
 
 func (b *bucket) wrapErr(err error) error {
@@ -94,21 +100,25 @@ func saveBucket(b *bucket) (returnErr error) {
 			}
 		}
 	}()
-	enc := json.NewEncoder(file)
-	enc.SetIndent("", "    ")
-	enc.SetEscapeHTML(false)
-
 	b.mu.RLock()
-	err = enc.Encode(marshalBucket{
-		Version: b.version,
-		Data:    b.data,
-	})
+	err = encodeBucket(file, b)
 	b.mu.RUnlock()
 	if err != nil {
 		return b.wrapErr(err)
 	}
 
 	return b.wrapErr(os.Rename(file.Name(), b.path))
+}
+
+func encodeBucket(w io.Writer, b *bucket) error {
+	enc := redactor.NewEncoder(w)
+	enc.SetIndent("", "    ")
+	enc.SetEscapeHTML(false)
+
+	return enc.Encode(marshalBucket{
+		Version: b.version,
+		Data:    b.data,
+	})
 }
 
 // assign sets dest's pointer value to source
