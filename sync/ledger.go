@@ -9,6 +9,7 @@ import (
 	"github.com/johnstarich/sage/client"
 	"github.com/johnstarich/sage/client/direct"
 	"github.com/johnstarich/sage/client/model"
+	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
 	"github.com/pkg/errors"
@@ -76,17 +77,20 @@ func ledgerSync(
 
 	var allTxns []ledger.Transaction
 	downloadedTime := beforeStart
+	var errs sErrors.Errors
 	for downloadedTime.Before(now) {
 		end := min(now, downloadedTime.Add(maxDownloadDuration))
 		logger.Info("Downloading txns...", zap.Time("start", downloadedTime), zap.Time("end", end))
 		txns, err := download(downloadedTime, end)
-		if err != nil {
-			return err
-		}
+		errs.AddErr(err)
 		allTxns = append(allTxns, txns...)
 		downloadedTime = end
 	}
-	logger.Info("Download succeeded!")
+	if len(errs) == 0 {
+		logger.Info("Download succeeded!")
+	} else {
+		logger.Warn("Failed to download some transactions", zap.Error(errs))
+	}
 
 	// throw out extra transactions that were included by the institution responses
 	filteredTxns := make([]ledger.Transaction, 0, len(allTxns))
@@ -105,7 +109,7 @@ func ledgerSync(
 		return err
 	}
 	logger.Info("Ledger successfully updated")
-	return nil
+	return errs.ErrOrNil()
 }
 
 // LedgerFile writes the given ledger to disk in "ledger" format
@@ -125,6 +129,7 @@ func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) 
 			return true
 		})
 		var allTxns []ledger.Transaction
+		var errs sErrors.Errors
 		for inst, accounts := range instMap {
 			if connector, isConn := inst.(direct.Connector); isConn {
 				var descriptions []string
@@ -136,13 +141,11 @@ func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) 
 					}
 				}
 				txns, err := direct.Statement(connector, start, end, requestors)
-				if err != nil {
-					return nil, errors.Wrapf(err, "Failed downloading transactions: %s", descriptions)
-				}
+				errs.AddErr(errors.Wrapf(err, "Failed downloading transactions: %s", descriptions))
 				allTxns = append(allTxns, txns...)
 			}
 		}
-		return allTxns, nil
+		return allTxns, errs.ErrOrNil()
 	}
 }
 

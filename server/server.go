@@ -93,7 +93,16 @@ func Run(
 		done <- true
 	}()
 
-	return <-errs
+	var lastError error
+	for {
+		select {
+		case err := <-errs:
+			lastError = err
+			logger.Error("Sync loop errored", zap.Error(err))
+		case <-done:
+			return lastError
+		}
+	}
 }
 
 func setupAPI(
