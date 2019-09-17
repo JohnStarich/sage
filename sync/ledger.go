@@ -123,11 +123,15 @@ func LedgerFile(ldg *ledger.Ledger, fileName string) error {
 func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) ([]ledger.Transaction, error) {
 	return func(start, end time.Time) ([]ledger.Transaction, error) {
 		instMap := make(map[model.Institution][]model.Account)
-		accountStore.Iterate(func(account model.Account) bool {
+		var account model.Account
+		err := accountStore.Iter(&account, func(id string) bool {
 			inst := account.Institution()
 			instMap[inst] = append(instMap[inst], account)
 			return true
 		})
+		if err != nil {
+			return nil, err
+		}
 		var allTxns []ledger.Transaction
 		var errs sErrors.Errors
 		for inst, accounts := range instMap {

@@ -92,7 +92,11 @@ start:
 
 .PHONY: start-app
 start-app:
-	@[[ -e out/sage ]] || $(MAKE) build
+	@if [[ -e out/sage ]]; then \
+		echo "Make sure you ran 'make build' recently!"; \
+	else \
+		$(MAKE) build; \
+	fi
 	npm --prefix=web run start-app
 
 .PHONY: apps

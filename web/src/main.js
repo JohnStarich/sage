@@ -20,7 +20,6 @@ if (require('electron-squirrel-startup')) { // eslint-disable-line global-requir
 // All user data is stored here
 const DataDirectory = path.join(app.getPath('userData'), "data")
 const LedgerFile = path.join(DataDirectory, "ledger.journal")
-const AccountsFile = path.join(DataDirectory, "accounts.json")
 const RulesFile = path.join(DataDirectory, "ledger.rules")
 
 // Keep a global reference of the window object, if you don't, the window will
@@ -115,8 +114,8 @@ fs.mkdirSync(DataDirectory, {recursive: true})
 
 sageServer = execFile(executable, [
   '-server', '-port', SagePort,
+  '-data', DataDirectory,
   '-ledger', LedgerFile,
-  '-accounts', AccountsFile,
   '-rules', RulesFile,
 ], function(err) {
   if (err === null) {

@@ -79,7 +79,11 @@ func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.
 			AccountIDMap: make(map[string]string),
 		}
 		// attempt to make asset and liability accounts more descriptive
-		accountIDMap := newAccountIDMap(accountStore)
+		accountIDMap, err := newAccountIDMap(accountStore)
+		if err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
 		for i := range result.Transactions {
 			accountName := result.Transactions[i].Postings[0].Account
 			if _, exists := result.AccountIDMap[accountName]; !exists {
@@ -121,12 +125,12 @@ type AccountMessage struct {
 type txnToAccountMap map[string]map[string]model.Account
 
 // newAccountIDMap returns a mapping from an institution's description, then account ID suffix (without '*'s), and finally to the source account
-func newAccountIDMap(accountStore *client.AccountStore) txnToAccountMap {
+func newAccountIDMap(accountStore *client.AccountStore) (txnToAccountMap, error) {
 	// inst name -> account ID suffix -> account
 	accountIDMap := make(txnToAccountMap)
-	accountStore.Iterate(func(clientAccount model.Account) bool {
+	var clientAccount model.Account
+	err := accountStore.Iter(&clientAccount, func(id string) bool {
 		instName := clientAccount.Institution().Org()
-		id := clientAccount.ID()
 		if len(id) > model.RedactSuffixLength {
 			id = id[len(id)-model.RedactSuffixLength:]
 		}
@@ -136,7 +140,7 @@ func newAccountIDMap(accountStore *client.AccountStore) txnToAccountMap {
 		accountIDMap[instName][id] = clientAccount
 		return true
 	})
-	return accountIDMap
+	return accountIDMap, err
 }
 
 func (t txnToAccountMap) Find(accountName string) (account model.Account, found bool) {
@@ -169,7 +173,11 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 			Start: start,
 			End:   end,
 		}
-		accountIDMap := newAccountIDMap(accountStore)
+		accountIDMap, err := newAccountIDMap(accountStore)
+		if err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
 
 		accountTypes := map[string]bool{
 			// return assets and liabilities by default
@@ -231,13 +239,18 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 		}
 
 		var accounts []model.Account
-		accountStore.Iterate(func(a model.Account) bool {
+		var a model.Account
+		err = accountStore.Iter(&a, func(id string) bool {
 			format := model.LedgerFormat(a)
 			if len(accountTypes) == 0 || accountTypes[format.AccountType] {
 				accounts = append(accounts, a)
 			}
 			return true
 		})
+		if err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
 		for _, account := range accounts {
 			ledgerAccount := model.LedgerFormat(account)
 			accountName := ledgerAccount.String()
@@ -395,7 +408,7 @@ func updateOpeningBalance(ledgerFileName string, ldg *ledger.Ledger, accountStor
 	}
 }
 
-func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountsFileName string, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
+func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger := c.MustGet(loggerKey).(*zap.Logger)
 		skeletonAccounts, txns, err := direct.ReadOFX(c.Request.Body)
@@ -419,12 +432,6 @@ func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountsFileName s
 				logger.Warn("Failed to add bare-bones account from imported file", zap.String("error", err.Error()))
 			} else {
 				accountsAdded++
-			}
-		}
-		if accountsAdded > 0 {
-			if err := sync.Accounts(accountsFileName, accountStore); err != nil {
-				abortWithClientError(c, http.StatusInternalServerError, err)
-				return
 			}
 		}
 		c.Status(http.StatusNoContent)

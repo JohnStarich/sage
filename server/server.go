@@ -27,7 +27,7 @@ func Run(
 	autoSync bool,
 	addr string,
 	ledgerFileName string, ldg *ledger.Ledger,
-	accountsFileName string, accountStore *client.AccountStore,
+	accountStore *client.AccountStore,
 	rulesFileName string, rulesStore *rules.Store,
 	logger *zap.Logger,
 ) error {
@@ -50,7 +50,7 @@ func Run(
 			c.Set(loggerKey, logger)
 		},
 	)
-	setupAPI(api, ledgerFileName, ldg, accountsFileName, accountStore, rulesFileName, rulesStore)
+	setupAPI(api, ledgerFileName, ldg, accountStore, rulesFileName, rulesStore)
 
 	done := make(chan bool, 1)
 	errs := make(chan error, 2)
@@ -109,7 +109,6 @@ func setupAPI(
 	router gin.IRouter,
 	ledgerFileName string,
 	ldg *ledger.Ledger,
-	accountsFileName string,
 	accountStore *client.AccountStore,
 	rulesFileName string,
 	rulesStore *rules.Store,
@@ -121,7 +120,7 @@ func setupAPI(
 	})
 
 	router.POST("/syncLedger", syncLedger(ledgerFileName, ldg, accountStore, rulesStore))
-	router.POST("/importOFX", importOFXFile(ledgerFileName, ldg, accountsFileName, accountStore, rulesStore))
+	router.POST("/importOFX", importOFXFile(ledgerFileName, ldg, accountStore, rulesStore))
 
 	router.GET("/getBalances", getBalances(ldg, accountStore))
 	router.POST("/updateOpeningBalance", updateOpeningBalance(ledgerFileName, ldg, accountStore))
@@ -129,9 +128,9 @@ func setupAPI(
 
 	router.GET("/getAccounts", getAccounts(accountStore))
 	router.GET("/getAccount", getAccount(accountStore))
-	router.POST("/updateAccount", updateAccount(accountsFileName, accountStore, ledgerFileName, ldg))
-	router.POST("/addAccount", addAccount(accountsFileName, accountStore))
-	router.GET("/deleteAccount", removeAccount(accountsFileName, accountStore))
+	router.POST("/updateAccount", updateAccount(accountStore, ledgerFileName, ldg))
+	router.POST("/addAccount", addAccount(accountStore))
+	router.GET("/deleteAccount", removeAccount(accountStore))
 
 	router.POST("/direct/verifyAccount", verifyAccount(accountStore))
 	router.POST("/direct/fetchAccounts", fetchDirectConnectAccounts())

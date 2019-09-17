@@ -1,10 +1,10 @@
 package client
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
+	"github.com/johnstarich/sage/plaindb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,15 +13,15 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 	for _, tc := range []struct {
 		description string
 		v0          string
-		v1          string
+		v2          string
 	}{
 		{
 			description: "empty accounts file",
 			v0:          ``,
-			v1: `
+			v2: `
 {
-	"Version": 1,
-	"Data": []
+	"Version": "2",
+	"Data": {}
 }`,
 		},
 		{
@@ -45,11 +45,11 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 	}
 }
 ]`,
-			v1: `
+			v2: `
 {
-	"Version": 1,
-	"Data": [
-		{
+	"Version": "2",
+	"Data": {
+		"123456789": {
 			"AccountID": "123456789",
 			"AccountDescription": "Super bank",
 			"DirectConnect": {
@@ -68,7 +68,7 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 			"BankAccountType": "CHECKING",
 			"RoutingNumber": "1234567890"
 		}
-	]
+	}
 }`,
 		},
 		{
@@ -92,11 +92,11 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 	}
 }
 ]`,
-			v1: `
+			v2: `
 {
-	"Version": 1,
-	"Data": [
-		{
+	"Version": "2",
+	"Data": {
+		"123456789": {
 			"AccountID": "123456789",
 			"AccountDescription": "Super bank",
 			"DirectConnect": {
@@ -115,7 +115,7 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 			"BankAccountType": "SAVINGS",
 			"RoutingNumber": "1234567890"
 		}
-	]
+	}
 }`,
 		},
 		{
@@ -137,11 +137,11 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 	}
 }
 ]`,
-			v1: `
+			v2: `
 {
-	"Version": 1,
-	"Data": [
-		{
+	"Version": "2",
+	"Data": {
+		"1234": {
 			"AccountID": "1234",
 			"AccountDescription": "Bro Card",
 			"DirectConnect": {
@@ -158,7 +158,7 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 				}
 			}
 		}
-	]
+	}
 }`,
 		},
 		{
@@ -197,11 +197,11 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 	}
 }
 ]`,
-			v1: `
+			v2: `
 {
-	"Version": 1,
-	"Data": [
-		{
+	"Version": "2",
+	"Data": {
+		"1234": {
 			"AccountID": "1234",
 			"AccountDescription": "Bro Card",
 			"DirectConnect": {
@@ -218,6 +218,58 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 				}
 			}
 		},
+		"123456789": {
+			"AccountID": "123456789",
+			"AccountDescription": "Super bank",
+			"DirectConnect": {
+				"InstDescription": "123456789",
+				"InstFID": "123456",
+				"InstOrg": "test org",
+				"ConnectorURL": "http://localhost:8000/",
+				"ConnectorUsername": "1234567890",
+				"ConnectorPassword": "hey there",
+				"ConnectorConfig": {
+					"AppID": "QWIN",
+					"AppVersion": "2500",
+					"OFXVersion": "202"
+				}
+			},
+			"BankAccountType": "SAVINGS",
+			"RoutingNumber": "1234567890"
+		}
+	}
+}`,
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			db := plaindb.NewMockDB(plaindb.MockConfig{
+				FileReader: func(path string) ([]byte, error) {
+					return []byte(tc.v0), nil
+				},
+			})
+			bucket, err := db.Bucket("accounts", "2", &accountStoreUpgrader{})
+			require.NoError(t, err, "Error type: %T", err)
+			store := &AccountStore{Bucket: bucket}
+
+			expected := strings.Replace(strings.TrimSpace(tc.v2), "\t", "    ", -1)
+			output := strings.TrimSpace(db.Dump(store.Bucket))
+			assert.Equal(t, expected, output)
+		})
+	}
+}
+
+func TestAccountStoreUpgradeV1(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		v1          string
+		v2          string
+	}{
+		{
+			description: "savings account",
+			v1: `
+{
+	"Version": 1,
+	"Data": [
 		{
 			"AccountID": "123456789",
 			"AccountDescription": "Super bank",
@@ -239,15 +291,80 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 		}
 	]
 }`,
+			v2: `
+{
+	"Version": "2",
+	"Data": {
+		"123456789": {
+			"AccountID": "123456789",
+			"AccountDescription": "Super bank",
+			"DirectConnect": {
+				"InstDescription": "123456789",
+				"InstFID": "123456",
+				"InstOrg": "test org",
+				"ConnectorURL": "http://localhost:8000/",
+				"ConnectorUsername": "1234567890",
+				"ConnectorPassword": "hey there",
+				"ConnectorConfig": {
+					"AppID": "QWIN",
+					"AppVersion": "2500",
+					"OFXVersion": "202"
+				}
+			},
+			"BankAccountType": "SAVINGS",
+			"RoutingNumber": "1234567890"
+		}
+	}
+}`,
+		},
+		{
+			description: "OFX import account",
+			v1: `
+{
+	"Version": 1,
+	"Data": [
+		{
+			"AccountDescription": "Super bank",
+			"AccountID": "123456",
+			"AccountType": "assets",
+			"BasicInstitution": {
+				"InstDescription": "123456789",
+				"InstFID": "123456",
+				"InstOrg": "test org"
+			}
+		}
+	]
+}`,
+			v2: `
+{
+	"Version": "2",
+	"Data": {
+		"123456": {
+			"AccountDescription": "Super bank",
+			"AccountID": "123456",
+			"AccountType": "assets",
+			"BasicInstitution": {
+				"InstDescription": "123456789",
+				"InstFID": "123456",
+				"InstOrg": "test org"
+			}
+		}
+	}
+}`,
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			store, err := NewAccountStoreFromReader(strings.NewReader(tc.v0))
+			db := plaindb.NewMockDB(plaindb.MockConfig{
+				FileReader: func(path string) ([]byte, error) {
+					return []byte(tc.v1), nil
+				},
+			})
+			bucket, err := db.Bucket("accounts", "2", &accountStoreUpgrader{})
 			require.NoError(t, err, "Error type: %T", err)
-			var buf bytes.Buffer
-			store.Write(&buf)
-			expected := strings.Replace(strings.TrimSpace(tc.v1), "\t", "    ", -1)
-			output := strings.TrimSpace(buf.String())
+			store := &AccountStore{Bucket: bucket}
+
+			expected := strings.Replace(strings.TrimSpace(tc.v2), "\t", "    ", -1)
+			output := strings.TrimSpace(db.Dump(store.Bucket))
 			assert.Equal(t, expected, output)
 		})
 	}

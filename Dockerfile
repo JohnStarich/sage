@@ -23,5 +23,5 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 WORKDIR /data
 ENTRYPOINT ["/sage"]
-CMD ["-port=8080", "-rules=/data/ledger.rules", "-ledger=/data/ledger.journal", "-accounts=/data/accounts.json"]
+CMD ["-port=8080", "-rules=/data/ledger.rules", "-ledger=/data/ledger.journal", "-data=/data"]
 VOLUME ["/data"]

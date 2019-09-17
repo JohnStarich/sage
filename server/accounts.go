@@ -39,7 +39,11 @@ func readAndValidateAccount(r io.ReadCloser, accountStore *client.AccountStore) 
 	}
 
 	if connector, ok := account.Institution().(direct.Connector); ok && connector.Password() == "" {
-		currentAccount, found := accountStore.Find(account.ID())
+		var currentAccount model.Account
+		found, err := accountStore.Get(account.ID(), &currentAccount)
+		if err != nil {
+			return nil, err
+		}
 		if found {
 			currentConn, currentOK := currentAccount.Institution().(direct.Connector)
 			if currentOK {
@@ -67,7 +71,12 @@ func readAndValidateDirectConnector(r io.ReadCloser) (direct.Connector, error) {
 func getAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID := c.Query("id")
-		account, exists := accountStore.Find(accountID)
+		var account model.Account
+		exists, err := accountStore.Get(accountID, &account)
+		if err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
 		if !exists {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
@@ -80,13 +89,23 @@ func getAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 
 func getAccounts(accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var accounts []model.Account
+		var account model.Account
+		err := accountStore.Iter(&account, func(id string) bool {
+			accounts = append(accounts, account)
+			return true
+		})
+		if err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
 		c.JSON(http.StatusOK, map[string]interface{}{
-			"Accounts": accountStore,
+			"Accounts": accounts,
 		})
 	}
 }
 
-func updateAccount(accountsFileName string, accountStore *client.AccountStore, ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFunc {
+func updateAccount(accountStore *client.AccountStore, ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		account, err := readAndValidateAccount(c.Request.Body, accountStore)
 		if err != nil {
@@ -94,7 +113,12 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore, l
 			return
 		}
 
-		currentAccount, exists := accountStore.Find(account.ID())
+		var currentAccount model.Account
+		exists, err := accountStore.Get(account.ID(), &currentAccount)
+		if err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
 		if !exists {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
@@ -118,15 +142,10 @@ func updateAccount(accountsFileName string, accountStore *client.AccountStore, l
 				return
 			}
 		}
-
-		if err := sync.Accounts(accountsFileName, accountStore); err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
-			return
-		}
 	}
 }
 
-func addAccount(accountsFileName string, accountStore *client.AccountStore) gin.HandlerFunc {
+func addAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		account, err := readAndValidateAccount(c.Request.Body, accountStore)
 		if err != nil {
@@ -139,15 +158,11 @@ func addAccount(accountsFileName string, accountStore *client.AccountStore) gin.
 			return
 		}
 
-		if err := sync.Accounts(accountsFileName, accountStore); err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
-			return
-		}
 		c.Status(http.StatusNoContent)
 	}
 }
 
-func removeAccount(accountsFileName string, accountStore *client.AccountStore) gin.HandlerFunc {
+func removeAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID := c.Query("id")
 
@@ -156,10 +171,6 @@ func removeAccount(accountsFileName string, accountStore *client.AccountStore) g
 			return
 		}
 
-		if err := sync.Accounts(accountsFileName, accountStore); err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
-			return
-		}
 		c.Status(http.StatusNoContent)
 	}
 }
@@ -193,7 +204,12 @@ func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 
 		pass := connector.Password()
 		if pass == "" {
-			currentAccount, exists := accountStore.Find(account.ID())
+			var currentAccount model.Account
+			exists, err := accountStore.Get(account.ID(), &currentAccount)
+			if err != nil {
+				abortWithClientError(c, http.StatusInternalServerError, err)
+				return
+			}
 			errPasswordRequired := errors.New("Institution password is required")
 			isLocal := direct.IsLocalhostTestURL(connector.URL())
 			if !isLocal {

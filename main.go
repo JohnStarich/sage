@@ -12,6 +12,7 @@ import (
 	"github.com/johnstarich/sage/client"
 	"github.com/johnstarich/sage/consts"
 	"github.com/johnstarich/sage/ledger"
+	"github.com/johnstarich/sage/plaindb"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/server"
 	"github.com/johnstarich/sage/sync"
@@ -42,20 +43,10 @@ func loadRules(fileName string) (rules.Rules, error) {
 	return r, errors.Wrapf(err, "Error reading rules from file '%s'", fileName)
 }
 
-func loadAccounts(fileName string) (*client.AccountStore, error) {
-	accountsFile, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0600)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error opening accounts file '%s'", fileName)
-	}
-	defer accountsFile.Close()
-	accountStore, err := client.NewAccountStoreFromReader(accountsFile)
-	return accountStore, errors.Wrap(err, "Error reading accounts from file")
-}
-
 func start(
 	isServer bool, autoSync bool, port uint16,
 	ledgerFileName string, ldg *ledger.Ledger,
-	accountsFileName string, accountStore *client.AccountStore,
+	accountStore *client.AccountStore,
 	rulesFileName string, rulesStore *rules.Store,
 ) error {
 	logger, err := zap.NewProduction()
@@ -70,7 +61,7 @@ func start(
 		return sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore, false)
 	}
 	gin.SetMode(gin.ReleaseMode)
-	err = server.Run(autoSync, fmt.Sprintf("0.0.0.0:%d", port), ledgerFileName, ldg, accountsFileName, accountStore, rulesFileName, rulesStore, logger)
+	err = server.Run(autoSync, fmt.Sprintf("0.0.0.0:%d", port), ledgerFileName, ldg, accountStore, rulesFileName, rulesStore, logger)
 	if err != nil {
 		logger.Error("Server run failed", zap.Error(err))
 	}
@@ -103,14 +94,14 @@ func requireFlags(flagSet *flag.FlagSet) (err error) {
 	return nil
 }
 
-func handleErrors() (usageErr bool, err error) {
+func handleErrors(db *plaindb.DB) (usageErr bool, err error) {
 	flagSet := flag.NewFlagSet("sage", flag.ContinueOnError)
 	isServer := flagSet.Bool("server", false, "Starts the Sage http server and sync on an interval until terminated")
 	serverPort := flagSet.Uint("port", 0, "Sets the port the server listens on. Defaults to 8080. Implies -server")
 	noSyncLoop := flagSet.Bool("no-auto-sync", false, "Disables ledger auto-sync")
 	rulesFileName := flagSet.String("rules", "", "Required: Path to an hledger CSV import rules file")
 	ledgerFileName := flagSet.String("ledger", "", "Required: Path to a ledger file")
-	accountsFileName := flagSet.String("accounts", "", "Required: Path to an accounts file, includes connection information for institutions")
+	dbDirName := flagSet.String("data", "", "Required: Path to a database directory")
 	requestVersion := flagSet.Bool("version", false, "Print the version and exit")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return true, err
@@ -147,35 +138,42 @@ func handleErrors() (usageErr bool, err error) {
 		return false, err
 	}
 
-	accountStore, err := loadAccounts(*accountsFileName)
+	*db, err = plaindb.Open(*dbDirName)
 	if err != nil {
 		return false, err
 	}
-	return false, start(*isServer, !*noSyncLoop, port, *ledgerFileName, ldg, *accountsFileName, accountStore, *rulesFileName, rulesStore)
+
+	accountStore, err := client.NewAccountStore(*db)
+	if err != nil {
+		return false, err
+	}
+
+	return false, start(*isServer, !*noSyncLoop, port, *ledgerFileName, ldg, accountStore, *rulesFileName, rulesStore)
 }
 
 func main() {
+	var db plaindb.DB
+
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c)
 		for {
 			s := <-c
+			fmt.Println(`{"level":"info","msg":"Handling signal: ` + s.String() + `"}`)
 			switch s {
 			case os.Interrupt:
-				sync.Shutdown(0)
+				sync.Shutdown(db, 0)
 			case os.Kill:
-				sync.Shutdown(1)
-			default:
-				fmt.Println(`{"level":"info","msg":"Handling signal: ` + s.String() + `"}`)
+				sync.Shutdown(db, 1)
 			}
 		}
 	}()
-	usageErr, err := handleErrors()
+	usageErr, err := handleErrors(&db)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		if usageErr {
-			sync.Shutdown(2)
+			sync.Shutdown(db, 2)
 		}
-		sync.Shutdown(1)
+		sync.Shutdown(db, 1)
 	}
 }
