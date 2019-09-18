@@ -17,15 +17,15 @@ export default function Sync(props) {
   const clickSync = () => {
     setSyncing(true)
     runSync().then(() => {
-      if (props.onSync) {
-        props.onSync()
-      }
       setFailed(false)
     }).catch(e => {
       console.error(e)
       setFailed(true)
     }).finally(() => {
       setSyncing(false)
+      if (props.onSync) {
+        props.onSync()
+      }
     })
   }
 
