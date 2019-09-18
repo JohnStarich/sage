@@ -21,7 +21,7 @@ export default function (props) {
   let fullClassName = "amount monospace"
   if (amount < 0) {
     fullClassName += " amount-negative"
-  } else {
+  } else if (amount > 0) {
     fullClassName += " amount-positive"
   }
   if (className) {
