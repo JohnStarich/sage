@@ -485,3 +485,187 @@ func TestUpdateOpeningBalance(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateTransaction(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		txns        []Transaction
+		id          string
+		txn         Transaction
+		expectErr   bool
+	}{
+		{
+			description: "not found",
+			id:          "non-existent",
+			txn:         Transaction{Comment: "Something"},
+			expectErr:   true,
+		},
+		{
+			description: "first txn",
+			txns: []Transaction{
+				{
+					Comment: "Other thing",
+					Postings: []Posting{
+						{Account: "assets:Super Bank:****1234", Tags: makeIDTag("some-txn")},
+						{Account: "expenses:uncategorized"},
+					},
+				},
+			},
+			id: "some-txn",
+			txn: Transaction{
+				Comment: "Something",
+				Postings: []Posting{
+					{Account: "assets:Super Bank:****1234", Tags: makeIDTag("some-txn")},
+					{Account: "expenses:travel"},
+				},
+			},
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			ldg, err := New(tc.txns)
+			require.NoError(t, err)
+
+			err = ldg.UpdateTransaction(tc.id, tc.txn)
+			if tc.expectErr {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			// look it up in idSet
+			compareUpdate(t, *ldg.idSet[tc.id], tc.txn)
+			found := false
+			// look it up in transactions
+			for _, txn := range ldg.transactions {
+				if txn.Postings[0].ID() == tc.id {
+					compareUpdate(t, *txn, tc.txn)
+					assert.True(t, txn == ldg.idSet[tc.id], "The pointers must be identical")
+					found = true
+				}
+			}
+			assert.True(t, found)
+		})
+	}
+}
+
+func compareUpdate(t *testing.T, original, update Transaction) {
+	if update.Payee == "" {
+		original.Payee = ""
+	}
+	if update.Comment == "" {
+		original.Comment = ""
+	}
+	if update.Date.IsZero() {
+		original.Date = time.Time{}
+	}
+	if len(update.Postings) == 0 {
+		update.Postings = nil
+		original.Postings = nil
+	}
+	if len(update.Tags) == 0 {
+		update.Tags = nil
+		original.Tags = nil
+	}
+	assert.Equal(t, update, original)
+}
+
+func TestMakeIDSet(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		txns        []Transaction
+	}{
+		{
+			description: "one txn",
+			txns: []Transaction{
+				{
+					Comment: "Other thing",
+					Postings: []Posting{
+						{Account: "assets:Super Bank:****1234", Tags: makeIDTag("some-txn")},
+						{Account: "expenses:uncategorized"},
+					},
+				},
+			},
+		},
+		{
+			description: "two txns",
+			txns: []Transaction{
+				{
+					Payee: "Other thing",
+					Postings: []Posting{
+						{Account: "assets:Super Bank:****1234", Tags: makeIDTag("some-txn")},
+						{Account: "expenses:uncategorized"},
+					},
+				},
+				{
+					Payee: "the dough",
+					Postings: []Posting{
+						{Account: "assets:Super Bank:****1234", Tags: makeIDTag("dough-txn")},
+						{Account: "expenses:uncategorized"},
+					},
+				},
+			},
+		},
+		{
+			description: "duplicate txns",
+			txns: []Transaction{
+				{
+					Payee: "Other thing",
+					Tags:  makeIDTag("some-txn"),
+				},
+				{
+					Payee: "Other thing",
+					Tags:  makeIDTag("some-txn"),
+				},
+			},
+		},
+		{
+			description: "duplicate txn postings",
+			txns: []Transaction{
+				{
+					Payee: "Other thing",
+					Postings: []Posting{
+						{Account: "assets:Super Bank:****1234", Tags: makeIDTag("some-txn")},
+						{Account: "expenses:uncategorized"},
+					},
+				},
+				{
+					Payee: "Other thing",
+					Postings: []Posting{
+						{Account: "assets:Super Bank:****1234", Tags: makeIDTag("some-txn")},
+						{Account: "expenses:uncategorized"},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			txns := makeTransactionPtrs(tc.txns)
+			idSet, uniqueTxns, _ := makeIDSet(txns)
+			assert.Len(t, uniqueTxns, len(idSet))
+			for _, txn := range uniqueTxns {
+				id := txn.ID()
+				if id == "" {
+					id = txn.Postings[0].ID()
+				}
+
+				assert.True(t, txn == idSet[id], "Pointers must be identical to unique transactions\n%p != %p", txn, idSet[id])
+
+				found := false
+				for _, originalTxn := range txns {
+					originalID := originalTxn.ID()
+					if originalID == "" {
+						originalID = originalTxn.Postings[0].ID()
+					}
+
+					if originalID == id {
+						assert.True(t, originalTxn == txn, "First original txn match must be identical to unique txn pointer\n%p != %p", txn, originalTxn)
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "First matching original transaction ptr must exist in uniqueTxns")
+			}
+		})
+	}
+}

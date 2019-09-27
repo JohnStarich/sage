@@ -61,6 +61,7 @@ func dereferenceTransactions(transactionPtrs Transactions) []Transaction {
 	return transactions
 }
 
+// makeIDSet generates an idSet, preferring ptrs to the first unique txn IDs
 func makeIDSet(transactions []*Transaction) (idSet map[string]*Transaction, uniqueTxns []*Transaction, duplicates []string) {
 	idSet = make(map[string]*Transaction, len(transactions)*2)
 	for _, transaction := range transactions {
@@ -69,16 +70,18 @@ func makeIDSet(transactions []*Transaction) (idSet map[string]*Transaction, uniq
 			if idSet[id] != nil {
 				txnIsDupe = true
 				duplicates = append(duplicates, id)
+			} else {
+				idSet[id] = transaction
 			}
-			idSet[id] = transaction
 		}
 		for _, posting := range transaction.Postings {
 			if id := posting.ID(); id != "" {
 				if idSet[id] != nil {
 					txnIsDupe = true
 					duplicates = append(duplicates, id)
+				} else {
+					idSet[id] = transaction
 				}
-				idSet[id] = transaction
 			}
 		}
 		if !txnIsDupe {
@@ -247,6 +250,23 @@ func (l *Ledger) updateTransaction(id string, transaction Transaction) error {
 		txnCopy.Comment = transaction.Comment
 	}
 	if len(transaction.Postings) > 0 {
+		if !isOpeningTransaction(transaction) {
+			var field string
+			a, b := transaction.Postings[0], txnCopy.Postings[0]
+			switch {
+			case a.Account != b.Account:
+				field = "Account"
+			case !a.Amount.Equal(b.Amount):
+				field = "Amount"
+			case a.Balance != b.Balance:
+				field = "Balance"
+			case a.ID() != b.ID() || id != a.ID():
+				field = "Tags 'id'"
+			}
+			if field != "" {
+				return NewValidateError(0, errors.Errorf("First posting must not change: Attempted to update field %q", field))
+			}
+		}
 		txnCopy.Postings = transaction.Postings
 	}
 	if err := txnCopy.Validate(); err != nil {
