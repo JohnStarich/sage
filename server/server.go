@@ -12,6 +12,7 @@ import (
 	"github.com/johnstarich/sage/client"
 	"github.com/johnstarich/sage/consts"
 	"github.com/johnstarich/sage/ledger"
+	"github.com/johnstarich/sage/plaindb"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/sync"
 	"go.uber.org/zap"
@@ -26,6 +27,7 @@ const (
 func Run(
 	autoSync bool,
 	addr string,
+	db plaindb.DB,
 	ledgerFileName string, ldg *ledger.Ledger,
 	accountStore *client.AccountStore,
 	rulesFileName string, rulesStore *rules.Store,
@@ -50,7 +52,7 @@ func Run(
 			c.Set(loggerKey, logger)
 		},
 	)
-	setupAPI(api, ledgerFileName, ldg, accountStore, rulesFileName, rulesStore)
+	setupAPI(api, db, ledgerFileName, ldg, accountStore, rulesFileName, rulesStore)
 
 	done := make(chan bool, 1)
 	errs := make(chan error, 2)
@@ -107,6 +109,7 @@ func Run(
 
 func setupAPI(
 	router gin.IRouter,
+	db plaindb.DB,
 	ledgerFileName string,
 	ldg *ledger.Ledger,
 	accountStore *client.AccountStore,
@@ -140,4 +143,10 @@ func setupAPI(
 
 	router.GET("/getRules", getRules(rulesStore))
 	router.POST("/updateRules", updateRules(rulesFileName, rulesStore))
+
+	router.GET("/getBudgets", getBudgets(db, ldg))
+	router.GET("/getBudget", getBudget(db, ldg))
+	router.POST("/addBudget", addBudget(db))
+	router.POST("/updateBudget", updateBudget(db))
+	router.GET("/deleteBudget", deleteBudget(db))
 }

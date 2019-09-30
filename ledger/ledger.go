@@ -225,6 +225,23 @@ func timePtr(t time.Time) *time.Time {
 	return &t
 }
 
+func (l *Ledger) AccountBalance(account string, start, end time.Time) decimal.Decimal {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	var sum decimal.Decimal
+	account = strings.ToLower(account)
+	for _, txn := range l.transactions {
+		if !txn.Date.Before(start) && !txn.Date.After(end) {
+			for _, p := range txn.Postings {
+				if strings.HasPrefix(p.Account, account) {
+					sum = sum.Add(txn.Postings[len(txn.Postings)-1].Amount)
+				}
+			}
+		}
+	}
+	return sum
+}
+
 // UpdateTransaction replaces a transaction where ID is 'id' with 'transaction'
 // The new transaction must be valid
 func (l *Ledger) UpdateTransaction(id string, transaction Transaction) error {

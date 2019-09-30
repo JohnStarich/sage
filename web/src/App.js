@@ -8,6 +8,7 @@ import Accounts from './Accounts';
 import Activity from './Activity';
 import BalanceSettings from './BalanceSettings';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
+import Budgets from './Budgets';
 import Categories from './Categories';
 import Container from 'react-bootstrap/Container';
 import Dropdown from 'react-bootstrap/Dropdown';
@@ -38,6 +39,7 @@ function AppContent({ match }) {
         <Navbar.Collapse>
           <Nav className="mr-auto">
             <NavLink exact to="/" className="nav-link">Activity</NavLink>
+            <NavLink exact to="/budgets" className="nav-link">Budgets</NavLink>
           </Nav>
           <Sync className="mr-2" onSync={() => setSyncTime(new Date())} />
           <Dropdown bg="dark" alignRight>
@@ -55,6 +57,7 @@ function AppContent({ match }) {
 
       <Switch>
         <Route path="/" exact component={() => <Activity syncTime={syncTime} />} />
+        <Route path="/budgets" component={Budgets} />
         <Route>
           <Breadcrumbs as={Breadcrumb} skip={1} render={({ title, match }) =>
             <NavLink className="breadcrumb-item" to={match.url} exact>{title}</NavLink>

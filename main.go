@@ -45,6 +45,7 @@ func loadRules(fileName string) (rules.Rules, error) {
 
 func start(
 	isServer bool, autoSync bool, port uint16,
+	db plaindb.DB,
 	ledgerFileName string, ldg *ledger.Ledger,
 	accountStore *client.AccountStore,
 	rulesFileName string, rulesStore *rules.Store,
@@ -61,7 +62,7 @@ func start(
 		return sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore, false)
 	}
 	gin.SetMode(gin.ReleaseMode)
-	err = server.Run(autoSync, fmt.Sprintf("0.0.0.0:%d", port), ledgerFileName, ldg, accountStore, rulesFileName, rulesStore, logger)
+	err = server.Run(autoSync, fmt.Sprintf("0.0.0.0:%d", port), db, ledgerFileName, ldg, accountStore, rulesFileName, rulesStore, logger)
 	if err != nil {
 		logger.Error("Server run failed", zap.Error(err))
 	}
@@ -148,7 +149,7 @@ func handleErrors(db *plaindb.DB) (usageErr bool, err error) {
 		return false, err
 	}
 
-	return false, start(*isServer, !*noSyncLoop, port, *ledgerFileName, ldg, accountStore, *rulesFileName, rulesStore)
+	return false, start(*isServer, !*noSyncLoop, port, *db, *ledgerFileName, ldg, accountStore, *rulesFileName, rulesStore)
 }
 
 func main() {

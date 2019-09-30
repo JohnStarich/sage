@@ -1,0 +1,118 @@
+.budgets {
+  display: flex;
+  flex-direction: column;
+}
+
+.budget {
+  display: flex;
+  flex-direction: column;
+  margin: 1.25em 1em;
+}
+
+.budget-add {
+  display: flex;
+  justify-content: flex-end;
+  margin: 1em;
+}
+
+.budget-add button {
+  min-width: 7em;
+}
+
+.budget .budget-header {
+  display: flex;
+  flex-direction: row;
+}
+
+.budget .budget-controls, .budget .budget-amount {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.budget-controls button, .budget-controls input {
+  padding: 0 0.5em;
+  height: 1.8em;
+  max-width: 5em;
+  text-align: center;
+}
+
+.budget-amount button.budget-decrease {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.budget-amount button.budget-increase {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.budget-delete {
+  margin-left: 0.75em;
+}
+
+.budget-controls button {
+  font-family: sans-serif;
+  font-weight: 800;
+}
+
+.budget-controls input {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-color: #666;
+}
+
+.budget .budget-name {
+  flex-grow: 1;
+}
+
+.budget-graph {
+  display: flex;
+  align-items: center;
+  margin-top: 1.5em;
+  flex-direction: row;
+}
+
+.budget-graph .amount {
+  margin-left: 1em;
+  text-align: right;
+  width: 6em;
+  margin-right: 0.5em;
+}
+
+.budget-bar {
+  width: 100%;
+  border: 1px solid #666;
+  border-radius: 0.4em;
+  overflow: hidden;
+}
+
+.budget-bar .budget-progress {
+  margin-top: -1.5em;
+  height: 1.5em;
+  border-right: 0.1em solid #666;
+}
+
+.budget-graph .over-progress .budget-progress {
+  border-color: #FFF;
+}
+
+.budget-graph .budget-filled, .budget-bar .budget-progress {
+  height: 1.5em;
+  transition-property: width, background-color, border-color;
+  transition-duration: 0.5s;
+}
+
+.budget-graph .below-progress .budget-filled {
+  background-color: #2A2;
+}
+
+.budget-graph .over-progress .budget-filled {
+  background-color: #FC2;
+}
+
+.budget-graph .over-budget .budget-filled {
+  background-color: #E22;
+}
