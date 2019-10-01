@@ -121,14 +121,19 @@ function Budget({
   timeProgress,
   removeBudget,
 }) {
-  const percentage = Math.min(1, amount / budget)
+  const [internalBudget, setInternalBudget] = React.useState(budget)
+  React.useEffect(() => {
+    setInternalBudget(budget)
+  }, [budget])
+
+  const percentage = Math.min(1, amount / internalBudget)
   let budgetColor = ""
   if (percentage - 0.05 < timeProgress) {
     budgetColor = "below-progress"
   } else {
     budgetColor = "over-progress"
   }
-  if (amount > budget) {
+  if (amount > internalBudget) {
     budgetColor += " over-budget"
   }
   return (
@@ -137,9 +142,9 @@ function Budget({
         <h5 className="budget-name">{name}</h5>
         <div className="budget-controls">
           <div className="budget-amount">
-            <Button className="budget-decrease" variant="outline-secondary" onClick={() => setBudget(budget - deltaForIncrement(budget - 1))}>–</Button>
-            <Amount key={budget} prefix="$" amount={budget} onChange={setBudget} editable />
-            <Button className="budget-increase" variant="outline-secondary" onClick={() => setBudget(budget + deltaForIncrement(budget))}>+</Button>
+            <Button className="budget-decrease" variant="outline-secondary" onClick={() => setBudget(internalBudget - deltaForIncrement(internalBudget - 1))}>–</Button>
+            <Amount prefix="$" amount={internalBudget} onChange={setBudget} editable />
+            <Button className="budget-increase" variant="outline-secondary" onClick={() => setBudget(internalBudget + deltaForIncrement(internalBudget))}>+</Button>
           </div>
           <Button className="budget-delete" variant="outline-danger" onClick={removeBudget}>x</Button>
         </div>

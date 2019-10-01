@@ -13,6 +13,7 @@ export default function (props) {
     tagName,
     ...remainingProps
   } = props
+
   const TagName = tagName || 'span';
   if (typeof amount !== 'number') {
     return "NaN"
@@ -34,6 +35,9 @@ export default function (props) {
       throw Error("Editable amounts must have an onChange prop")
     }
     const [currentAmount, setCurrentAmount] = React.useState(amount)
+    React.useEffect(() => {
+      setCurrentAmount(amount)
+    }, [amount])
 
     const parseAmountStr = amountStr => {
       if (prefix && prefix.length > 0 && amountStr.startsWith(prefix)) {
