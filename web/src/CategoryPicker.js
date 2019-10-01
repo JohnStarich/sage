@@ -25,23 +25,23 @@ export const Categories = () => {
 }
 
 export function CategoryPicker({ category, setCategory, filter, disabled }) {
-  if (! setCategory) {
+  if (!setCategory) {
     throw Error("setCategory is required")
   }
   const [categories, setCategories] = React.useState([])
   React.useEffect(() => {
-    Categories().then(categories => {
+    Categories().then(allCategories => {
+      let newCategories = allCategories
       if (filter) {
-        categories = categories.filter(c => filter(c[0]))
+        newCategories = allCategories.filter(c => filter(c[0]))
       }
-      setCategories(categories)
+      if (newCategories.length !== 0 && category === null) {
+        setCategory(newCategories[0][0])
+      }
+      setCategories(newCategories)
     })
-  }, [filter])
+  }, [category, filter, setCategory])
   if (categories.length === 0) {
-    return null
-  }
-  if (category === null) {
-    setCategory(categories[0][0])
     return null
   }
   return (

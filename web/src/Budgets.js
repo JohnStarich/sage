@@ -15,7 +15,11 @@ function parseBudget(budget) {
 }
 
 function sortBudgets(a, b) {
-  return a.Description.localeCompare(b.Description)
+  const compare = a.Description.localeCompare(b.Description)
+  if (compare === 0) {
+    return a.Account.localeCompare(b.Account)
+  }
+  return compare
 }
 
 export default function Budgets({ match }) {
@@ -60,6 +64,7 @@ export default function Budgets({ match }) {
             newBudgets.push(newBudget)
             newBudgets.sort(sortBudgets)
             setBudgets(newBudgets)
+            setAddCategory(null)
           })
       })
   }
@@ -101,12 +106,13 @@ export default function Budgets({ match }) {
           setCategory={setAddCategory}
           filter={c => !budgets.find(b => b.Account === c)}
         />
-        <Button onClick={() => addBudget(addCategory, 0)}>Add budget</Button>
+        <Button onClick={() => addBudget(addCategory, 0)} disabled={addCategory === null}>Add budget</Button>
       </div>
-      {budgets.map((budget, i) =>
+      {budgets.map(budget =>
         <Budget
-          key={i}
+          key={budget.Account}
           name={budget.Description}
+          account={budget.Account}
           amount={budget.Amount}
           budget={budget.Budget}
           setBudget={a => updateBudget(budget.Account, a)}
@@ -120,6 +126,7 @@ export default function Budgets({ match }) {
 
 function Budget({
   name,
+  account,
   amount,
   budget,
   setBudget,
@@ -144,7 +151,10 @@ function Budget({
   return (
     <div className="budget">
       <div className="budget-header">
-        <h5 className="budget-name">{name}</h5>
+        <div className="budget-name">
+          <h5>{name}</h5>
+          <h6>{account}</h6>
+        </div>
         <div className="budget-controls">
           <div className="budget-amount">
             <Button className="budget-decrease" variant="outline-secondary" onClick={() => setBudget(internalBudget - deltaForIncrement(internalBudget - 1))}>–</Button>

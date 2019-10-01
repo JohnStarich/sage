@@ -1,6 +1,22 @@
 .budgets {
   display: flex;
   flex-direction: column;
+  margin-bottom: 2em;
+}
+
+.budget .budget-name {
+  flex-grow: 1;
+}
+
+.budgets h5 {
+  text-transform: capitalize;
+  margin-bottom: 0.15em;
+}
+
+.budgets h6 {
+  color: #888;
+  font-weight: 400;
+  font-size: 0.9em;
 }
 
 .budget {
@@ -16,6 +32,7 @@
 }
 
 .budget-add button {
+  margin-left: 1em;
   min-width: 7em;
 }
 
@@ -62,11 +79,6 @@
   border-left: none;
   border-right: none;
   border-color: #666;
-}
-
-.budget .budget-name {
-  flex-grow: 1;
-  text-transform: capitalize;
 }
 
 .budget-graph {
