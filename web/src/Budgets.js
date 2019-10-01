@@ -14,6 +14,10 @@ function parseBudget(budget) {
   })
 }
 
+function sortBudgets(a, b) {
+  return a.Description.localeCompare(b.Description)
+}
+
 export default function Budgets({ match }) {
   const [budgets, setBudgets] = React.useState(null)
   const [timeProgress, setTimeProgress] = React.useState(null)
@@ -28,7 +32,7 @@ export default function Budgets({ match }) {
       .then(res => {
         setBudgets(res.data.Budgets
           .map(parseBudget)
-          .sort((a, b) => a.Description.localeCompare(b.Description))
+          .sort(sortBudgets)
         )
         const progress = (now.getTime() - start.getTime()) / (end.getTime() - start.getTime())
         setTimeProgress(Math.min(1, progress))
@@ -54,6 +58,7 @@ export default function Budgets({ match }) {
             const newBudgets = budgets.slice()
             const newBudget = parseBudget(res.data.Budget)
             newBudgets.push(newBudget)
+            newBudgets.sort(sortBudgets)
             setBudgets(newBudgets)
           })
       })
@@ -75,7 +80,7 @@ export default function Budgets({ match }) {
       .then(() => {
         const newBudgets = budgets.filter(b => b.Account !== account)
         newBudgets.push(budget)
-        newBudgets.sort((a, b) => a.Description.localeCompare(b.Description))
+        newBudgets.sort(sortBudgets)
         setBudgets(newBudgets)
       })
   }
