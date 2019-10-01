@@ -75,7 +75,7 @@ export default function Budgets({ match }) {
       .then(() => {
         const newBudgets = budgets.filter(b => b.Account !== account)
         newBudgets.push(budget)
-        newBudgets.sort(b => b.Description)
+        newBudgets.sort((a, b) => a.Description.localeCompare(b.Description))
         setBudgets(newBudgets)
       })
   }
