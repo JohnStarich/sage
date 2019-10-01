@@ -6,10 +6,6 @@
   font-weight: 300;
 }
 
-.transactions .category {
-  text-transform: capitalize;
-}
-
 .transactions .category .uncategorized {
   font-style: italic;
 }

@@ -66,6 +66,7 @@
 
 .budget .budget-name {
   flex-grow: 1;
+  text-transform: capitalize;
 }
 
 .budget-graph {
