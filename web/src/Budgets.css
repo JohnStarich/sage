@@ -118,14 +118,18 @@
   transition-duration: 0.5s;
 }
 
-.budget-graph .below-progress .budget-filled {
+.budget-graph .no-budget .budget-filled {
+  background-color: #DDD;
+}
+
+.budget-graph .on-budget .budget-filled {
   background-color: #2A2;
 }
 
-.budget-graph .over-progress .budget-filled {
+.budget-graph .over-budget .budget-filled {
   background-color: #FC2;
 }
 
-.budget-graph .over-budget .budget-filled {
+.budget-graph .exceeded-budget .budget-filled {
   background-color: #E22;
 }

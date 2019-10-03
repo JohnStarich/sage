@@ -1,0 +1,17 @@
+.app .content {
+  max-width: initial;
+}
+
+.content > .row {
+  padding: 3em 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
+
+.content > .row:first-child {
+  padding-top: 4em;
+}
+
+.content > .row > div {
+  padding: 0 2em;
+}

@@ -3,16 +3,8 @@
   margin-right: 0.25em;
 }
 
-.content > .row {
-  padding: 3em 0;
-  padding-bottom: 0;
-  box-sizing: border-box;
-}
-
-.content > .row:first-child {
-  padding-top: 4em;
-}
-
-.content > .row > div {
-  padding: 0 2em;
+.app > * {
+  max-width: 40em;
+  display: block;
+  margin: 0 auto;
 }

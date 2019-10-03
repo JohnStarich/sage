@@ -1,5 +1,8 @@
-.categories .table {
-  margin-top: 2em;
+.categories {
+  /* the table */
+  max-width: 50em;
+  margin: 0 auto;
+  margin-top: 3em;
 }
 
 .categories .badge {

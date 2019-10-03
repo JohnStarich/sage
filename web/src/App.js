@@ -10,7 +10,6 @@ import BalanceSettings from './BalanceSettings';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Budgets from './Budgets';
 import Categories from './Categories';
-import Container from 'react-bootstrap/Container';
 import Dropdown from 'react-bootstrap/Dropdown';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
@@ -55,21 +54,21 @@ function AppContent({ match }) {
         </Navbar.Collapse>
       </Navbar>
 
-      <Switch>
-        <Route path="/" exact component={() => <Activity syncTime={syncTime} />} />
-        <Route path="/budgets" component={Budgets} />
-        <Route>
-          <Breadcrumbs as={Breadcrumb} skip={1} render={({ title, match }) =>
-            <NavLink className="breadcrumb-item" to={match.url} exact>{title}</NavLink>
-          }>
-            <Container>
+      <div className="app">
+        <Switch>
+          <Route path="/" exact component={() => <Activity syncTime={syncTime} />} />
+          <Route path="/budgets" component={Budgets} />
+          <Route>
+            <Breadcrumbs as={Breadcrumb} skip={1} render={({ title, match }) =>
+              <NavLink className="breadcrumb-item" to={match.url} exact>{title}</NavLink>
+            }>
               <Route path="/accounts" component={Accounts} />
               <Route path="/balances" component={BalanceSettings} />
               <Route path="/categories" component={Categories} />
-            </Container>
-          </Breadcrumbs>
-        </Route>
-      </Switch>
+            </Breadcrumbs>
+          </Route>
+        </Switch>
+      </div>
     </>
   )
 }

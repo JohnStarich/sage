@@ -1,9 +1,12 @@
-import axios from 'axios';
-import React from 'react';
-import Crumb from './Breadcrumb';
-import BootstrapTable from 'react-bootstrap-table-next';
 import Badge from 'react-bootstrap/Badge';
+import BootstrapTable from 'react-bootstrap-table-next';
 import Button from 'react-bootstrap/Button';
+import Col from 'react-bootstrap/Col';
+import Container from 'react-bootstrap/Container';
+import Crumb from './Breadcrumb';
+import React from 'react';
+import Row from 'react-bootstrap/Row';
+import axios from 'axios';
 import './Categories.css';
 import cellEditFactory, { Type } from 'react-bootstrap-table2-editor';
 import { cleanCategory } from './CategoryPicker';
@@ -166,15 +169,24 @@ export default function Categories({ match }) {
   return (
     <>
       <Crumb title="Categories" match={match} />
-      <p>
-        Add rules to auto-categorize new transactions. Every condition that matches a transaction will set the category, the last rule wins.
-      </p>
-      <p>
-        Click to edit the rule fields.
-        Re-order rules by editing their rule number.
-        Each condition goes on its own line.
-      </p>
-      <Button variant="primary" onClick={addRule}>Add</Button>
+      <Container>
+        <Row>
+          <Col><h2>Categories</h2></Col>
+        </Row>
+        <Row>
+          <Col>
+            <p>
+              Add rules to auto-categorize new transactions. Every condition that matches a transaction will set the category, the last rule wins.
+            </p>
+            <p>
+              Click to edit the rule fields.
+              Re-order rules by editing their rule number.
+              Each condition goes on its own line.
+            </p>
+            <Button variant="primary" onClick={addRule}>Add</Button>
+          </Col>
+        </Row>
+      </Container>
       <BootstrapTable
         keyField="ID"
         data={rules}
@@ -183,6 +195,7 @@ export default function Categories({ match }) {
         bootstrap4
         bordered={false}
         cellEdit={cellEdit}
+        className="categories-table"
         noDataIndication="No rules found"
         wrapperClasses='table-responsive categories'
       />

@@ -1,3 +1,4 @@
+import './Breadcrumb.css';
 import React from 'react';
 import withSideEffect from 'react-side-effect';
 
@@ -27,7 +28,7 @@ export function Breadcrumbs(props) {
   const Tag = as
   return (
     <InnerCrumbs.Provider value={updateCrumbs}>
-      <Tag {...remainingProps}>
+      <Tag className="breadcrumb-bar" {...remainingProps}>
         {renderCrumbs.map((crumb, i) =>
           React.cloneElement(render(crumb), { key: i })
         )}

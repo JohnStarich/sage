@@ -138,15 +138,17 @@ function Budget({
     setInternalBudget(budget)
   }, [budget])
 
-  const percentage = Math.min(1, amount / internalBudget)
-  let budgetColor = ""
-  if (percentage - 0.05 < timeProgress) {
-    budgetColor = "below-progress"
-  } else {
-    budgetColor = "over-progress"
-  }
+  const percentage = amount === 0 ? 0 : Math.min(1, amount / internalBudget)
+  let budgetColor
   if (amount > internalBudget) {
-    budgetColor += " over-budget"
+    budgetColor = "exceeded-budget"
+  } else if (percentage - 0.02 > timeProgress) {
+    budgetColor = "over-budget"
+  } else {
+    budgetColor = "on-budget"
+  }
+  if (percentage > timeProgress) {
+    budgetColor += " over-progress"
   }
   return (
     <div className="budget">
