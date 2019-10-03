@@ -1,11 +1,25 @@
 .budgets {
   display: flex;
   flex-direction: column;
+  margin-top: 2em;
   margin-bottom: 2em;
 }
 
 .budget .budget-name {
   flex-grow: 1;
+}
+
+.budgets h2 {
+  text-align: center;
+  margin: 0.5em 0;
+}
+
+.budgets h2 input {
+  text-align: center;
+  max-width: 6em;
+  appearance: none;
+  border: 1px solid #AAA;
+  border-radius: 0.25em;
 }
 
 .budgets h5 {

@@ -1,10 +1,12 @@
 import './Budgets.css';
-import React from 'react';
-import axios from 'axios';
 import Amount from './Amount';
 import Button from 'react-bootstrap/Button';
 import Crumb from './Breadcrumb';
+import React from 'react';
+import UTCDatePicker from './UTCDatePicker';
+import axios from 'axios';
 import { cleanCategory, CategoryPicker } from './CategoryPicker';
+
 
 function parseBudget(budget) {
   return Object.assign({}, budget, {
@@ -22,26 +24,34 @@ function sortBudgets(a, b) {
   return compare
 }
 
+function firstOfMonth(date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
+}
+
+function lastOfMonth(date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0))
+}
+
 export default function Budgets({ match }) {
   const [budgets, setBudgets] = React.useState(null)
   const [timeProgress, setTimeProgress] = React.useState(null)
+  const [start, setStart] = React.useState(firstOfMonth(new Date()))
+  const [end, setEnd] = React.useState(lastOfMonth(new Date()))
 
   const [addCategory, setAddCategory] = React.useState(null)
 
   React.useEffect(() => {
-    const now = new Date()
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0))
     axios.get('/api/v1/getBudgets', { params: { start, end } })
       .then(res => {
         setBudgets(res.data.Budgets
           .map(parseBudget)
           .sort(sortBudgets)
         )
+        const now = new Date()
         const progress = (now.getTime() - start.getTime()) / (end.getTime() - start.getTime())
         setTimeProgress(Math.min(1, progress))
       })
-  }, [])
+  }, [start, end])
 
   if (budgets === null) {
     return <em>Loading...</em>
@@ -108,6 +118,17 @@ export default function Budgets({ match }) {
         />
         <Button onClick={() => addBudget(addCategory, 0)} disabled={addCategory === null}>Add budget</Button>
       </div>
+      <h2>
+        <UTCDatePicker
+          dateFormat="MMM yyyy"
+          selected={start}
+          onChange={v => {
+            setStart(firstOfMonth(v))
+            setEnd(lastOfMonth(v))
+          }}
+          showMonthYearPicker
+        />
+      </h2>
       {budgets.map(budget =>
         <Budget
           key={budget.Account}
