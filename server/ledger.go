@@ -308,7 +308,15 @@ func getExpenseAndRevenueAccounts(ldg *ledger.Ledger, rulesStore *rules.Store) g
 		accounts[model.Uncategorized] = true
 		for account := range balanceMap {
 			if strings.HasPrefix(account, model.ExpenseAccount+":") || strings.HasPrefix(account, model.RevenueAccount+":") {
-				accounts[account] = true
+				components := strings.Split(account, ":")
+				account = ""
+				for _, comp := range components {
+					if len(account) > 0 {
+						account += ":"
+					}
+					account += comp
+					accounts[account] = true
+				}
 			}
 		}
 
