@@ -147,3 +147,12 @@
 .budget-graph .exceeded-budget .budget-filled {
   background-color: #E22;
 }
+
+.budget-revenues .budget-graph .on-budget .budget-filled,
+.budget-revenues .budget-graph .over-budget .budget-filled {
+  background-color: #FC2;
+}
+
+.budget-revenues .budget-graph .exceeded-budget .budget-filled {
+  background-color: #2A2;
+}

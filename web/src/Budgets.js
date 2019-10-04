@@ -171,8 +171,13 @@ function Budget({
   if (percentage > timeProgress) {
     budgetColor += " over-progress"
   }
+
+  let budgetClass = "budget"
+  if (account.startsWith("revenues:") || account === 'revenues') {
+    budgetClass += " budget-revenues"
+  }
   return (
-    <div className="budget">
+    <div className={budgetClass}>
       <div className="budget-header">
         <div className="budget-name">
           <h5>{name}</h5>
