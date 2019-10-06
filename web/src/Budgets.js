@@ -16,16 +16,41 @@ function parseBudget(budget) {
   })
 }
 
+function firstAccountComponent(account) {
+  const i = account.indexOf(':')
+  if (i === -1) {
+    return account
+  }
+  return account.slice(0, i)
+}
+
 function sortBudgets(a, b) {
-  const aIsBuiltin = a.Account.startsWith("builtin:")
-  const bIsBuiltin = b.Account.startsWith("builtin:")
-  if (aIsBuiltin !== bIsBuiltin) {
-    return aIsBuiltin ? 1 : -1
+  const aPrefix = firstAccountComponent(a.Account)
+  const bPrefix = firstAccountComponent(b.Account)
+  const prefixCompare = aPrefix.localeCompare(bPrefix)
+  if (prefixCompare !== 0) {
+    // if prefixes are different, then:
+    if (aPrefix === 'builtin' || bPrefix === 'builtin') {
+      // sort "builtin" to the bottom
+      return aPrefix === 'builtin' ? 1 : -1
+    }
+    if (aPrefix === 'revenues' || bPrefix === 'revenues') {
+      // sort "revenues" to the top
+      return aPrefix === 'revenues' ? -1 : 1
+    }
+    // sort other prefixes normally
+    return prefixCompare
   }
   const compare = a.Description.localeCompare(b.Description)
   if (compare === 0) {
+    // sort by full account name if descriptions are equal
     return a.Account.localeCompare(b.Account)
   }
+  if (a.Account === a.Description || b.Account === b.Description) {
+    // sort "Revenues" or "Expenses" above the other accounts with those prefixes
+    return a.Account === a.Description ? -1 : 1
+  }
+  // otherwise sort by account short name
   return compare
 }
 
