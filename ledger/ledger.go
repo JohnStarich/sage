@@ -242,6 +242,33 @@ func (l *Ledger) AccountBalance(account string, start, end time.Time) decimal.De
 	return sum
 }
 
+func accountComponents(account string) []string {
+	return strings.Split(strings.ToLower(account), ":")
+}
+
+func (l *Ledger) LeftOverAccountBalances(start, end time.Time, accounts ...string) map[string]decimal.Decimal {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	accountEntries := make([][]string, 0, len(accounts))
+	for _, account := range accounts {
+		accountEntries = append(accountEntries, strings.Split(strings.ToLower(account), ":"))
+	}
+	lookup := newAccountNode(accountEntries)
+
+	leftOver := make(map[string]decimal.Decimal)
+	for _, txn := range l.transactions {
+		if !txn.Date.Before(start) && !txn.Date.After(end) {
+			for _, p := range txn.Postings {
+				lowerAccount := strings.ToLower(p.Account)
+				if !lookup.HasPrefixTo(strings.Split(lowerAccount, ":")) {
+					leftOver[lowerAccount] = leftOver[lowerAccount].Add(p.Amount)
+				}
+			}
+		}
+	}
+	return leftOver
+}
+
 // UpdateTransaction replaces a transaction where ID is 'id' with 'transaction'
 // The new transaction must be valid
 func (l *Ledger) UpdateTransaction(id string, transaction Transaction) error {

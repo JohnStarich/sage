@@ -48,7 +48,7 @@ export function CategoryPicker({ category, setCategory, filter, disabled }) {
     <Form.Control
       as="select"
       disabled={disabled}
-      value={category}
+      value={category || ""}
       onChange={e => setCategory(e.target.value)}
       className="category">
       {categories.map(c =>
