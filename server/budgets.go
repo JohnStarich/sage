@@ -97,7 +97,7 @@ func getBudgets(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
 			} else {
 				balance = ldg.AccountBalance(b.Account, start, end)
 			}
-			if strings.HasPrefix(b.Account, model.RevenueAccount+":") {
+			if strings.HasPrefix(b.Account, model.RevenueAccount+":") || b.Account == model.RevenueAccount {
 				balance = balance.Neg()
 			}
 			monthlyBudgets = append(monthlyBudgets, monthlyBudget{
