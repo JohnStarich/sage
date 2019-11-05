@@ -28,7 +28,7 @@ type driverDiscover struct {
 }
 
 func (d *driverDiscover) Statement(browser web.Browser, start, end time.Time) (*ofxgo.Response, error) {
-	ctx := context.Background() // TODO add some timeouts
+	ctx := context.Background() // TODO add timeouts
 
 	err := browser.Run(ctx,
 		network.ClearBrowserCookies(),
@@ -51,8 +51,11 @@ func (d *driverDiscover) Statement(browser web.Browser, start, end time.Time) (*
 	}
 
 	downloadedFiles := make(chan []byte, 1)
+	const downloadTimeout = 20 * time.Second
 	browser.Download(func(ctx context.Context, download web.DownloadRequest) error {
-		data, err := download.Fetch(ctx)
+		downloadCtx, downloadCancel := context.WithTimeout(ctx, downloadTimeout)
+		defer downloadCancel()
+		data, err := download.Fetch(downloadCtx)
 		if err != nil {
 			return err
 		}
