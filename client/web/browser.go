@@ -2,9 +2,7 @@ package web
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -83,18 +81,11 @@ func NewBrowser(ctx context.Context, config BrowserConfig) (Browser, error) {
 	ctx, cancel := chromedp.NewExecAllocator(ctx, execOpts...)
 	var ctxOpts []chromedp.ContextOption
 	if config.Debug {
+		logger := config.Logger.Sugar()
 		ctxOpts = append(ctxOpts,
-			chromedp.WithDebugf(func(format string, args ...interface{}) {
-				const maxDebugLen = 4000
-				s := fmt.Sprintf(format, args...)
-				if !strings.Contains(s, "DOM.") && !strings.Contains(s, "CSS.") {
-					if len(s) < maxDebugLen {
-						config.Logger.Debug(s)
-					} else {
-						config.Logger.Debug("Trimming large message: "+s[:maxDebugLen], zap.Int("len", len(s)))
-					}
-				}
-			}),
+			chromedp.WithDebugf(logger.Debugf),
+			chromedp.WithLogf(logger.Infof),
+			chromedp.WithErrorf(logger.Errorf),
 		)
 	}
 	ctx, _ = chromedp.NewContext(ctx, ctxOpts...)
