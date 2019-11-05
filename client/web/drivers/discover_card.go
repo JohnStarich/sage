@@ -64,7 +64,6 @@ func (d *driverDiscover) Statement(browser web.Browser, start, end time.Time) (*
 	})
 
 	err = browser.Run(ctx,
-		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
 		// navigate to statements page
 		chromedp.WaitReady(`document`),
 		chromedp.Sleep(5*time.Second),

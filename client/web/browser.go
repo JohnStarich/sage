@@ -90,7 +90,11 @@ func NewBrowser(ctx context.Context, config BrowserConfig) (Browser, error) {
 	}
 	ctx, _ = chromedp.NewContext(ctx, ctxOpts...)
 
-	err := chromedp.Run(ctx, chromedp.Emulate(config.Device))
+	// set some sane defaults for all drivers
+	err := chromedp.Run(ctx,
+		chromedp.Emulate(config.Device),
+		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny), // deny downloads so Download() can hijack them
+	)
 	if err != nil {
 		return nil, err
 	}
