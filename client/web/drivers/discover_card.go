@@ -35,10 +35,10 @@ func (d *driverDiscover) Statement(browser web.Browser, start, end time.Time) (*
 
 		// credit card login
 		chromedp.ActionFunc(func(ctx context.Context) error {
+			// regular chromedp.Navigate fails if a main script (libdiscover.js) has an uncaught exception
 			_, _, _, err := page.Navigate("https://portal.discover.com/customersvcs/universalLogin/ac_main").Do(ctx)
 			return err
 		}),
-		chromedp.Sleep(2*time.Second),
 		chromedp.WaitReady(`#login-form-content`),
 		chromedp.Click(`#userid-content`),
 		chromedp.SetValue(`#userid-content`, d.Username()),
@@ -66,16 +66,12 @@ func (d *driverDiscover) Statement(browser web.Browser, start, end time.Time) (*
 	err = browser.Run(ctx,
 		// navigate to statements page
 		chromedp.WaitReady(`document`),
-		chromedp.Sleep(5*time.Second),
 		chromedp.Click(`.navbar-links .parent-link`),
-		chromedp.Sleep(5*time.Second),
 		chromedp.Click(`a[href="/cardmembersvcs/statements/app/ctd"]`),
 		// go to 12 month history
-		chromedp.Sleep(5*time.Second),
 		chromedp.Click(`.activity-period-title`),
 		chromedp.Click(`a[href="?view=R#/multi_12"]`),
 		// start OFX / QFX download
-		chromedp.Sleep(5*time.Second),
 		chromedp.Click(`#download`),
 		chromedp.Click(`input[value="quicken"]`),
 		chromedp.Click(`#submitDownload`),
