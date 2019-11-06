@@ -53,6 +53,14 @@ type BrowserConfig struct {
 // NewBrowser creates an instance of Browser with the given config options, bound to the provided context
 // Canceling the context closes the browser entirely
 func NewBrowser(ctx context.Context, config BrowserConfig) (Browser, error) {
+	if config.Logger == nil {
+		var err error
+		config.Logger, err = zap.NewProduction()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	execOpts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.DisableGPU,
@@ -70,17 +78,9 @@ func NewBrowser(ctx context.Context, config BrowserConfig) (Browser, error) {
 	if config.Device == nil {
 		config.Device = desktopDevice
 	}
-	if config.Logger == nil {
-		var err error
-		config.Logger, err = zap.NewProduction()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	ctx, cancel := chromedp.NewExecAllocator(ctx, execOpts...)
 	var ctxOpts []chromedp.ContextOption
 	if config.Debug {
+		execOpts = append(execOpts, chromedp.CombinedOutput((*logWriter)(config.Logger)))
 		logger := config.Logger.Sugar()
 		ctxOpts = append(ctxOpts,
 			chromedp.WithDebugf(logger.Debugf),
@@ -88,6 +88,8 @@ func NewBrowser(ctx context.Context, config BrowserConfig) (Browser, error) {
 			chromedp.WithErrorf(logger.Errorf),
 		)
 	}
+
+	ctx, cancel := chromedp.NewExecAllocator(ctx, execOpts...)
 	ctx, _ = chromedp.NewContext(ctx, ctxOpts...)
 
 	// set some sane defaults for all drivers
