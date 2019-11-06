@@ -5,7 +5,6 @@ import (
 
 	"github.com/aclindsa/ofxgo"
 	"github.com/johnstarich/sage/client/web"
-	"github.com/johnstarich/sage/redactor"
 	"github.com/pkg/errors"
 )
 
@@ -30,12 +29,6 @@ func Register(name string, driver Driver) {
 
 // Driver creates a Requestor from the given connection details
 type Driver func(Connector) (Requestor, error)
-
-// Connector contains user credentials to log into an institution
-type Connector interface {
-	Username() string
-	Password() redactor.String
-}
 
 // Requestor downloads statements from an institution's website
 type Requestor interface {

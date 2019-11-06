@@ -10,6 +10,7 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 	"github.com/johnstarich/sage/client/web"
+	"github.com/johnstarich/sage/redactor"
 	"github.com/pkg/errors"
 )
 
@@ -17,14 +18,19 @@ const DriverDiscoverCard = "discover card"
 
 func init() {
 	Register(DriverDiscoverCard, func(connector Connector) (Requestor, error) {
-		return &driverDiscover{
-			Connector: connector,
-		}, nil
+		driver := &driverDiscover{
+			Username: connector.Username(),
+		}
+		if p, ok := connector.(PasswordConnector); ok {
+			driver.Password = p.Password()
+		}
+		return driver, nil
 	})
 }
 
 type driverDiscover struct {
-	Connector
+	Username string
+	Password redactor.String
 }
 
 func (d *driverDiscover) Statement(browser web.Browser, start, end time.Time) (*ofxgo.Response, error) {
@@ -41,9 +47,9 @@ func (d *driverDiscover) Statement(browser web.Browser, start, end time.Time) (*
 		}),
 		chromedp.WaitReady(`#login-form-content`),
 		chromedp.Click(`#userid-content`),
-		chromedp.SetValue(`#userid-content`, d.Username()),
+		chromedp.SetValue(`#userid-content`, d.Username),
 		chromedp.Click(`#password-content`),
-		chromedp.SetValue(`#password-content`, string(d.Password())),
+		chromedp.SetValue(`#password-content`, string(d.Password)),
 		chromedp.Submit(`#login-form-content`),
 	)
 	if err != nil {
