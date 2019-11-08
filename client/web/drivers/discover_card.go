@@ -10,30 +10,36 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 	"github.com/johnstarich/sage/client/web"
-	"github.com/johnstarich/sage/redactor"
 	"github.com/pkg/errors"
 )
 
-const DriverDiscoverCard = "discover card"
-
 func init() {
-	Register(DriverDiscoverCard, func(connector Connector) (Requestor, error) {
-		driver := &driverDiscover{
-			Username: connector.Username(),
+	Register((&connectorDiscoverCard{}).Description(), func(connector CredConnector) (Connector, error) {
+		p, ok := connector.(PasswordConnector)
+		if !ok {
+			return nil, errors.Errorf("Unsupported connector: %T %+v", connector, connector)
 		}
-		if p, ok := connector.(PasswordConnector); ok {
-			driver.Password = p.Password()
-		}
-		return driver, nil
+		return &connectorDiscoverCard{p}, nil
 	})
 }
 
-type driverDiscover struct {
-	Username string
-	Password redactor.String
+type connectorDiscoverCard struct {
+	PasswordConnector
 }
 
-func (d *driverDiscover) Statement(browser web.Browser, start, end time.Time) (*ofxgo.Response, error) {
+func (c *connectorDiscoverCard) Description() string {
+	return "Discover Card"
+}
+
+func (c *connectorDiscoverCard) FID() string {
+	return "7101"
+}
+
+func (c *connectorDiscoverCard) Org() string {
+	return "Discover Financial Services"
+}
+
+func (c *connectorDiscoverCard) Statement(browser web.Browser, start, end time.Time) (*ofxgo.Response, error) {
 	ctx := context.Background() // TODO add timeouts
 
 	err := browser.Run(ctx,
@@ -47,9 +53,9 @@ func (d *driverDiscover) Statement(browser web.Browser, start, end time.Time) (*
 		}),
 		chromedp.WaitReady(`#login-form-content`),
 		chromedp.Click(`#userid-content`),
-		chromedp.SetValue(`#userid-content`, d.Username),
+		chromedp.SetValue(`#userid-content`, c.Username()),
 		chromedp.Click(`#password-content`),
-		chromedp.SetValue(`#password-content`, string(d.Password)),
+		chromedp.SetValue(`#password-content`, string(c.Password())),
 		chromedp.Submit(`#login-form-content`),
 	)
 	if err != nil {
