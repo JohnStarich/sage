@@ -5,6 +5,7 @@ import (
 
 	"github.com/johnstarich/sage/client/direct"
 	"github.com/johnstarich/sage/client/model"
+	"github.com/johnstarich/sage/client/web"
 	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/plaindb"
 	"github.com/pkg/errors"
@@ -208,6 +209,7 @@ func ValidateAccount(account model.Account) error {
 type institutionDetector struct {
 	BasicInstitution *model.BasicInstitution
 	DirectConnect    *json.RawMessage
+	WebConnect       *json.RawMessage
 }
 
 // UnmarshalAccount attempts to unmarshal JSON accounts from b
@@ -224,11 +226,9 @@ func UnmarshalAccount(b []byte) (model.Account, error) {
 		}
 		return &account, nil
 	case instDetector.DirectConnect != nil:
-		account, err := direct.UnmarshalAccount(b)
-		if err != nil {
-			return nil, err
-		}
-		return account, nil
+		return direct.UnmarshalAccount(b)
+	case instDetector.WebConnect != nil:
+		return web.UnmarshalAccount(b)
 	default:
 		return nil, errors.New("Unrecognized account type")
 	}

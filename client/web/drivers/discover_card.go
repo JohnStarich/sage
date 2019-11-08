@@ -14,8 +14,8 @@ import (
 )
 
 func init() {
-	Register((&connectorDiscoverCard{}).Description(), func(connector CredConnector) (Connector, error) {
-		p, ok := connector.(PasswordConnector)
+	web.Register((&connectorDiscoverCard{}).Description(), func(connector web.CredConnector) (web.Connector, error) {
+		p, ok := connector.(web.PasswordConnector)
 		if !ok {
 			return nil, errors.Errorf("Unsupported connector: %T %+v", connector, connector)
 		}
@@ -24,7 +24,7 @@ func init() {
 }
 
 type connectorDiscoverCard struct {
-	PasswordConnector
+	web.PasswordConnector
 }
 
 func (c *connectorDiscoverCard) Description() string {
