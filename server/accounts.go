@@ -9,6 +9,7 @@ import (
 	"github.com/johnstarich/sage/client"
 	"github.com/johnstarich/sage/client/direct"
 	"github.com/johnstarich/sage/client/model"
+	"github.com/johnstarich/sage/client/web"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/sync"
 	"github.com/pkg/errors"
@@ -50,6 +51,19 @@ func readAndValidateAccount(r io.ReadCloser, accountStore *client.AccountStore) 
 				connector.SetPassword(currentConn.Password())
 			}
 		}
+	} else if connector, ok := account.Institution().(web.PasswordConnector); ok && connector.Password() == "" {
+		// TODO combine these implementations?
+		var currentAccount model.Account
+		found, err := accountStore.Get(account.ID(), &currentAccount)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			currentConn, currentOK := currentAccount.Institution().(web.PasswordConnector)
+			if currentOK {
+				connector.SetPassword(currentConn.Password())
+			}
+		}
 	}
 
 	err = client.ValidateAccount(account)
@@ -66,6 +80,18 @@ func readAndValidateDirectConnector(r io.ReadCloser) (direct.Connector, error) {
 		return nil, err
 	}
 	return connector, direct.ValidateConnector(connector)
+}
+
+func readAndValidateWebConnectAccount(r io.ReadCloser) (web.Account, error) {
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	account, err := web.UnmarshalAccount(b)
+	if err != nil {
+		return nil, err
+	}
+	return account, web.Validate(account)
 }
 
 func getAccount(accountStore *client.AccountStore) gin.HandlerFunc {

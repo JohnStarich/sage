@@ -198,9 +198,12 @@ func (s *AccountStore) Remove(id string) error {
 // ValidateAccount checks account for invalid data, runs validation for direct connect too
 func ValidateAccount(account model.Account) error {
 	var errs sErrors.Errors
-	if dcAccount, ok := account.(direct.Account); ok {
-		errs.AddErr(direct.Validate(dcAccount))
-	} else {
+	switch kind := account.(type) {
+	case direct.Account:
+		errs.AddErr(direct.Validate(kind))
+	case web.Account:
+		errs.AddErr(web.Validate(kind))
+	default:
 		errs.AddErr(model.ValidateAccount(account))
 	}
 	return errs.ErrOrNil()

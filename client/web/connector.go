@@ -6,6 +6,7 @@ import (
 	"github.com/aclindsa/ofxgo"
 
 	"github.com/johnstarich/sage/client/model"
+	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/redactor"
 )
 
@@ -33,6 +34,7 @@ type PasswordConnector interface {
 
 	Username() string
 	Password() redactor.String
+	SetPassword(redactor.String)
 }
 
 /*
@@ -63,4 +65,23 @@ func (p *passwordConnector) Username() string {
 
 func (p *passwordConnector) Password() redactor.String {
 	return p.ConnectorPassword
+}
+
+func (p *passwordConnector) SetPassword(password redactor.String) {
+	p.ConnectorPassword = password
+}
+
+func Validate(account Account) error {
+	var errs sErrors.Errors
+	errs.AddErr(model.ValidateAccount(account))
+	inst := account.Institution()
+	connector, ok := inst.(Connector)
+	if !ok {
+		return errs.ErrOrNil()
+	}
+	if passConnector, ok := connector.(PasswordConnector); ok {
+		errs.ErrIf(passConnector.Username() == "", "Institution username must not be empty")
+		errs.ErrIf(passConnector.Password() == "", "Institution password must not be empty")
+	}
+	return errs.ErrOrNil()
 }
