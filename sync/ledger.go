@@ -9,6 +9,7 @@ import (
 	"github.com/johnstarich/sage/client"
 	"github.com/johnstarich/sage/client/direct"
 	"github.com/johnstarich/sage/client/model"
+	"github.com/johnstarich/sage/client/web"
 	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
@@ -146,6 +147,20 @@ func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) 
 				}
 				txns, err := direct.Statement(connector, start, end, requestors)
 				errs.AddErr(errors.Wrapf(err, "Failed downloading transactions: %s", descriptions))
+				allTxns = append(allTxns, txns...)
+			}
+			if connector, isConn := inst.(web.Connector); isConn {
+				var descriptions []string
+				var accountIDs []string
+				for _, account := range accounts {
+					accountIDs = append(accountIDs, account.ID())
+					descriptions = append(descriptions, account.Description())
+				}
+				txns, err := web.Statement(connector, start, end, accountIDs, client.ParseOFX)
+				if !errs.AddErr(errors.Wrapf(err, "Failed downloading transactions: %s", descriptions)) {
+					// TODO remove break after beta
+					break // beta: fail immediately on web connector error
+				}
 				allTxns = append(allTxns, txns...)
 			}
 		}

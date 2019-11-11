@@ -32,14 +32,14 @@ func (c *connectorDiscoverCard) Description() string {
 }
 
 func (c *connectorDiscoverCard) FID() string {
-	return "7101"
+	return "9625"
 }
 
 func (c *connectorDiscoverCard) Org() string {
-	return "Discover Financial Services"
+	return "Discover Card Account Center"
 }
 
-func (c *connectorDiscoverCard) Statement(browser web.Browser, start, end time.Time) (*ofxgo.Response, error) {
+func (c *connectorDiscoverCard) Statement(browser web.Browser, start, end time.Time, accountID string) (*ofxgo.Response, error) {
 	ctx := context.Background() // TODO add timeouts
 
 	err := browser.Run(ctx,
@@ -82,7 +82,7 @@ func (c *connectorDiscoverCard) Statement(browser web.Browser, start, end time.T
 		chromedp.Click(`a[href="/cardmembersvcs/statements/app/ctd"]`),
 		// go to 12 month history
 		chromedp.Click(`.activity-period-title`),
-		chromedp.Click(`a[href="?view=R#/multi_12"]`),
+		chromedp.Click(`a[href="?view=R#/ytd"]`),
 		// start OFX / QFX download
 		chromedp.Click(`#download`),
 		chromedp.Click(`input[value="quicken"]`),

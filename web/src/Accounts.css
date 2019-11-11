@@ -21,10 +21,20 @@
 }
 
 .account-actions {
+  display: flex;
+  flex-flow: row wrap;
   margin-top: 1.5em;
   margin-left: 0;
 }
 
+@media screen and (max-width: 40em) {
+  .account-actions {
+    flex-direction: column;
+  }
+}
+
 .account-actions .btn {
+  margin-bottom: 0.5em;
   margin-right: 0.5em;
+  min-width: auto;
 }

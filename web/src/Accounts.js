@@ -79,11 +79,9 @@ export default function Accounts({ match }) {
             )}
             <Row>
               <Col className="account-actions">
-                <Link to={`${match.url}/direct-connect`} className="btn btn-primary add-new">Add new Direct Connect</Link>
+                <Link to={`${match.url}/direct-connect`} className="btn btn-primary add-direct">Add new Direct Connect</Link>
                 <Link to={`${match.url}/import`} className="btn btn-secondary import">Import OFX/QFX</Link>
-                <br />
-                <br />
-                <Link to={`${match.url}/web-connect`} className="btn btn-warning add-new">Add new Web Connect <sup>(beta)</sup></Link>
+                <Link to={`${match.url}/web-connect`} className="btn btn-warning add-web">Add new Web Connect <sup>(beta)</sup></Link>
               </Col>
             </Row>
           </Container>
