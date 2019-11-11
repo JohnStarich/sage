@@ -15,7 +15,7 @@ func Connect(connector CredConnector) (Connector, error) {
 	name := strings.ToLower(connector.Driver())
 	driver, exists := driverFuncs[name]
 	if !exists {
-		return nil, errors.Errorf("Driver does not exist with name: %s", name)
+		return nil, errors.Errorf("Driver does not exist with name: %q", name)
 	}
 	return driver(connector)
 }
@@ -27,4 +27,12 @@ func Register(name string, driver Driver) {
 		panic("Driver with duplicate name registered: " + name)
 	}
 	driverFuncs[name] = driver
+}
+
+func Drivers() []string {
+	driverNames := make([]string, 0, len(driverFuncs))
+	for driver := range driverFuncs {
+		driverNames = append(driverNames, strings.Title(driver))
+	}
+	return driverNames
 }

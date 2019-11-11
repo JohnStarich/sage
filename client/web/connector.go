@@ -50,13 +50,8 @@ type TOTPConnector interface {
 */
 
 type passwordConnector struct {
-	DriverName        string
 	ConnectorUsername string
 	ConnectorPassword redactor.String
-}
-
-func (p *passwordConnector) Driver() string {
-	return p.DriverName
 }
 
 func (p *passwordConnector) Username() string {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
+	_ "github.com/johnstarich/sage/client/web/drivers"
 	"github.com/johnstarich/sage/consts"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/plaindb"

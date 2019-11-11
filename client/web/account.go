@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/johnstarich/sage/client/model"
+	"github.com/johnstarich/sage/redactor"
+	"github.com/pkg/errors"
 )
 
 // Account is a web connect enabled account
@@ -15,7 +17,7 @@ type webAccount struct {
 	AccountID          string
 	AccountDescription string
 	AccountType        string
-	WebConnect         Connector
+	WebConnect         driverContainer
 }
 
 func (w *webAccount) ID() string {
@@ -27,36 +29,37 @@ func (w *webAccount) Description() string {
 }
 
 func (w *webAccount) Institution() model.Institution {
-	return w.WebConnect
+	return w.WebConnect.Data
 }
 
 func (w *webAccount) Type() string {
 	return w.AccountType
 }
 
-func (w *webAccount) UnmarshalJSON(b []byte) error {
-	var account struct {
-		AccountID          string
-		AccountDescription string
-		AccountType        string
-		WebConnect         *json.RawMessage
-	}
+type driverContainer struct {
+	Driver string
+	Data   Connector
+}
 
-	if err := json.Unmarshal(b, &account); err != nil {
+func (d *driverContainer) UnmarshalJSON(b []byte) error {
+	var driver struct {
+		Driver string
+		Data   *json.RawMessage
+	}
+	if err := json.Unmarshal(b, &driver); err != nil {
 		return err
 	}
-	w.AccountID = account.AccountID
-	w.AccountDescription = account.AccountDescription
-	w.AccountType = account.AccountType
-	if account.WebConnect == nil {
-		return nil // defer validation to caller
+	d.Driver = driver.Driver
+	if driver.Data == nil {
+		return nil
 	}
-	var wc passwordConnector
-	if err := json.Unmarshal(*account.WebConnect, &wc); err != nil {
+	var creds credConnector
+	if err := json.Unmarshal(*driver.Data, &creds); err != nil {
 		return err
 	}
+	creds.driver = driver.Driver
 	var err error
-	w.WebConnect, err = Connect(&wc)
+	d.Data, err = Connect(&creds)
 	return err
 }
 
@@ -67,4 +70,34 @@ func UnmarshalAccount(b []byte) (Account, error) {
 		return nil, err
 	}
 	return &account, nil
+}
+
+type credConnector struct {
+	driver string
+	// embed all known credential types
+	PasswordConnector *passwordConnector
+}
+
+func (m *credConnector) Driver() string {
+	return m.driver
+}
+
+func (m *credConnector) MarshalJSON() ([]byte, error) {
+	switch {
+	case m.PasswordConnector != nil:
+		return json.Marshal(m.PasswordConnector)
+	default:
+		return nil, errors.Errorf("No contained credentials: %+v", m)
+	}
+}
+
+func (m *credConnector) Username() string {
+	return m.PasswordConnector.Username()
+}
+
+func (m *credConnector) Password() redactor.String {
+	return m.PasswordConnector.Password()
+}
+func (m *credConnector) SetPassword(p redactor.String) {
+	m.PasswordConnector.SetPassword(p)
 }

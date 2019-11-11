@@ -135,6 +135,8 @@ func setupAPI(
 	router.POST("/addAccount", addAccount(accountStore))
 	router.GET("/deleteAccount", removeAccount(accountStore))
 
+	router.GET("/web/getDriverNames", getWebConnectDrivers())
+
 	router.POST("/direct/verifyAccount", verifyAccount(accountStore))
 	router.POST("/direct/fetchAccounts", fetchDirectConnectAccounts())
 

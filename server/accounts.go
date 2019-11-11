@@ -276,3 +276,11 @@ func fetchDirectConnectAccounts() gin.HandlerFunc {
 		c.JSON(http.StatusOK, accounts)
 	}
 }
+
+func getWebConnectDrivers() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"DriverNames": web.Drivers(),
+		})
+	}
+}

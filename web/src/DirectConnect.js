@@ -1,4 +1,4 @@
-import './Account.css';
+import './DirectConnect.css';
 import Accordion from 'react-bootstrap/Accordion';
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
@@ -14,7 +14,7 @@ import axios from 'axios';
 import { Redirect } from 'react-router-dom';
 
 
-export default function Account(props) {
+export default function(props) {
   const { account, editable, updated } = props
   const [isBank, setIsBank] = React.useState(null)
   const [validated, setValidated] = React.useState(false)
@@ -131,7 +131,7 @@ export default function Account(props) {
   }
 
   return (
-    <Container className="account">
+    <Container className="direct-connect">
       {redirect}
       <Form
         id={makeID("form")}
@@ -268,8 +268,8 @@ export default function Account(props) {
                   <Card>
                     <Card.Header>
                       <Accordion.Toggle as={Button} variant="link" eventKey="0">
-                        Advanced Options
-                </Accordion.Toggle>
+                        More Client Options
+                      </Accordion.Toggle>
                     </Card.Header>
                     <Accordion.Collapse eventKey="0">
                       <Card.Body>
@@ -311,10 +311,10 @@ export default function Account(props) {
 
         {!directConnectEnabled ? null :
           <>
-            <Form.Row className="account-test">
+            <Form.Row className="direct-connect-test">
               <Col sm={labelWidth}>{testButton}</Col>
               {!testFeedback ? null :
-                <Col className="account-test-failed">
+                <Col className="direct-connect-test-failed">
                   {testFeedback.trim().split("\n").map(line =>
                     <span key={line}>{line}<br /></span>
                   )}
@@ -333,7 +333,7 @@ export default function Account(props) {
 }
 
 function formIDFactory(accountID) {
-  return name => `account-${accountID}-${name}`
+  return name => `direct-connect-${accountID}-${name}`
 }
 
 function accountFromForm(originalAccountID, { directConnectEnabled }) {

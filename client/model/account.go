@@ -77,6 +77,9 @@ func ValidateAccount(account Account) error {
 
 func ValidateInstitution(inst Institution) error {
 	var errs sErrors.Errors
+	if errs.ErrIf(inst == nil, "Institution must not be empty") {
+		return errs.ErrOrNil()
+	}
 	errs.ErrIf(inst.Description() == "", "Institution name must not be empty")
 	errs.ErrIf(inst.FID() == "", "Institution FID must not be empty")
 	errs.ErrIf(inst.Org() == "", "Institution org must not be empty")

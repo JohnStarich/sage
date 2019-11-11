@@ -14,7 +14,7 @@ import Row from 'react-bootstrap/Row';
 const labelWidth = 4
 const inputWidth = 12 - labelWidth
 
-export default function FetchAccounts({ created }) {
+export default function({ created }) {
   const [validated, setValidated] = React.useState(false)
   const [accounts, setAccounts] = React.useState(null)
   const [findFeedback, setFindFeedback] = React.useState(null)
@@ -28,14 +28,14 @@ export default function FetchAccounts({ created }) {
 
   return (
     <Container>
-      <Row><Col><h2>Quick Add</h2></Col></Row>
+      <Row><Col><h2>Direct Connect</h2></Col></Row>
       <Row>
         <Col>
           <p>Find available accounts for Direct Connect at your institution.</p>
           <p>If accounts were not found, try checking your institution's website for instructions to use Quicken, Quickbooks, or Microsoft Money.</p>
           <p>Sometimes the password is a PIN rather than the sign-in password, and the username could be an ID only provided in their instructions.</p>
           &nbsp;
-          <p>If you're an advanced user, and have all of your connection details already, then enter them manually <Link to="/accounts/new">here</Link>.</p>
+          <p>If you're an advanced user, and have all of your connection details already, then enter them manually <Link to="/accounts/advanced-direct-connect">here</Link>.</p>
           &nbsp;
         </Col>
       </Row>
@@ -135,7 +135,7 @@ export default function FetchAccounts({ created }) {
             <Card>
               <Card.Header>
                 <Accordion.Toggle as={Button} variant="link" eventKey="0">
-                  Advanced Options
+                  Advanced Client Options
                 </Accordion.Toggle>
               </Card.Header>
               <Accordion.Collapse eventKey="0">
