@@ -145,7 +145,7 @@ func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) 
 						descriptions = append(descriptions, account.Description())
 					}
 				}
-				txns, err := direct.Statement(connector, start, end, requestors)
+				txns, err := direct.Statement(connector, start, end, requestors, client.ParseOFX)
 				errs.AddErr(errors.Wrapf(err, "Failed downloading transactions: %s", descriptions))
 				allTxns = append(allTxns, txns...)
 			}

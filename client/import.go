@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/aclindsa/ofxgo"
 	"github.com/johnstarich/sage/client/model"
@@ -67,17 +68,15 @@ func importTransactions(
 }
 
 // ReadOFX reads r and parses it for an OFX file's transactions
-func ReadOFX(r io.ReadCloser) ([]model.Account, []ledger.Transaction, error) {
+func ReadOFX(r io.Reader) ([]model.Account, []ledger.Transaction, error) {
 	resp, err := ofxgo.ParseResponse(r)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := r.Close(); err != nil {
-		return nil, nil, err
-	}
-	return importTransactions(resp, parseTransaction)
+	return ParseOFX(resp)
 }
 
+// ParseOFX parses the OFX response for its transactions
 func ParseOFX(resp *ofxgo.Response) ([]model.Account, []ledger.Transaction, error) {
 	return importTransactions(resp, parseTransaction)
 }
@@ -142,4 +141,51 @@ func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeT
 			},
 		},
 	}
+}
+
+// balanceTransactions sorts and adds balances to each transaction
+func balanceTransactions(txns []ledger.Transaction, balance decimal.Decimal, balanceDate time.Time, statementEndDate time.Time) {
+	{
+		// convert to ptrs, sort, then copy back results
+		// TODO make more efficient should we add back auto-balances
+		txnPtrs := make(ledger.Transactions, len(txns))
+		for i := range txns {
+			txn := txns[i] // copy txn
+			txnPtrs[i] = &txn
+		}
+		txnPtrs.Sort()
+		for i := range txnPtrs {
+			txns[i] = *txnPtrs[i]
+		}
+	}
+
+	if balanceDate.After(statementEndDate) {
+		// don't trust this balance, it was recorded after the statement end date
+		return
+	}
+
+	balanceDateIndex := len(txns)
+	for i, txn := range txns {
+		if txn.Date.After(balanceDate) {
+			// the end of balance date
+			balanceDateIndex = i
+			break
+		}
+	}
+
+	runningBalance := balance
+	for i := balanceDateIndex - 1; i >= 0; i-- {
+		txns[i].Postings[0].Balance = decToPtr(runningBalance)
+		runningBalance = runningBalance.Sub(txns[i].Postings[0].Amount)
+	}
+	runningBalance = balance
+	for i := balanceDateIndex; i < len(txns); i++ {
+		runningBalance = runningBalance.Add(txns[i].Postings[0].Amount)
+		txns[i].Postings[0].Balance = decToPtr(runningBalance)
+	}
+}
+
+// decToPtr makes a copy of d and returns a reference to it
+func decToPtr(d decimal.Decimal) *decimal.Decimal {
+	return &d
 }

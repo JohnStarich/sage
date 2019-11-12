@@ -3,7 +3,6 @@ package direct
 import (
 	"encoding/json"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/aclindsa/ofxgo"
@@ -12,7 +11,6 @@ import (
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/redactor"
 	"github.com/pkg/errors"
-	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 )
 
@@ -127,7 +125,7 @@ func ValidateConnector(connector Connector) error {
 }
 
 // Statement downloads and returns transactions from a connector for the given time period
-func Statement(connector Connector, start, end time.Time, requestors []Requestor) ([]ledger.Transaction, error) {
+func Statement(connector Connector, start, end time.Time, requestors []Requestor, parser model.TransactionParser) ([]ledger.Transaction, error) {
 	client, err := newSimpleClient(connector.URL(), connector.Config())
 	if err != nil {
 		return nil, err
@@ -140,7 +138,7 @@ func Statement(connector Connector, start, end time.Time, requestors []Requestor
 		// TODO it seems the ledger balance is nearly always the current balance, rather than the statement close. Restore this when a true closing balance can be found
 		//balanceTransactions,
 		client.Request,
-		importTransactions,
+		parser,
 	)
 }
 
@@ -149,7 +147,7 @@ func fetchTransactions(
 	start, end time.Time,
 	requestors []Requestor,
 	doRequest func(*ofxgo.Request) (*ofxgo.Response, error),
-	importTransactions func(*ofxgo.Response, transactionParser) ([]model.Account, []ledger.Transaction, error),
+	parse model.TransactionParser,
 ) ([]ledger.Transaction, error) {
 	var query ofxgo.Request
 	for _, r := range requestors {
@@ -179,125 +177,16 @@ func fetchTransactions(
 		return nil, errors.Errorf("Nonzero signon status (%d: %s) with message: %s", response.Signon.Status.Code, meaning, response.Signon.Status.Message)
 	}
 
-	_, txns, err := importTransactions(response, parseTransaction)
+	_, txns, err := parse(response)
 	return txns, err
 }
 
 // Verify attempts to sign in with the given account. Returns any encountered errors
-func Verify(connector Connector, requestor Requestor) error {
+func Verify(connector Connector, requestor Requestor, parser model.TransactionParser) error {
 	end := time.Now()
 	start := end.Add(-24 * time.Hour)
-	_, err := Statement(connector, start, end, []Requestor{requestor})
+	_, err := Statement(connector, start, end, []Requestor{requestor}, parser)
 	return err
-}
-
-// decToPtr makes a copy of d and returns a reference to it
-func decToPtr(d decimal.Decimal) *decimal.Decimal {
-	return &d
-}
-
-func normalizeCurrency(currency string) string {
-	switch currency {
-	case "USD":
-		return "$"
-	default:
-		return currency
-	}
-}
-
-type transactionParser func(txn ofxgo.Transaction, currency, accountName string, makeTxnID func(string) string) ledger.Transaction
-
-func parseTransaction(txn ofxgo.Transaction, currency, accountName string, makeTxnID func(string) string) ledger.Transaction {
-	if txn.Currency != nil {
-		if ok, _ := txn.Currency.Valid(); ok {
-			currency = normalizeCurrency(txn.Currency.CurSym.String())
-		}
-	}
-
-	name := string(txn.Name)
-	if name == "" && txn.Payee != nil {
-		name = string(txn.Payee.Name)
-	}
-
-	// TODO can ofxgo lib support a decimal type instead of big.Rat?
-	// NOTE: TrnAmt uses big.Rat internally, which can't form an invalid number with .String()
-	amount := decimal.RequireFromString(txn.TrnAmt.String())
-
-	id := makeTxnID(string(txn.FiTID))
-
-	return ledger.Transaction{
-		Date:  txn.DtPosted.Time,
-		Payee: name,
-		Postings: []ledger.Posting{
-			{
-				Account:  accountName,
-				Amount:   amount,
-				Balance:  nil, // set balance in next section
-				Currency: currency,
-				Tags:     map[string]string{"id": id},
-			},
-			{
-				Account:  model.Uncategorized,
-				Amount:   amount.Neg(),
-				Currency: currency,
-			},
-		},
-	}
-}
-
-// balanceTransactions sorts and adds balances to each transaction
-func balanceTransactions(txns []ledger.Transaction, balance decimal.Decimal, balanceDate time.Time, statementEndDate time.Time) {
-	{
-		// convert to ptrs, sort, then copy back results
-		// TODO make more efficient should we add back auto-balances
-		txnPtrs := make(ledger.Transactions, len(txns))
-		for i := range txns {
-			txn := txns[i] // copy txn
-			txnPtrs[i] = &txn
-		}
-		txnPtrs.Sort()
-		for i := range txnPtrs {
-			txns[i] = *txnPtrs[i]
-		}
-	}
-
-	if balanceDate.After(statementEndDate) {
-		// don't trust this balance, it was recorded after the statement end date
-		return
-	}
-
-	balanceDateIndex := len(txns)
-	for i, txn := range txns {
-		if txn.Date.After(balanceDate) {
-			// the end of balance date
-			balanceDateIndex = i
-			break
-		}
-	}
-
-	runningBalance := balance
-	for i := balanceDateIndex - 1; i >= 0; i-- {
-		txns[i].Postings[0].Balance = decToPtr(runningBalance)
-		runningBalance = runningBalance.Sub(txns[i].Postings[0].Amount)
-	}
-	runningBalance = balance
-	for i := balanceDateIndex; i < len(txns); i++ {
-		runningBalance = runningBalance.Add(txns[i].Postings[0].Amount)
-		txns[i].Postings[0].Balance = decToPtr(runningBalance)
-	}
-}
-
-func makeUniqueTxnID(fid, accountID string) func(txnID string) string {
-	// Follows FITID recommendation from OFX 102 Section 3.2.1
-	idPrefix := fid + "-" + accountID + "-"
-	return func(txnID string) string {
-		id := idPrefix + txnID
-		// clean ID for use as an hledger tag
-		// TODO move tag (de)serialization into ledger package
-		id = strings.Replace(id, ",", "", -1)
-		id = strings.Replace(id, ":", "", -1)
-		return id
-	}
 }
 
 func addSignonRequest(connector Connector, req *ofxgo.Request) {

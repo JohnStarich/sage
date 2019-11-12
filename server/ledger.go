@@ -11,7 +11,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
-	"github.com/johnstarich/sage/client/direct"
 	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
@@ -419,7 +418,7 @@ func updateOpeningBalance(ledgerFileName string, ldg *ledger.Ledger, accountStor
 func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger := c.MustGet(loggerKey).(*zap.Logger)
-		skeletonAccounts, txns, err := direct.ReadOFX(c.Request.Body)
+		skeletonAccounts, txns, err := client.ReadOFX(c.Request.Body)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return

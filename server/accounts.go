@@ -219,7 +219,7 @@ func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 			abortWithClientError(c, http.StatusBadRequest, errors.Errorf("Cannot verify account: account is invalid type: %T", account))
 			return
 		}
-		if err := direct.Verify(connector, requestor); err != nil {
+		if err := direct.Verify(connector, requestor, client.ParseOFX); err != nil {
 			if err == direct.ErrAuthFailed {
 				abortWithClientError(c, http.StatusUnauthorized, err)
 				return
