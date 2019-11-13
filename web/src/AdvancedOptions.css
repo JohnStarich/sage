@@ -1,0 +1,23 @@
+.advanced-options > * {
+  margin-bottom: 2em;
+}
+
+.advanced-options button[type="submit"] {
+  margin-bottom: 2em;
+}
+
+.rename-suggestions .row > div {
+  white-space: pre;
+  word-break: keep-all;
+  overflow-x: scroll;
+}
+
+.rename-symbol {
+  font-size: 1.5em;
+  text-align: center;
+  margin: auto 0;
+}
+
+.rename-button {
+  text-align: right;
+}
