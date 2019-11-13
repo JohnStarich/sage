@@ -132,7 +132,7 @@ func TestMakeUniqueTxnID(t *testing.T) {
 		{"some punctuation", "some: account", "txn", "some punctuation-some account-txn"},
 	} {
 		t.Run("", func(t *testing.T) {
-			assert.Equal(t, tc.expectedID, makeUniqueTxnID(tc.fid, tc.accountID)(tc.txnID))
+			assert.Equal(t, tc.expectedID, MakeUniqueTxnID(tc.fid, tc.accountID)(tc.txnID))
 		})
 	}
 }

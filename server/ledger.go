@@ -444,3 +444,64 @@ func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountStore *clie
 		c.Status(http.StatusNoContent)
 	}
 }
+
+type renameParams struct {
+	Old   string `binding:"required"`
+	New   string `binding:"required"`
+	OldID string
+	NewID string
+}
+
+func renameLedgerAccount(ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var params renameParams
+		if err := c.BindJSON(&params); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		if params.OldID != params.NewID && (params.OldID == "" || params.NewID == "") {
+			abortWithClientError(c, http.StatusBadRequest, errors.New("If OldID or NewID is set, the other must also be set"))
+			return
+		}
+
+		renameCount := ldg.RenameAccount(params.Old, params.New, params.OldID, params.NewID)
+		if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"Renamed": renameCount,
+		})
+	}
+}
+
+func renameSuggestions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
+	const DiscoverOldOrg = "Discover Financial Services"
+	return func(c *gin.Context) {
+		var suggestions []renameParams
+		var account model.Account
+		err := accountStore.Iter(&account, func(string) bool {
+			// if old Discover direct connect account, show rename to use new Org and FID
+			if account.Institution().Org() == DiscoverOldOrg && account.Institution().FID() == "7101" {
+				ledgerAccount := model.LedgerFormat(account).String()
+				accountID := account.ID()
+				suggestions = append(suggestions, renameParams{
+					Old:   ledgerAccount,
+					New:   strings.Replace(ledgerAccount, DiscoverOldOrg, "Discover Card Account Center", 1),
+					OldID: client.MakeUniqueTxnID("7101", accountID)(""),
+					NewID: client.MakeUniqueTxnID("9625", accountID)(""),
+				})
+			}
+			return true
+		})
+		if err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"Suggestions": suggestions,
+		})
+	}
+}

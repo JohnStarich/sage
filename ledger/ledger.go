@@ -175,6 +175,39 @@ func (l *Ledger) AddTransactions(txns []Transaction) error {
 	return err
 }
 
+// RenameAccount replaces 'oldName' prefixes with a 'newName' prefix
+// Returns the number of renamed postings
+func (l *Ledger) RenameAccount(oldName, newName, oldID, newID string) int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	count := 0
+	postingTransform := func(p *Posting) {
+		if strings.HasPrefix(p.Account, oldName) {
+			p.Account = newName + p.Account[len(oldName):]
+			count++
+		}
+	}
+	if oldID != "" {
+		// if old & new IDs specified, require old matches too
+		postingTransform = func(p *Posting) {
+			if strings.HasPrefix(p.Account, oldName) && strings.HasPrefix(p.Tags[idTag], oldID) {
+				// strip off old prefix by length
+				p.Account = newName + p.Account[len(oldName):]
+				p.Tags[idTag] = newID + p.Tags[idTag][len(oldID):]
+				count++
+			}
+		}
+	}
+
+	for _, txn := range l.transactions {
+		for posting := range txn.Postings {
+			postingTransform(&txn.Postings[posting])
+		}
+	}
+	return count
+}
+
 // Balances returns a cumulative balance sheet for all accounts over the given time period.
 // Current interval is monthly.
 func (l *Ledger) Balances() (start, end *time.Time, balances map[string][]decimal.Decimal) {
@@ -225,6 +258,7 @@ func timePtr(t time.Time) *time.Time {
 	return &t
 }
 
+// AccountBalance returns the cumulative sum of all postings for 'account' between start and end times
 func (l *Ledger) AccountBalance(account string, start, end time.Time) decimal.Decimal {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -246,6 +280,7 @@ func accountComponents(account string) []string {
 	return strings.Split(strings.ToLower(account), ":")
 }
 
+// LeftOverAccountBalances retrieves balances for any accounts or account prefixes not found in 'accounts' between start and end times
 func (l *Ledger) LeftOverAccountBalances(start, end time.Time, accounts ...string) map[string]decimal.Decimal {
 	l.mu.RLock()
 	defer l.mu.RUnlock()

@@ -124,6 +124,8 @@ func setupAPI(
 
 	router.POST("/syncLedger", syncLedger(ledgerFileName, ldg, accountStore, rulesStore))
 	router.POST("/importOFX", importOFXFile(ledgerFileName, ldg, accountStore, rulesStore))
+	router.POST("/renameLedgerAccount", renameLedgerAccount(ledgerFileName, ldg))
+	router.GET("/renameSuggestions", renameSuggestions(ldg, accountStore))
 
 	router.GET("/getBalances", getBalances(ldg, accountStore))
 	router.POST("/updateOpeningBalance", updateOpeningBalance(ledgerFileName, ldg, accountStore))

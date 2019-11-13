@@ -49,7 +49,7 @@ func importTransactions(
 		}
 
 		for _, ofxTxn := range ofxTxns {
-			parsedTxn := parseTransaction(ofxTxn, currency, account.String(), makeUniqueTxnID(fid, account.AccountID))
+			parsedTxn := parseTransaction(ofxTxn, currency, account.String(), MakeUniqueTxnID(fid, account.AccountID))
 			txns = append(txns, parsedTxn)
 		}
 
@@ -92,7 +92,7 @@ func normalizeCurrency(currency string) string {
 	}
 }
 
-func makeUniqueTxnID(fid, accountID string) func(txnID string) string {
+func MakeUniqueTxnID(fid, accountID string) func(txnID string) string {
 	// Follows FITID recommendation from OFX 102 Section 3.2.1
 	idPrefix := fid + "-" + accountID + "-"
 	return func(txnID string) string {
