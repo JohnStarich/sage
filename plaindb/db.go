@@ -43,21 +43,26 @@ type DB interface {
 
 type database struct {
 	path    string
+	repo    *syncRepo
 	buckets map[string]*bucket
 }
 
-// Open ...
+// Open prepares and creates a DB for the given file path
 func Open(path string) (DB, error) {
 	path = filepath.Clean(path)
-	err := os.MkdirAll(path, 0755)
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return nil, err
+	}
+	repo, err := newSyncRepo(path)
 	return &database{
 		path:    path,
+		repo:    repo,
 		buckets: make(map[string]*bucket),
 	}, err
 }
 
 func (db *database) Bucket(name, version string, upgrader Upgrader) (Bucket, error) {
-	return db.bucket(name, version, upgrader, ioutil.ReadFile, saveBucket)
+	return db.bucket(name, version, upgrader, ioutil.ReadFile, db.repo.SaveBucket)
 }
 
 func (db *database) bucket(

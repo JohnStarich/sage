@@ -50,6 +50,8 @@ func TestOpenNewBucket(t *testing.T) {
 		db, err = Open(tmpDir)
 		require.NoError(t, err)
 		assert.DirExists(t, tmpDir)
+		require.IsType(t, &database{}, db)
+		db.(*database).repo = nil // nil out for comparison
 		assert.Equal(t, &database{
 			path:    tmpDir,
 			buckets: map[string]*bucket{},
