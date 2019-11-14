@@ -192,9 +192,20 @@ func (l *Ledger) RenameAccount(oldName, newName, oldID, newID string) int {
 		// if old & new IDs specified, require old matches too
 		postingTransform = func(p *Posting) {
 			if strings.HasPrefix(p.Account, oldName) && strings.HasPrefix(p.Tags[idTag], oldID) {
-				// strip off old prefix by length
+				// strip off old prefix by length, prepend new
 				p.Account = newName + p.Account[len(oldName):]
-				p.Tags[idTag] = newID + p.Tags[idTag][len(oldID):]
+
+				oldIDValue := p.Tags[idTag]
+				// strip off old prefix by length, prepend new
+				newIDValue := newID + oldIDValue[len(oldID):]
+
+				// move to new ID tag in idSet
+				txn := l.idSet[oldIDValue]
+				delete(l.idSet, oldIDValue)
+				l.idSet[newIDValue] = txn
+
+				// replace ID
+				p.Tags[idTag] = newIDValue
 				count++
 			}
 		}
