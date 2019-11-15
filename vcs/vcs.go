@@ -58,8 +58,8 @@ func initVCS(path string) (*git.Repository, error) {
 
 	added := false
 	for file, stat := range status {
-		// add any untracked bucket files
-		if stat.Worktree == git.Untracked && strings.HasSuffix(file, ".json") {
+		// add any untracked files, excluding hidden and tmp files
+		if stat.Worktree == git.Untracked && !strings.HasPrefix(file, ".") && !strings.HasSuffix(file, ".tmp") {
 			_, err := tree.Add(file)
 			if err != nil {
 				return nil, err
