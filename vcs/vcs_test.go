@@ -1,4 +1,4 @@
-package plaindb
+package vcs
 
 import (
 	"io/ioutil"
@@ -11,7 +11,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
-func TestNewDBDir(t *testing.T) {
+func TestOpen(t *testing.T) {
 	err := os.RemoveAll("./testdb")
 	require.NoError(t, err)
 	err = os.MkdirAll("./testdb", 0755)
@@ -19,12 +19,12 @@ func TestNewDBDir(t *testing.T) {
 	err = ioutil.WriteFile("./testdb/bucket.json", []byte(`{}`), 0755)
 	require.NoError(t, err)
 
-	repo, err := newSyncRepo("./testdb")
+	repo, err := Open("./testdb")
 	require.NoError(t, err)
 	assert.NotNil(t, repo)
 }
 
-func TestSaveBucket(t *testing.T) {
+func TestCommitFiles(t *testing.T) {
 	cleanup := func() {
 		err := os.RemoveAll("./testdb")
 		require.NoError(t, err)
@@ -34,16 +34,14 @@ func TestSaveBucket(t *testing.T) {
 	err := os.MkdirAll("./testdb", 0755)
 	require.NoError(t, err)
 
-	repo, err := newSyncRepo("./testdb")
+	repoInt, err := Open("./testdb")
 	require.NoError(t, err)
+	require.IsType(t, &syncRepo{}, repoInt)
+	repo := repoInt.(*syncRepo)
 
-	b := &bucket{
-		name:  "bucket",
-		path:  "./testdb/bucket.json",
-		data:  make(map[string]interface{}),
-		saver: repo.SaveBucket,
-	}
-	err = b.Put("some ID", "hello world")
+	err = repo.CommitFiles(func() error {
+		return ioutil.WriteFile("./testdb/some file.txt", []byte("hello world"), 0755)
+	}, "add some file", "./testdb/some file.txt")
 	require.NoError(t, err)
 
 	getCount := func() int {
@@ -60,7 +58,9 @@ func TestSaveBucket(t *testing.T) {
 	}
 	assert.Equal(t, 1, getCount())
 
-	err = b.Put("some other ID", "hello there")
+	err = repo.CommitFiles(func() error {
+		return ioutil.WriteFile("./testdb/some other file.txt", []byte("hello world"), 0755)
+	}, "add some other file", "./testdb/some other file.txt")
 	require.NoError(t, err)
 	assert.Equal(t, 2, getCount())
 }

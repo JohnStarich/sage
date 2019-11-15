@@ -1,7 +1,6 @@
-package plaindb
+package vcs
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -13,7 +12,12 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
-func newSyncRepo(path string) (*syncRepo, error) {
+type Repository interface {
+	// CommitFiles commits with 'message' for files specified by 'paths'. 'prepFiles' is given exclusive access to files during execution
+	CommitFiles(prepFiles func() error, message string, paths ...string) error
+}
+
+func Open(path string) (Repository, error) {
 	repo, err := git.PlainOpenWithOptions(path, &git.PlainOpenOptions{
 		DetectDotGit: false,
 	})
@@ -69,12 +73,18 @@ func initVCS(path string) (*git.Repository, error) {
 	return repo, nil
 }
 
-// commitFiles resets the repo index, then adds & commits the files at 'paths' with the 'message'
-// NOTE: Does not perform any locking
-func (s *syncRepo) commitFiles(message string, paths ...string) error {
+// CommitFiles resets the repo index, then adds & commits the files at 'paths' with the 'message'
+// Gives exclusive lock to 'prepFiles' execution.
+func (s *syncRepo) CommitFiles(prepFiles func() error, message string, paths ...string) error {
 	if len(paths) == 0 {
 		return errors.New("No files to commit")
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := prepFiles(); err != nil {
+		return err
+	}
+
 	tree, err := s.repo.Worktree()
 	if err != nil {
 		return err
@@ -102,14 +112,4 @@ func (s *syncRepo) commitFiles(message string, paths ...string) error {
 		Author: sageAuthor(),
 	})
 	return err
-}
-
-// SaveBucket saves the bucket to disk and makes a commit. Safe for concurrent use
-func (s *syncRepo) SaveBucket(b *bucket) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if err := saveBucket(b); err != nil {
-		return err
-	}
-	return s.commitFiles(fmt.Sprintf("Update %s", b.name), b.path)
 }

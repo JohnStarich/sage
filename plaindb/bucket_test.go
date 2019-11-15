@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/johnstarich/sage/vcs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -104,7 +105,7 @@ func TestBucketPutSave(t *testing.T) {
 		name:    "accounts",
 		path:    path,
 		version: "1",
-		saver:   saveBucket,
+		saver:   saveBucketToDisk,
 		data: map[string]interface{}{
 			"a": "some string",
 			"b": 1,
@@ -220,4 +221,31 @@ func TestBucketIter(t *testing.T) {
 			assert.Contains(t, err.Error(), "Bucket accounts: ")
 		}
 	})
+}
+
+func TestVersionControl(t *testing.T) {
+	cleanup := func() {
+		err := os.RemoveAll("./testdb")
+		require.NoError(t, err)
+	}
+	cleanup()
+	defer cleanup()
+	err := os.MkdirAll("./testdb", 0755)
+	require.NoError(t, err)
+
+	var repo vcs.Repository
+	dbInt, err := Open("./testdb", VersionControl(&repo))
+	require.NoError(t, err)
+	require.IsType(t, &database{}, dbInt)
+	db := dbInt.(*database)
+	assert.Equal(t, repo, db.repo)
+
+	b, err := db.Bucket("bucket", "", &mockUpgrader{})
+	require.NoError(t, err)
+
+	err = b.Put("some ID", "hello world")
+	require.NoError(t, err)
+
+	err = b.Put("some other ID", "hello there")
+	require.NoError(t, err)
 }

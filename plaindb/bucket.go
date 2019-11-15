@@ -82,7 +82,7 @@ func (b *bucket) wrapErr(err error) error {
 	return errors.Wrap(err, "Bucket "+b.name)
 }
 
-func saveBucket(b *bucket) (returnErr error) {
+func saveBucketToDisk(b *bucket) (returnErr error) {
 	dir := filepath.Dir(b.path)
 	file, err := ioutil.TempFile(dir, filepath.Base(b.path)+".*.tmp")
 	if err != nil {

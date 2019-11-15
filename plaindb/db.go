@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/johnstarich/sage/vcs"
 	"github.com/pkg/errors"
 )
 
@@ -43,33 +44,41 @@ type DB interface {
 
 type database struct {
 	path    string
-	repo    *syncRepo
+	repo    vcs.Repository
 	buckets map[string]*bucket
 }
 
+type bucketSaver func(*bucket) error
+
 // Open prepares and creates a DB for the given file path
-func Open(path string) (DB, error) {
+func Open(path string, opts ...DBOpt) (DB, error) {
 	path = filepath.Clean(path)
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return nil, err
 	}
-	repo, err := newSyncRepo(path)
-	return &database{
+	db := &database{
 		path:    path,
-		repo:    repo,
 		buckets: make(map[string]*bucket),
-	}, err
+	}
+	for _, opt := range opts {
+		opt.do(db)
+	}
+	return db, nil
 }
 
 func (db *database) Bucket(name, version string, upgrader Upgrader) (Bucket, error) {
-	return db.bucket(name, version, upgrader, ioutil.ReadFile, db.repo.SaveBucket)
+	saver := saveBucketToDisk
+	if db.repo != nil {
+		saver = repoSaveBucket(db.repo)
+	}
+	return db.bucket(name, version, upgrader, ioutil.ReadFile, saver)
 }
 
 func (db *database) bucket(
 	name, version string,
 	upgrader Upgrader,
 	readFile func(string) ([]byte, error),
-	saver func(*bucket) error,
+	saver bucketSaver,
 ) (Bucket, error) {
 	if upgrader == nil {
 		return nil, errors.New("Upgrader must not be nil")
@@ -155,6 +164,15 @@ func (db *database) Close() error {
 		b.mu.Lock()
 	}
 	return nil
+}
+
+func repoSaveBucket(repo vcs.Repository) bucketSaver {
+	return func(b *bucket) error {
+		saveBucket := func() error {
+			return saveBucketToDisk(b)
+		}
+		return repo.CommitFiles(saveBucket, "Update "+b.name, b.path)
+	}
 }
 
 // MockDB is a DB with additional mocking utilities
