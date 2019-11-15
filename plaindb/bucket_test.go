@@ -98,7 +98,7 @@ func TestBucketPutSave(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "")
 	require.NoError(t, err)
 	defer require.NoError(t, os.RemoveAll(tmpDir))
-	require.NoError(t, os.MkdirAll(tmpDir, 0755))
+	require.NoError(t, os.MkdirAll(tmpDir, 0750))
 	path := filepath.Join(tmpDir, "accounts.json")
 
 	b := &bucket{
@@ -230,7 +230,7 @@ func TestVersionControl(t *testing.T) {
 	}
 	cleanup()
 	defer cleanup()
-	err := os.MkdirAll("./testdb", 0755)
+	err := os.MkdirAll("./testdb", 0750)
 	require.NoError(t, err)
 
 	var repo vcs.Repository

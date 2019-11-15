@@ -12,6 +12,7 @@ import (
 	"github.com/johnstarich/sage/client/web"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/sync"
+	"github.com/johnstarich/sage/vcs"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -131,7 +132,7 @@ func getAccounts(accountStore *client.AccountStore) gin.HandlerFunc {
 	}
 }
 
-func updateAccount(accountStore *client.AccountStore, ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFunc {
+func updateAccount(accountStore *client.AccountStore, ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		account, err := readAndValidateAccount(c.Request.Body, accountStore)
 		if err != nil {
@@ -163,7 +164,7 @@ func updateAccount(accountStore *client.AccountStore, ledgerFileName string, ldg
 				abortWithClientError(c, http.StatusInternalServerError, err)
 				return
 			}
-			if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
+			if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
 				abortWithClientError(c, http.StatusInternalServerError, err)
 				return
 			}

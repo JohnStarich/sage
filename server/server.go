@@ -15,6 +15,7 @@ import (
 	"github.com/johnstarich/sage/plaindb"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/sync"
+	"github.com/johnstarich/sage/vcs"
 	"go.uber.org/zap"
 )
 
@@ -28,9 +29,9 @@ func Run(
 	autoSync bool,
 	addr string,
 	db plaindb.DB,
-	ledgerFileName string, ldg *ledger.Ledger,
+	ledgerFile vcs.File, ldg *ledger.Ledger,
 	accountStore *client.AccountStore,
-	rulesFileName string, rulesStore *rules.Store,
+	rulesFile vcs.File, rulesStore *rules.Store,
 	logger *zap.Logger,
 ) error {
 	engine := gin.New()
@@ -52,7 +53,7 @@ func Run(
 			c.Set(loggerKey, logger)
 		},
 	)
-	setupAPI(api, db, ledgerFileName, ldg, accountStore, rulesFileName, rulesStore)
+	setupAPI(api, db, ledgerFile, ldg, accountStore, rulesFile, rulesStore)
 
 	done := make(chan bool, 1)
 	errs := make(chan error, 2)
@@ -66,7 +67,7 @@ func Run(
 		// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
 		time.Sleep(2 * time.Second)
 		runSync := func() error {
-			return sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore, false)
+			return sync.Sync(logger, ledgerFile, ldg, accountStore, rulesStore, false)
 		}
 		if err := runSync(); err != nil {
 			if _, ok := err.(ledger.Error); !ok {
@@ -110,10 +111,10 @@ func Run(
 func setupAPI(
 	router gin.IRouter,
 	db plaindb.DB,
-	ledgerFileName string,
+	ledgerFile vcs.File,
 	ldg *ledger.Ledger,
 	accountStore *client.AccountStore,
-	rulesFileName string,
+	rulesFile vcs.File,
 	rulesStore *rules.Store,
 ) {
 	router.GET("/getVersion", func(c *gin.Context) {
@@ -122,18 +123,18 @@ func setupAPI(
 		})
 	})
 
-	router.POST("/syncLedger", syncLedger(ledgerFileName, ldg, accountStore, rulesStore))
-	router.POST("/importOFX", importOFXFile(ledgerFileName, ldg, accountStore, rulesStore))
-	router.POST("/renameLedgerAccount", renameLedgerAccount(ledgerFileName, ldg))
+	router.POST("/syncLedger", syncLedger(ledgerFile, ldg, accountStore, rulesStore))
+	router.POST("/importOFX", importOFXFile(ledgerFile, ldg, accountStore, rulesStore))
+	router.POST("/renameLedgerAccount", renameLedgerAccount(ledgerFile, ldg))
 	router.GET("/renameSuggestions", renameSuggestions(ldg, accountStore))
 
 	router.GET("/getBalances", getBalances(ldg, accountStore))
-	router.POST("/updateOpeningBalance", updateOpeningBalance(ledgerFileName, ldg, accountStore))
+	router.POST("/updateOpeningBalance", updateOpeningBalance(ledgerFile, ldg, accountStore))
 	router.GET("/getCategories", getExpenseAndRevenueAccounts(ldg, rulesStore))
 
 	router.GET("/getAccounts", getAccounts(accountStore))
 	router.GET("/getAccount", getAccount(accountStore))
-	router.POST("/updateAccount", updateAccount(accountStore, ledgerFileName, ldg))
+	router.POST("/updateAccount", updateAccount(accountStore, ledgerFile, ldg))
 	router.POST("/addAccount", addAccount(accountStore))
 	router.GET("/deleteAccount", removeAccount(accountStore))
 
@@ -143,10 +144,10 @@ func setupAPI(
 	router.POST("/direct/fetchAccounts", fetchDirectConnectAccounts())
 
 	router.GET("/getTransactions", getTransactions(ldg, accountStore))
-	router.POST("/updateTransaction", updateTransaction(ledgerFileName, ldg))
+	router.POST("/updateTransaction", updateTransaction(ledgerFile, ldg))
 
 	router.GET("/getRules", getRules(rulesStore))
-	router.POST("/updateRules", updateRules(rulesFileName, rulesStore))
+	router.POST("/updateRules", updateRules(rulesFile, rulesStore))
 
 	router.GET("/getBudgets", getBudgets(db, ldg))
 	router.GET("/getBudget", getBudget(db, ldg))

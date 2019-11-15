@@ -1,6 +1,7 @@
 package vcs
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -12,12 +13,20 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
+// Repository is a Git repository with thread-safe file operations
 type Repository interface {
 	// CommitFiles commits with 'message' for files specified by 'paths'. 'prepFiles' is given exclusive access to files during execution
 	CommitFiles(prepFiles func() error, message string, paths ...string) error
+	// File returns a version-controlled file, capable of writing and committing in one operation
+	File(path string) File
 }
 
+// Open ensures a Git repo exists at 'path' and returns its Repository
 func Open(path string) (Repository, error) {
+	path = filepath.Clean(path)
+	if err := os.MkdirAll(path, 0750); err != nil {
+		return nil, err
+	}
 	repo, err := git.PlainOpenWithOptions(path, &git.PlainOpenOptions{
 		DetectDotGit: false,
 	})
@@ -30,13 +39,6 @@ func Open(path string) (Repository, error) {
 type syncRepo struct {
 	repo *git.Repository
 	mu   sync.Mutex
-}
-
-func sageAuthor() *object.Signature {
-	return &object.Signature{
-		Name: "Sage",
-		When: time.Now(),
-	}
 }
 
 func initVCS(path string) (*git.Repository, error) {
@@ -71,6 +73,13 @@ func initVCS(path string) (*git.Repository, error) {
 		})
 	}
 	return repo, nil
+}
+
+func sageAuthor() *object.Signature {
+	return &object.Signature{
+		Name: "Sage",
+		When: time.Now(),
+	}
 }
 
 // CommitFiles resets the repo index, then adds & commits the files at 'paths' with the 'message'

@@ -1,23 +1,14 @@
 package sync
 
 import (
-	"io/ioutil"
-	"os"
-	"sync"
-
 	"github.com/johnstarich/sage/rules"
+	"github.com/johnstarich/sage/vcs"
 	"github.com/pkg/errors"
 )
 
-var (
-	rulesMu sync.Mutex
-)
-
 // Rules writes this rules store to the given file name
-func Rules(fileName string, store *rules.Store) error {
-	rulesMu.Lock()
-	defer rulesMu.Unlock()
+func Rules(rulesFile vcs.File, store *rules.Store) error {
 	s := store.String()
-	err := ioutil.WriteFile(fileName, []byte(s), os.ModePerm)
+	err := rulesFile.Write([]byte(s))
 	return errors.Wrap(err, "Error writing rules store to disk")
 }

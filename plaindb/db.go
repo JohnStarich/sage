@@ -53,7 +53,7 @@ type bucketSaver func(*bucket) error
 // Open prepares and creates a DB for the given file path
 func Open(path string, opts ...DBOpt) (DB, error) {
 	path = filepath.Clean(path)
-	if err := os.MkdirAll(path, 0755); err != nil {
+	if err := os.MkdirAll(path, 0750); err != nil {
 		return nil, err
 	}
 	db := &database{

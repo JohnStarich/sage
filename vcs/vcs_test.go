@@ -12,27 +12,49 @@ import (
 )
 
 func TestOpen(t *testing.T) {
-	err := os.RemoveAll("./testdb")
+	cleanup := func() {
+		require.NoError(t, os.RemoveAll("./testdb"))
+	}
+	cleanup()
+	defer cleanup()
+	err := os.MkdirAll("./testdb", 0750)
 	require.NoError(t, err)
-	err = os.MkdirAll("./testdb", 0755)
-	require.NoError(t, err)
-	err = ioutil.WriteFile("./testdb/bucket.json", []byte(`{}`), 0755)
+	err = ioutil.WriteFile("./testdb/bucket.json", []byte(`{}`), 0750)
 	require.NoError(t, err)
 
-	repo, err := Open("./testdb")
+	repoInt, err := Open("./testdb")
 	require.NoError(t, err)
-	assert.NotNil(t, repo)
+	require.IsType(t, &syncRepo{}, repoInt)
+
+	repo := repoInt.(*syncRepo)
+	commits, err := repo.repo.Log(&git.LogOptions{})
+	require.NoError(t, err)
+	count := 0
+	err = commits.ForEach(func(commit *object.Commit) error {
+		assert.Equal(t, "Initial commit", commit.Message)
+
+		files, err := commit.Files()
+		require.NoError(t, err)
+		f, err := files.Next()
+		require.NoError(t, err)
+		contents, err := f.Contents()
+		require.NoError(t, err)
+
+		assert.Equal(t, `bucket.json`, f.Name)
+		assert.Equal(t, `{}`, contents)
+		count++
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
 }
 
 func TestCommitFiles(t *testing.T) {
 	cleanup := func() {
-		err := os.RemoveAll("./testdb")
-		require.NoError(t, err)
+		require.NoError(t, os.RemoveAll("./testdb"))
 	}
 	cleanup()
 	defer cleanup()
-	err := os.MkdirAll("./testdb", 0755)
-	require.NoError(t, err)
 
 	repoInt, err := Open("./testdb")
 	require.NoError(t, err)
@@ -40,7 +62,7 @@ func TestCommitFiles(t *testing.T) {
 	repo := repoInt.(*syncRepo)
 
 	err = repo.CommitFiles(func() error {
-		return ioutil.WriteFile("./testdb/some file.txt", []byte("hello world"), 0755)
+		return ioutil.WriteFile("./testdb/some file.txt", []byte("hello world"), 0750)
 	}, "add some file", "./testdb/some file.txt")
 	require.NoError(t, err)
 
@@ -59,7 +81,7 @@ func TestCommitFiles(t *testing.T) {
 	assert.Equal(t, 1, getCount())
 
 	err = repo.CommitFiles(func() error {
-		return ioutil.WriteFile("./testdb/some other file.txt", []byte("hello world"), 0755)
+		return ioutil.WriteFile("./testdb/some other file.txt", []byte("hello world"), 0750)
 	}, "add some other file", "./testdb/some other file.txt")
 	require.NoError(t, err)
 	assert.Equal(t, 2, getCount())

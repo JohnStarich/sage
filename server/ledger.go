@@ -15,6 +15,7 @@ import (
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/sync"
+	"github.com/johnstarich/sage/vcs"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
@@ -26,11 +27,11 @@ const (
 	MaxResults = 50
 )
 
-func syncLedger(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
+func syncLedger(ledgerFile vcs.File, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger := c.MustGet(loggerKey).(*zap.Logger)
 		_, syncFromStart := c.GetQuery("fromLedgerStart")
-		err := sync.Sync(logger, ledgerFileName, ldg, accountStore, rulesStore, syncFromStart)
+		err := sync.Sync(logger, ledgerFile, ldg, accountStore, rulesStore, syncFromStart)
 		if err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
@@ -335,7 +336,7 @@ func getExpenseAndRevenueAccounts(ldg *ledger.Ledger, rulesStore *rules.Store) g
 	}
 }
 
-func updateTransaction(ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFunc {
+func updateTransaction(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body, err := ioutil.ReadAll(c.Request.Body)
 		if err != nil {
@@ -367,7 +368,7 @@ func updateTransaction(ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFun
 			return
 		}
 
-		if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
+		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
@@ -376,7 +377,7 @@ func updateTransaction(ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFun
 	}
 }
 
-func updateOpeningBalance(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
+func updateOpeningBalance(ledgerFile vcs.File, ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var opening ledger.Transaction
 		if err := c.ShouldBindJSON(&opening); err != nil {
@@ -407,7 +408,7 @@ func updateOpeningBalance(ledgerFileName string, ldg *ledger.Ledger, accountStor
 			return
 		}
 
-		if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
+		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
@@ -415,7 +416,7 @@ func updateOpeningBalance(ledgerFileName string, ldg *ledger.Ledger, accountStor
 	}
 }
 
-func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
+func importOFXFile(ledgerFile vcs.File, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger := c.MustGet(loggerKey).(*zap.Logger)
 		skeletonAccounts, txns, err := client.ReadOFX(c.Request.Body)
@@ -428,7 +429,7 @@ func importOFXFile(ledgerFileName string, ldg *ledger.Ledger, accountStore *clie
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
-		if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
+		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
@@ -452,7 +453,7 @@ type renameParams struct {
 	NewID string
 }
 
-func renameLedgerAccount(ledgerFileName string, ldg *ledger.Ledger) gin.HandlerFunc {
+func renameLedgerAccount(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var params renameParams
 		if err := c.BindJSON(&params); err != nil {
@@ -465,7 +466,7 @@ func renameLedgerAccount(ledgerFileName string, ldg *ledger.Ledger) gin.HandlerF
 		}
 
 		renameCount := ldg.RenameAccount(params.Old, params.New, params.OldID, params.NewID)
-		if err := sync.LedgerFile(ldg, ledgerFileName); err != nil {
+		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
