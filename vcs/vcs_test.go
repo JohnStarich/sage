@@ -86,3 +86,39 @@ func TestCommitFiles(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, getCount())
 }
+
+func TestCommitNoChanges(t *testing.T) {
+	cleanup := func() {
+		require.NoError(t, os.RemoveAll("./testdb"))
+	}
+	cleanup()
+	defer cleanup()
+
+	repoInt, err := Open("./testdb")
+	require.NoError(t, err)
+	require.IsType(t, &syncRepo{}, repoInt)
+	repo := repoInt.(*syncRepo)
+
+	err = repo.CommitFiles(func() error {
+		return ioutil.WriteFile("./testdb/some file.txt", []byte("hello world"), 0750)
+	}, "add some file", "./testdb/some file.txt")
+	require.NoError(t, err)
+
+	getCount := func() int {
+		count := 0
+		log, err := repo.repo.Log(&git.LogOptions{})
+		require.NoError(t, err)
+
+		err = log.ForEach(func(*object.Commit) error {
+			count++
+			return nil
+		})
+		require.NoError(t, err)
+		return count
+	}
+	assert.Equal(t, 1, getCount())
+
+	err = repo.CommitFiles(func() error { return nil }, "add same file", "./testdb/some file.txt")
+	require.NoError(t, err)
+	assert.Equal(t, 1, getCount(), "no commit should be made for unchanged file")
+}

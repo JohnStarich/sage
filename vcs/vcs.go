@@ -107,16 +107,39 @@ func (s *syncRepo) CommitFiles(prepFiles func() error, message string, paths ...
 			return err
 		}
 	}
+
+	// relativize paths to repo root
 	rootPath := tree.Filesystem.Root()
-	for _, path := range paths {
-		path, err := filepath.Rel(rootPath, path)
+	for i := range paths {
+		path, err := filepath.Rel(rootPath, paths[i])
 		if err != nil {
 			return err
 		}
+		paths[i] = path
+	}
+
+	for _, path := range paths {
 		if _, err = tree.Add(path); err != nil {
 			return errors.Wrapf(err, "Failed to add %s to the git index", path)
 		}
 	}
+
+	repoStatus, err := tree.Status()
+	if err != nil {
+		return err
+	}
+	shouldCommit := false
+	for _, path := range paths {
+		status, ok := repoStatus[path]
+		if ok && status.Staging != git.Unmodified {
+			shouldCommit = true
+			break
+		}
+	}
+	if !shouldCommit {
+		return nil
+	}
+
 	_, err = tree.Commit(message, &git.CommitOptions{
 		Author: sageAuthor(),
 	})
