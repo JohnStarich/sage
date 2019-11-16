@@ -9,7 +9,7 @@
 .rename-suggestions .row > div {
   white-space: pre;
   word-break: keep-all;
-  overflow-x: scroll;
+  overflow-x: auto;
 }
 
 .rename-symbol {
