@@ -44,7 +44,7 @@ func handleServerError(resp http.ResponseWriter, err error) {
 
 func handleError(resp http.ResponseWriter, err error) {
 	fmt.Printf("Error: [%s] %s\n%s\n", resp.Header().Get("Status"), err.Error(), debug.Stack())
-	resp.Write([]byte(err.Error()))
+	_, _ = resp.Write([]byte(err.Error()))
 }
 
 var (
@@ -172,7 +172,11 @@ func handleOFXRequest(resp http.ResponseWriter, req *http.Request) {
 		handleServerError(resp, err)
 		return
 	}
-	b.WriteTo(resp)
+	_, err = b.WriteTo(resp)
+	if err != nil {
+		handleServerError(resp, err)
+		return
+	}
 }
 
 func parseDate(dateStr string) (time.Time, error) {

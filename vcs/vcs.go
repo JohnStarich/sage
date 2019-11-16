@@ -68,9 +68,12 @@ func initVCS(path string) (*git.Repository, error) {
 		}
 	}
 	if added {
-		tree.Commit("Initial commit", &git.CommitOptions{
+		_, err := tree.Commit("Initial commit", &git.CommitOptions{
 			Author: sageAuthor(),
 		})
+		if err != nil {
+			return nil, err
+		}
 	}
 	return repo, nil
 }

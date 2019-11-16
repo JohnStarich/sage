@@ -83,18 +83,6 @@ func readAndValidateDirectConnector(r io.ReadCloser) (direct.Connector, error) {
 	return connector, direct.ValidateConnector(connector)
 }
 
-func readAndValidateWebConnectAccount(r io.ReadCloser) (web.Account, error) {
-	b, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-	account, err := web.UnmarshalAccount(b)
-	if err != nil {
-		return nil, err
-	}
-	return account, web.Validate(account)
-}
-
 func getAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID := c.Query("id")

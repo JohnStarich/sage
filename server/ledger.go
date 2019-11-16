@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
 	"github.com/johnstarich/sage/client/model"
+	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/sync"
@@ -33,7 +34,7 @@ func syncLedger(ledgerFile vcs.File, ldg *ledger.Ledger, accountStore *client.Ac
 		_, syncFromStart := c.GetQuery("fromLedgerStart")
 		err := sync.Sync(logger, ledgerFile, ldg, accountStore, rulesStore, syncFromStart)
 		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
+			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
 		c.Status(http.StatusOK)
@@ -47,31 +48,28 @@ type transactionsResponse struct {
 
 func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var errs sErrors.Errors
 		var page, results int = 1, 10
 		if pageQuery, ok := c.GetQuery("page"); ok {
 			if parsedPage, err := strconv.ParseInt(pageQuery, 10, 64); err != nil {
-				c.Error(errors.Errorf("Invalid integer: %s", pageQuery))
+				errs.AddErr(errors.Errorf("Invalid integer: %s", pageQuery))
 			} else if parsedPage < 1 {
-				c.Error(errors.New("Page must be a positive integer"))
+				errs.AddErr(errors.New("Page must be a positive integer"))
 			} else {
 				page = int(parsedPage)
 			}
 		}
 		if resultsQuery, ok := c.GetQuery("results"); ok {
 			if parsedResults, err := strconv.ParseInt(resultsQuery, 10, 64); err != nil {
-				c.Error(errors.Errorf("Invalid integer: %s", resultsQuery))
+				errs.AddErr(errors.Errorf("Invalid integer: %s", resultsQuery))
 			} else if parsedResults < 1 || parsedResults > MaxResults {
-				c.Error(errors.Errorf("Results must be a positive integer no more than %d", MaxResults))
+				errs.AddErr(errors.Errorf("Results must be a positive integer no more than %d", MaxResults))
 			} else {
 				results = int(parsedResults)
 			}
 		}
-		if len(c.Errors) > 0 {
-			errMsg := ""
-			for _, e := range c.Errors {
-				errMsg += e.Error() + "\n"
-			}
-			c.AbortWithError(http.StatusBadRequest, errors.New(errMsg))
+		if len(errs) > 0 {
+			abortWithClientError(c, http.StatusBadRequest, errs.ErrOrNil())
 			return
 		}
 		result := transactionsResponse{
@@ -340,7 +338,7 @@ func updateTransaction(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc 
 	return func(c *gin.Context) {
 		body, err := ioutil.ReadAll(c.Request.Body)
 		if err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
 
@@ -348,28 +346,28 @@ func updateTransaction(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc 
 			ID string
 		}
 		if err := json.Unmarshal(body, &txnJSON); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
 		id := txnJSON.ID
 
 		var txn ledger.Transaction
 		if err := json.Unmarshal(body, &txn); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
 		switch err := ldg.UpdateTransaction(id, txn).(type) {
 		case ledger.Error:
-			c.AbortWithError(http.StatusBadRequest, err)
+			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		case nil: // skip
 		default:
-			c.AbortWithError(http.StatusInternalServerError, err)
+			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
 
 		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
+			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
 

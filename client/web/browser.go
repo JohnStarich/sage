@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"sync"
-	"time"
 
 	cdpBrowser "github.com/chromedp/cdproto/browser"
 	"github.com/chromedp/cdproto/cdp"
@@ -106,13 +105,6 @@ func NewBrowser(ctx context.Context, config BrowserConfig) (Browser, error) {
 		CancelFunc:   cancel,
 		downloadErrs: make(chan error, 1),
 	}, nil
-}
-
-func chromiumSupport() bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_, err := NewBrowser(ctx, BrowserConfig{Logger: zap.NewNop()})
-	return err == nil
 }
 
 func (b *browser) Run(ctx context.Context, actions ...Action) error {

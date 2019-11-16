@@ -287,10 +287,6 @@ func (l *Ledger) AccountBalance(account string, start, end time.Time) decimal.De
 	return sum
 }
 
-func accountComponents(account string) []string {
-	return strings.Split(strings.ToLower(account), ":")
-}
-
 // LeftOverAccountBalances retrieves balances for any accounts or account prefixes not found in 'accounts' between start and end times
 func (l *Ledger) LeftOverAccountBalances(start, end time.Time, accounts ...string) map[string]decimal.Decimal {
 	l.mu.RLock()

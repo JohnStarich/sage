@@ -125,7 +125,7 @@ func handleErrors(db *plaindb.DB) (usageErr bool, err error) {
 	var port uint16
 	if *isServer {
 		port = uint16(*serverPort)
-		if port <= 0 || uint(port) != *serverPort {
+		if uint(port) != *serverPort {
 			return true, errors.Errorf("Port number must be a positive 16-bit integer: %d", *serverPort)
 		}
 	}

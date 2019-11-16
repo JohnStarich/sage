@@ -61,7 +61,9 @@ func Open(path string, opts ...DBOpt) (DB, error) {
 		buckets: make(map[string]*bucket),
 	}
 	for _, opt := range opts {
-		opt.do(db)
+		if err := opt.do(db); err != nil {
+			return nil, err
+		}
 	}
 	return db, nil
 }

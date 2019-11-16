@@ -67,12 +67,12 @@ func Validate(account Account) error {
 	}
 
 	switch impl := account.(type) {
-	case Bank:
-		errs.ErrIf(impl.BankID() == "", "Routing number must not be empty")
 	case *bankAccount:
 		errs.ErrIf(impl.BankID() == "", "Routing number must not be empty")
 		kind := ParseAccountType(impl.BankAccountType)
 		errs.ErrIf(kind != CheckingType && kind != SavingsType, "Account type must be %s or %s", CheckingType, SavingsType)
+	case Bank:
+		errs.ErrIf(impl.BankID() == "", "Routing number must not be empty")
 	case *CreditCard:
 		// no additional validation required
 	}

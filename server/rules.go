@@ -31,7 +31,7 @@ func updateRules(rulesFile vcs.File, rulesStore *rules.Store) gin.HandlerFunc {
 		}
 		rulesStore.Replace(newRules)
 		if err := sync.Rules(rulesFile, rulesStore); err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
+			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
 		c.Status(http.StatusNoContent)
