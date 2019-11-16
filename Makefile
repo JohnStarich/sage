@@ -15,24 +15,11 @@ LINT_VERSION=1.21.0
 ENSURE_STUB := $(shell [[ -f ./server/bindata.go ]] || { mkdir -p web/build && GO111MODULE=on go generate ./server; })
 
 .PHONY: all
-all: fmt vet lint test build
+all: lint test build
 
 .PHONY: version
 version:
 	@echo ${VERSION}
-
-.PHONY: vet
-vet:
-	go vet ./...
-
-.PHONY: fmt
-fmt:
-	@diff=$$(gofmt -d .); \
-		if [[ -n "$$diff" ]]; then \
-			echo "$$diff"; \
-			echo 'Formatting error. Run `go fmt ./...` to pass this linter.'; \
-			exit 1; \
-		fi
 
 .PHONY: lint
 lint:
@@ -40,6 +27,10 @@ lint:
 		curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v${LINT_VERSION}; \
 	fi
 	golangci-lint run
+
+.PHONY: lint-fix
+lint-fix:
+	golangci-lint run --fix
 
 .PHONY: test
 test:
