@@ -7,6 +7,10 @@ linters:
     - gofmt
     - gosec
     - misspell
-    - gochecknoglobals
     - scopelint
     - bodyclose
+
+issues:
+  exclude:
+    # Disable scopelint errors on table driven tests
+    - Using the variable on range scope `tc` in function literal

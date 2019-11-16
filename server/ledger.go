@@ -51,20 +51,24 @@ func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.
 		var errs sErrors.Errors
 		var page, results int = 1, 10
 		if pageQuery, ok := c.GetQuery("page"); ok {
-			if parsedPage, err := strconv.ParseInt(pageQuery, 10, 64); err != nil {
+			parsedPage, parseErr := strconv.ParseInt(pageQuery, 10, 64)
+			switch {
+			case parseErr != nil:
 				errs.AddErr(errors.Errorf("Invalid integer: %s", pageQuery))
-			} else if parsedPage < 1 {
+			case parsedPage < 1:
 				errs.AddErr(errors.New("Page must be a positive integer"))
-			} else {
+			default:
 				page = int(parsedPage)
 			}
 		}
 		if resultsQuery, ok := c.GetQuery("results"); ok {
-			if parsedResults, err := strconv.ParseInt(resultsQuery, 10, 64); err != nil {
+			parsedResults, parseErr := strconv.ParseInt(resultsQuery, 10, 64)
+			switch {
+			case parseErr != nil:
 				errs.AddErr(errors.Errorf("Invalid integer: %s", resultsQuery))
-			} else if parsedResults < 1 || parsedResults > MaxResults {
+			case parsedResults < 1 || parsedResults > MaxResults:
 				errs.AddErr(errors.Errorf("Results must be a positive integer no more than %d", MaxResults))
-			} else {
+			default:
 				results = int(parsedResults)
 			}
 		}
@@ -210,30 +214,9 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 				OpeningBalance: findOpeningBalance(accountName),
 				Balances:       balances,
 			}
-
-			format, err := model.ParseLedgerFormat(accountName)
-			if err != nil || format.AccountType == "" {
-				continue
+			if extractAccount(&account, accountName, accountTypes, accountIDMap.Find) {
+				resp.Accounts = append(resp.Accounts, account)
 			}
-			if len(accountTypes) > 0 && !accountTypes[format.AccountType] {
-				// filter by account type
-				continue
-			}
-
-			account.AccountType = format.AccountType
-			switch format.AccountType {
-			case model.AssetAccount, model.LiabilityAccount:
-				account.Account = format.Institution + " " + format.AccountID
-				account.Institution = format.Institution
-				if clientAccount, found := accountIDMap.Find(accountName); found {
-					account.Account = clientAccount.Description()
-				}
-			default:
-				account.ID = format.Remaining
-				account.Account = account.ID
-			}
-
-			resp.Accounts = append(resp.Accounts, account)
 		}
 
 		var accounts []model.Account
@@ -272,6 +255,31 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 
 		c.JSON(http.StatusOK, resp)
 	}
+}
+
+// extractAccount attempts to fill in the account response, returns true if the account should be added
+func extractAccount(account *AccountResponse, accountName string, filterAccountTypes map[string]bool, getAccount func(name string) (model.Account, bool)) bool {
+	format, err := model.ParseLedgerFormat(accountName)
+	if err != nil || format.AccountType == "" {
+		return false
+	}
+	if len(filterAccountTypes) > 0 && !filterAccountTypes[format.AccountType] {
+		return false
+	}
+
+	account.AccountType = format.AccountType
+	switch format.AccountType {
+	case model.AssetAccount, model.LiabilityAccount:
+		account.Account = format.Institution + " " + format.AccountID
+		account.Institution = format.Institution
+		if clientAccount, found := getAccount(accountName); found {
+			account.Account = clientAccount.Description()
+		}
+	default:
+		account.ID = format.Remaining
+		account.Account = account.ID
+	}
+	return true
 }
 
 func getOpeningBalanceMessages(ldg *ledger.Ledger, accounts []model.Account) []AccountMessage {

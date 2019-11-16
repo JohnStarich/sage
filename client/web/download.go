@@ -43,6 +43,7 @@ func (d *DownloadRequest) fetch(ctx context.Context, client *http.Client) ([]byt
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

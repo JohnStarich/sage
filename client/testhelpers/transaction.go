@@ -13,11 +13,12 @@ func AssertEqualTransactions(t *testing.T, expected, actual ledger.Transaction) 
 	failed := false
 	for i := range expected.Postings {
 		if expected.Postings[i].Balance != actual.Postings[i].Balance {
-			if expected.Postings[i].Balance == nil {
+			switch {
+			case expected.Postings[i].Balance == nil:
 				failed = failed || !assert.Nil(t, actual.Postings[i].Balance)
-			} else if actual.Postings[i].Balance == nil {
+			case actual.Postings[i].Balance == nil:
 				failed = failed || !assert.NotNil(t, actual.Postings[i].Balance)
-			} else {
+			default:
 				failed = failed || !assert.Equal(t,
 					expected.Postings[i].Balance.String(),
 					actual.Postings[i].Balance.String(),

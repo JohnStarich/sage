@@ -97,13 +97,14 @@ func TestNewClient(t *testing.T) {
 			}
 
 			c, err := newClient(expectedURL, config, getLogger, getClient, getLimiter)
-			if tc.loggerErr {
+			switch {
+			case tc.loggerErr:
 				assert.Equal(t, loggerErr, err)
 				return
-			} else if tc.ofxVersionErr {
+			case tc.ofxVersionErr:
 				assert.Error(t, err)
 				return
-			} else {
+			default:
 				require.NoError(t, err)
 			}
 			require.IsType(t, &sageClient{}, c)
@@ -199,8 +200,10 @@ func TestRequestNoParse(t *testing.T) {
 	c, err := newSimpleClient("url", Config{})
 	require.NoError(t, err)
 	req := &ofxgo.Request{}
-	_, err = c.RequestNoParse(req)
-	assert.Error(t, err)
+	resp, err := c.RequestNoParse(req)
+	if !assert.Error(t, err) {
+		resp.Body.Close()
+	}
 }
 
 type FakeMarshaler struct {
@@ -284,6 +287,7 @@ func TestDoInstrumentedRequest(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+			defer resp.Body.Close()
 			if tc.logLevel == zap.DebugLevel {
 				assert.True(t, bodyCloser != resp.Body, "Response body should be replaced with a different, identical body")
 				assert.True(t, bodyCloser.closed, "Body should be closed")

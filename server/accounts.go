@@ -218,28 +218,32 @@ func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 		}
 
 		pass := connector.Password()
-		if pass == "" {
-			var currentAccount model.Account
-			exists, err := accountStore.Get(account.ID(), &currentAccount)
-			if err != nil {
-				abortWithClientError(c, http.StatusInternalServerError, err)
+		if pass != "" {
+			c.Status(http.StatusNoContent)
+			return
+		}
+
+		// attempt to pull previous password value
+		var currentAccount model.Account
+		exists, err := accountStore.Get(account.ID(), &currentAccount)
+		if err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		errPasswordRequired := errors.New("Institution password is required")
+		isLocal := direct.IsLocalhostTestURL(connector.URL())
+		if !isLocal {
+			if !exists {
+				abortWithClientError(c, http.StatusBadRequest, errPasswordRequired)
 				return
 			}
-			errPasswordRequired := errors.New("Institution password is required")
-			isLocal := direct.IsLocalhostTestURL(connector.URL())
-			if !isLocal {
-				if !exists {
-					abortWithClientError(c, http.StatusBadRequest, errPasswordRequired)
-					return
-				}
-				currentConnector, isConn := currentAccount.Institution().(direct.Connector)
-				if isConn {
-					pass = currentConnector.Password()
-				}
-				if pass == "" {
-					abortWithClientError(c, http.StatusBadRequest, errPasswordRequired)
-					return
-				}
+			currentConnector, isConn := currentAccount.Institution().(direct.Connector)
+			if isConn {
+				pass = currentConnector.Password()
+			}
+			if pass == "" {
+				abortWithClientError(c, http.StatusBadRequest, errPasswordRequired)
+				return
 			}
 		}
 

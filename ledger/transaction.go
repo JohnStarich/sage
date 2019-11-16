@@ -34,76 +34,78 @@ type Transactions []*Transaction
 
 func readAllTransactions(scanner *bufio.Scanner) ([]Transaction, error) {
 	var transactions []Transaction
-	var txn Transaction
-	readingPostings := false
-	missingAmount := false
-	var sum decimal.Decimal
+	type readerState struct {
+		txn             Transaction
+		readingPostings bool
+		missingAmount   bool
+		sum             decimal.Decimal
+	}
+
+	var state readerState
 
 	endTxn := func() error {
-		if !readingPostings {
+		if !state.readingPostings {
 			return nil
 		}
-		if len(txn.Postings) < 2 {
-			return fmt.Errorf("A transaction must have at least two postings:\n%s", txn.String())
+		if len(state.txn.Postings) < 2 {
+			return fmt.Errorf("A transaction must have at least two postings:\n%s", state.txn.String())
 		}
 		var total decimal.Decimal
-		for _, p := range txn.Postings[:len(txn.Postings)-1] {
+		for _, p := range state.txn.Postings[:len(state.txn.Postings)-1] {
 			total = total.Sub(p.Amount)
 		}
-		lastPosting := &txn.Postings[len(txn.Postings)-1]
+		lastPosting := &state.txn.Postings[len(state.txn.Postings)-1]
 		if !lastPosting.Amount.Equal(total) {
-			return fmt.Errorf("Detected unbalanced transaction:\n%s", txn.String())
+			return fmt.Errorf("Detected unbalanced transaction:\n%s", state.txn.String())
 		}
 		// valid txn
-		readingPostings = false
-		missingAmount = false
-		transactions = append(transactions, txn)
-		sum = decimal.Zero
-		txn = Transaction{}
+		transactions = append(transactions, state.txn)
+		state = readerState{}
 		return nil
 	}
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		if trimLine := strings.TrimSpace(line); trimLine == "" || trimLine[0] == ';' {
+		trimLine := strings.TrimSpace(line)
+		switch {
+		case trimLine == "" || trimLine[0] == ';':
 			// is blank line
 			if err := endTxn(); err != nil {
 				return nil, err
 			}
-		} else if !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
+		case !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t"):
 			if err := endTxn(); err != nil {
 				return nil, err
 			}
 			// is txn payee line
-			err := parsePayeeLine(&txn, line)
+			err := parsePayeeLine(&state.txn, line)
 			if err != nil {
 				return nil, err
 			}
-			readingPostings = true
-		} else if readingPostings {
+			state.readingPostings = true
+		case state.readingPostings:
 			// is posting line
-			if missingAmount {
+			if state.missingAmount {
 				return nil, fmt.Errorf("Missing amount is only allowed on the last posting.")
 			}
 			posting, err := NewPostingFromString(line)
-			if err == missingAmountErr {
-				missingAmount = true
-				posting.Amount = sum
+			switch {
+			case err == missingAmountErr:
+				state.missingAmount = true
+				posting.Amount = state.sum
 				posting.Currency = usd
-			} else if err != nil {
+			case err != nil:
 				return nil, err
-			} else {
-				sum = sum.Sub(posting.Amount)
+			default:
+				state.sum = state.sum.Sub(posting.Amount)
 			}
-			txn.Postings = append(txn.Postings, posting)
-		} else {
+			state.txn.Postings = append(state.txn.Postings, posting)
+		default:
 			return nil, fmt.Errorf("Unknown line format detected: %s", line)
 		}
 	}
-	if err := endTxn(); err != nil {
-		return nil, err
-	}
-	return transactions, nil
+	err := endTxn()
+	return transactions, err
 }
 
 func parsePayeeLine(txn *Transaction, line string) error {

@@ -49,7 +49,7 @@ func (l *localClient) RawRequest(url string, r io.Reader) (*http.Response, error
 	}
 	r = bytes.NewBuffer(body)
 
-	response, err := http.Post(url, "application/x-ofx", r)
+	response, err := http.Post(url, "application/x-ofx", r) // nolint:gosec // URL variable required to fit OFX client interface
 	if err != nil {
 		return nil, err
 	}

@@ -43,8 +43,8 @@ func validateConditions(conditions []string) (cleanedConditions []string, re *re
 		}
 	}
 	if len(cleanedConditions) == 0 {
-		pattern, err := regexp.Compile("")
-		return nil, pattern, err
+		pattern := regexp.MustCompile("")
+		return nil, pattern, nil
 	}
 	pattern, err := regexp.Compile("(?i)" + strings.Join(cleanedConditions, "|"))
 	return cleanedConditions, pattern, err
@@ -127,32 +127,34 @@ func (c csvRule) String() string {
 	return buf.String()
 }
 
+type readerState struct {
+	foundIf            bool
+	foundExpressions   bool
+	account1, account2 string
+	comment            string
+	conditions         []string
+}
+
 func NewCSVRulesFromReader(reader io.Reader) (Rules, error) {
 	var rules Rules
 	scanner := bufio.NewScanner(reader)
 
-	var foundIf, foundExpressions bool
-	var account1, account2, comment string
-	var conditions []string
+	var state readerState
+
 	endRule := func() error {
-		if !foundExpressions {
-			if foundIf {
+		if !state.foundExpressions {
+			if state.foundIf {
 				return errors.New("If statements must have a condition and expression")
 			}
 			// nothing found
 			return nil
 		}
-		rule, err := NewCSVRule(account1, account2, comment, conditions...)
+		rule, err := NewCSVRule(state.account1, state.account2, state.comment, state.conditions...)
 		if err != nil {
 			return err
 		}
 		rules = append(rules, rule)
-		foundIf = false
-		foundExpressions = false
-		account1 = ""
-		account2 = ""
-		comment = ""
-		conditions = nil
+		state = readerState{}
 		return nil
 	}
 
@@ -163,43 +165,17 @@ func NewCSVRulesFromReader(reader io.Reader) (Rules, error) {
 			continue
 		}
 
-		if line == "if" || strings.HasPrefix(line, "if ") {
-			if foundExpressions {
-				if err := endRule(); err != nil {
-					return nil, err
-				}
+		switch {
+		case line == "if" || strings.HasPrefix(line, "if "):
+			if err := foundIf(&state, line, endRule); err != nil {
+				return nil, err
 			}
-			if !foundIf {
-				line = strings.TrimPrefix(line, "if")
-			}
-			foundIf = true
-			line = strings.TrimSpace(line)
-			if line != "" {
-				conditions = append(conditions, line)
-			}
-		} else if foundIf && !strings.HasPrefix(line, " ") {
-			conditions = append(conditions, line)
-		} else {
-			if foundIf && len(conditions) == 0 {
-				return nil, errors.New("Started expressions but no conditions were found")
-			}
-			foundExpressions = true
-			line = strings.TrimSpace(line)
-			tokens := strings.SplitN(line, " ", 2)
-			if len(tokens) != 2 {
-				return nil, errors.Errorf("Rule transform line must have both key and value: '%s'", line)
-			}
-			key, value := tokens[0], tokens[1]
-			value = strings.TrimSpace(value)
-			switch key {
-			case "account1":
-				account1 = value
-			case "account2":
-				account2 = value
-			case "comment":
-				comment = value
-			default:
-				return nil, errors.Errorf("Unrecognized rule key: '%s'", key)
+		case state.foundIf && !strings.HasPrefix(line, " "):
+			state.conditions = append(state.conditions, line)
+		default:
+			err := foundExpression(&state, line)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -208,4 +184,46 @@ func NewCSVRulesFromReader(reader io.Reader) (Rules, error) {
 	}
 
 	return rules, nil
+}
+
+func foundIf(state *readerState, line string, endRule func() error) error {
+	if state.foundExpressions {
+		if err := endRule(); err != nil {
+			return err
+		}
+	}
+	if !state.foundIf {
+		line = strings.TrimPrefix(line, "if")
+	}
+	state.foundIf = true
+	line = strings.TrimSpace(line)
+	if line != "" {
+		state.conditions = append(state.conditions, line)
+	}
+	return nil
+}
+
+func foundExpression(state *readerState, line string) error {
+	if state.foundIf && len(state.conditions) == 0 {
+		return errors.New("Started expressions but no conditions were found")
+	}
+	state.foundExpressions = true
+	line = strings.TrimSpace(line)
+	tokens := strings.SplitN(line, " ", 2)
+	if len(tokens) != 2 {
+		return errors.Errorf("Rule transform line must have both key and value: '%s'", line)
+	}
+	key, value := tokens[0], tokens[1]
+	value = strings.TrimSpace(value)
+	switch key {
+	case "account1":
+		state.account1 = value
+	case "account2":
+		state.account2 = value
+	case "comment":
+		state.comment = value
+	default:
+		return errors.Errorf("Unrecognized rule key: '%s'", key)
+	}
+	return nil
 }
