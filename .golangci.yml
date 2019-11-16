@@ -1,0 +1,12 @@
+linters:
+  enable:
+    # Default linters, plus these:
+    - goconst
+    - gocritic
+    - gocognit
+    - gofmt
+    - gosec
+    - misspell
+    - gochecknoglobals
+    - scopelint
+    - bodyclose

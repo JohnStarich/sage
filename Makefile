@@ -9,12 +9,13 @@ VERSION ?= ${TRAVIS_TAG}
 endif
 VERSION ?= $(shell git rev-parse --verify HEAD)
 VERSION_FLAGS := -ldflags='-s -w -X github.com/johnstarich/sage/consts.Version=${VERSION}'
+LINT_VERSION=1.21.0
 
 # Ensure there's at least an empty bindata file when executing a target
 ENSURE_STUB := $(shell [[ -f ./server/bindata.go ]] || { mkdir -p web/build && GO111MODULE=on go generate ./server; })
 
 .PHONY: all
-all: fmt vet test build
+all: fmt vet lint test build
 
 .PHONY: version
 version:
@@ -32,6 +33,13 @@ fmt:
 			echo 'Formatting error. Run `go fmt ./...` to pass this linter.'; \
 			exit 1; \
 		fi
+
+.PHONY: lint
+lint:
+	@if ! which golangci-lint >/dev/null || [[ "$$(golangci-lint version 2>&1)" != *${LINT_VERSION}* ]]; then \
+		curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v${LINT_VERSION}; \
+	fi
+	golangci-lint run
 
 .PHONY: test
 test:
