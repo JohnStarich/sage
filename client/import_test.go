@@ -2,6 +2,7 @@ package client
 
 import (
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
@@ -44,6 +45,225 @@ func makeTxnWithBalance(date string, amount, balance float64) ledger.Transaction
 			{Account: "expenses", Amount: amountDec.Neg()},
 		},
 	}
+}
+
+func TestImportTransactions(t *testing.T) {
+	someTxn := ledger.Transaction{Comment: "some txn"}
+	someCurrency, err := ofxgo.NewCurrSymbol("USD")
+	require.NoError(t, err)
+	for _, tc := range []struct {
+		description    string
+		resp           ofxgo.Response
+		expectAccounts []model.Account
+		expectTxns     []ledger.Transaction
+		expectErr      string
+	}{
+		{
+			description: "no response messages",
+			expectErr:   "No messages received",
+		},
+		{
+			description: "no bank txns",
+			resp: ofxgo.Response{
+				Signon: ofxgo.SignonResponse{
+					Fid: ofxgo.String("some FID"),
+					Org: ofxgo.String("some org"),
+				},
+				Bank: []ofxgo.Message{
+					&ofxgo.StatementResponse{
+						CurDef: *someCurrency,
+						BankAcctFrom: ofxgo.BankAcct{
+							AcctID:   ofxgo.String("1234"),
+							AcctType: ofxgo.AcctTypeChecking,
+						},
+					},
+				},
+			},
+			expectAccounts: []model.Account{
+				&model.BasicAccount{
+					AccountID:          "1234",
+					AccountType:        model.AssetAccount,
+					AccountDescription: "some org - 1234",
+					BasicInstitution: model.BasicInstitution{
+						InstDescription: "some org",
+						InstFID:         "some FID",
+						InstOrg:         "some org",
+					},
+				},
+			},
+		},
+		{
+			description: "bank txns",
+			resp: ofxgo.Response{
+				Signon: ofxgo.SignonResponse{
+					Fid: ofxgo.String("some FID"),
+					Org: ofxgo.String("some org"),
+				},
+				Bank: []ofxgo.Message{
+					&ofxgo.StatementResponse{
+						CurDef: *someCurrency,
+						BankAcctFrom: ofxgo.BankAcct{
+							AcctID:   ofxgo.String("1234"),
+							AcctType: ofxgo.AcctTypeChecking,
+						},
+						BankTranList: &ofxgo.TransactionList{
+							DtStart: ofxgo.Date{Time: time.Now()},
+							DtEnd:   ofxgo.Date{Time: time.Now()},
+							Transactions: []ofxgo.Transaction{
+								{}, // value doesn't matter, goes through parser
+							},
+						},
+					},
+				},
+			},
+			expectAccounts: []model.Account{
+				&model.BasicAccount{
+					AccountID:          "1234",
+					AccountType:        model.AssetAccount,
+					AccountDescription: "some org - 1234",
+					BasicInstitution: model.BasicInstitution{
+						InstDescription: "some org",
+						InstFID:         "some FID",
+						InstOrg:         "some org",
+					},
+				},
+			},
+			expectTxns: []ledger.Transaction{someTxn},
+		},
+		{
+			description: "no credit card txns",
+			resp: ofxgo.Response{
+				Signon: ofxgo.SignonResponse{
+					Fid: ofxgo.String("some FID"),
+					Org: ofxgo.String("some org"),
+				},
+				CreditCard: []ofxgo.Message{
+					&ofxgo.CCStatementResponse{
+						CurDef: *someCurrency,
+						CCAcctFrom: ofxgo.CCAcct{
+							AcctID: ofxgo.String("1234"),
+						},
+					},
+				},
+			},
+			expectAccounts: []model.Account{
+				&model.BasicAccount{
+					AccountID:          "1234",
+					AccountType:        model.LiabilityAccount,
+					AccountDescription: "some org - 1234",
+					BasicInstitution: model.BasicInstitution{
+						InstDescription: "some org",
+						InstFID:         "some FID",
+						InstOrg:         "some org",
+					},
+				},
+			},
+		},
+		{
+			description: "credit card txns",
+			resp: ofxgo.Response{
+				Signon: ofxgo.SignonResponse{
+					Fid: ofxgo.String("some FID"),
+					Org: ofxgo.String("some org"),
+				},
+				CreditCard: []ofxgo.Message{
+					&ofxgo.CCStatementResponse{
+						CurDef: *someCurrency,
+						CCAcctFrom: ofxgo.CCAcct{
+							AcctID: ofxgo.String("1234"),
+						},
+						BankTranList: &ofxgo.TransactionList{
+							DtStart: ofxgo.Date{Time: time.Now()},
+							DtEnd:   ofxgo.Date{Time: time.Now()},
+							Transactions: []ofxgo.Transaction{
+								{}, // value doesn't matter, goes through parser
+							},
+						},
+					},
+				},
+			},
+			expectAccounts: []model.Account{
+				&model.BasicAccount{
+					AccountID:          "1234",
+					AccountType:        model.LiabilityAccount,
+					AccountDescription: "some org - 1234",
+					BasicInstitution: model.BasicInstitution{
+						InstDescription: "some org",
+						InstFID:         "some FID",
+						InstOrg:         "some org",
+					},
+				},
+			},
+			expectTxns: []ledger.Transaction{someTxn},
+		},
+		{
+			description: "bad institution type",
+			resp: ofxgo.Response{
+				Signon: ofxgo.SignonResponse{
+					Fid: ofxgo.String("some FID"),
+					Org: ofxgo.String("some org"),
+				},
+				Bank: []ofxgo.Message{
+					&ofxgo.ProfileResponse{},
+				},
+			},
+			expectErr: "Invalid statement type: *ofxgo.ProfileResponse",
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			parser := func(txn ofxgo.Transaction, currency, accountName string, makeTxnID func(string) string) ledger.Transaction {
+				return someTxn
+			}
+			accounts, txns, err := importTransactions(&tc.resp, parser)
+			if tc.expectErr != "" {
+				require.Error(t, err)
+				assert.Equal(t, tc.expectErr, err.Error())
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectAccounts, accounts)
+			assert.Equal(t, tc.expectTxns, txns)
+		})
+	}
+}
+
+func TestReadOFX(t *testing.T) {
+	_, _, err := ReadOFX(strings.NewReader(`
+OFXHEADER:100
+DATA:OFXSGML
+VERSION:102
+
+<OFX></OFX>`))
+	require.Error(t, err)
+	assert.Equal(t, "Missing opening SIGNONMSGSRSV1 xml element", err.Error())
+}
+
+func TestParseOFX(t *testing.T) {
+	resp := &ofxgo.Response{
+		Signon: ofxgo.SignonResponse{
+			Fid: ofxgo.String("some FID"),
+			Org: ofxgo.String("some org"),
+		},
+		CreditCard: []ofxgo.Message{
+			&ofxgo.CCStatementResponse{
+				CCAcctFrom: ofxgo.CCAcct{
+					AcctID: ofxgo.String("1234"),
+				},
+				BankTranList: &ofxgo.TransactionList{
+					DtStart: ofxgo.Date{Time: time.Now()},
+					DtEnd:   ofxgo.Date{Time: time.Now()},
+					Transactions: []ofxgo.Transaction{
+						{}, // value doesn't matter, goes through parser
+					},
+				},
+			},
+		},
+	}
+	accounts, txns, err := ParseOFX(resp)
+	assert.NoError(t, err)
+	// values tested in importTransactions test
+	assert.NotEmpty(t, accounts)
+	assert.NotEmpty(t, txns)
 }
 
 func TestNormalizeCurrency(t *testing.T) {

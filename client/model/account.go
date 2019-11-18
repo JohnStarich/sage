@@ -1,10 +1,10 @@
 package model
 
 import (
-	"errors"
 	"strings"
 
 	sErrors "github.com/johnstarich/sage/errors"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -69,7 +69,7 @@ func ValidateAccount(account Account) error {
 	var errs sErrors.Errors
 	errs.AddErr(ValidatePartialAccount(account))
 	if !errs.ErrIf(account.Type() == "", "Account type must not be empty") {
-		errs.ErrIf(account.Type() != AssetAccount && account.Type() != LiabilityAccount, "Account type must be '%s' or '%s': %s", AssetAccount, LiabilityAccount, account.Type())
+		errs.ErrIf(account.Type() != AssetAccount && account.Type() != LiabilityAccount, "Account type must be %q or %q: %q", AssetAccount, LiabilityAccount, account.Type())
 	}
 	errs.AddErr(ValidateInstitution(account.Institution()))
 	return errs.ErrOrNil()
@@ -107,17 +107,18 @@ func LedgerFormat(a Account) *LedgerAccountFormat {
 func ParseLedgerFormat(account string) (*LedgerAccountFormat, error) {
 	format := &LedgerAccountFormat{}
 	components := strings.Split(account, ":")
-	if len(components) == 0 {
-		return nil, errors.New("Account string must have at least 2 colon separated components: " + account)
+	if len(components) < 2 {
+		return nil, errors.Errorf("Account string must have at least 2 colon separated components: %q", account)
 	}
 	format.AccountType = components[0]
 	if format.AccountType == "" {
-		return nil, errors.New("First component in account string must not be empty: " + account)
+		return nil, errors.Errorf("First component in account string must not be empty: %q", account)
 	}
 	switch format.AccountType {
 	case AssetAccount, LiabilityAccount:
 		if len(components) < 3 {
 			// require accountType:institution:accountNumber format
+			format.Remaining = strings.Join(components[1:], ":")
 			return format, nil
 		}
 		format.Institution, format.AccountID = components[1], strings.Join(components[2:], ":")
@@ -146,6 +147,9 @@ func LedgerAccountName(a Account) string {
 }
 
 func redactPrefix(s string) string {
+	if s == "" {
+		return s
+	}
 	suffix := s
 	if len(s) > RedactSuffixLength {
 		suffix = s[len(s)-RedactSuffixLength:]

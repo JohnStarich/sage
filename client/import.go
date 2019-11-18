@@ -19,7 +19,7 @@ func importTransactions(
 ) (skeletonAccounts []model.Account, allTxns []ledger.Transaction, importErr error) {
 	messages := append(resp.Bank, resp.CreditCard...)
 	if len(messages) == 0 {
-		return nil, nil, errors.Errorf("No messages received")
+		return nil, nil, errors.New("No messages received")
 	}
 	fid := resp.Signon.Fid.String()
 	org := resp.Signon.Org.String()

@@ -90,14 +90,14 @@ func (d *directConnect) Config() Config {
 	return d.ConnectorConfig
 }
 
-// UnmarshalConnector unmarshals the given bytes into a connector
+// UnmarshalConnector unmarshals the given bytes into a direct connector
 func UnmarshalConnector(b []byte) (Connector, error) {
 	var dc directConnect
 	err := json.Unmarshal(b, &dc)
 	return &dc, err
 }
 
-// ValidateConnector checks the state of the connector for correctness
+// ValidateConnector checks the state of the direct connector for correctness
 func ValidateConnector(connector Connector) error {
 	var errs sErrors.Errors
 	if errs.ErrIf(connector == nil, "Direct connect must not be empty") {
@@ -116,7 +116,7 @@ func ValidateConnector(connector Connector) error {
 	errs.ErrIf(connector.Password() == "" && !IsLocalhostTestURL(connector.URL()), "Institution password must not be empty")
 	config := connector.Config()
 	errs.ErrIf(config.AppID == "", "Institution app ID must not be empty")
-	errs.ErrIf(config.AppVersion == "", "Institution app ID must not be empty")
+	errs.ErrIf(config.AppVersion == "", "Institution app version must not be empty")
 	if !errs.ErrIf(config.OFXVersion == "", "Institution OFX version must not be empty") {
 		_, err := ofxgo.NewOfxVersion(config.OFXVersion)
 		errs.AddErr(err)
@@ -124,7 +124,7 @@ func ValidateConnector(connector Connector) error {
 	return errs.ErrOrNil()
 }
 
-// Statement downloads and returns transactions from a connector for the given time period
+// Statement downloads and returns transactions from a direct connector for the given time period
 func Statement(connector Connector, start, end time.Time, requestors []Requestor, parser model.TransactionParser) ([]ledger.Transaction, error) {
 	client, err := newSimpleClient(connector.URL(), connector.Config())
 	if err != nil {
@@ -201,13 +201,16 @@ func addSignonRequest(connector Connector, req *ofxgo.Request) {
 	}
 }
 
-// Accounts fetches available accounts at the connector's institution
+// Accounts fetches available accounts at the direct connector's institution
 func Accounts(connector Connector, logger *zap.Logger) ([]model.Account, error) {
 	client, err := newSimpleClient(connector.URL(), connector.Config())
 	if err != nil {
 		return nil, err
 	}
+	return accounts(connector, logger, client.Request)
+}
 
+func accounts(connector Connector, logger *zap.Logger, doRequest func(*ofxgo.Request) (*ofxgo.Response, error)) ([]model.Account, error) {
 	var query ofxgo.Request
 	uid, err := ofxgo.RandomUID()
 	if err != nil {
@@ -218,7 +221,7 @@ func Accounts(connector Connector, logger *zap.Logger) ([]model.Account, error) 
 	})
 	addSignonRequest(connector, &query)
 
-	resp, err := client.Request(&query)
+	resp, err := doRequest(&query)
 	if err != nil {
 		return nil, err
 	}

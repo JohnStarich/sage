@@ -39,7 +39,7 @@ func (d *directAccount) UnmarshalJSON(b []byte) error {
 	var account struct {
 		AccountID          string
 		AccountDescription string
-		DirectConnect      *json.RawMessage
+		DirectConnect      *directConnect
 	}
 
 	if err := json.Unmarshal(b, &account); err != nil {
@@ -47,14 +47,7 @@ func (d *directAccount) UnmarshalJSON(b []byte) error {
 	}
 	d.AccountID = account.AccountID
 	d.AccountDescription = account.AccountDescription
-	if account.DirectConnect == nil {
-		return nil // defer validation to caller
-	}
-	var dc directConnect
-	if err := json.Unmarshal(*account.DirectConnect, &dc); err != nil {
-		return err
-	}
-	d.DirectConnect = &dc
+	d.DirectConnect = account.DirectConnect
 	return nil
 }
 

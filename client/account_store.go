@@ -156,16 +156,16 @@ func (s *AccountStore) Update(id string, account model.Account) error {
 	var lookup model.Account
 	found, _ := s.Get(id, &lookup)
 	if !found {
-		return errors.New("Account not found by ID: " + id)
+		return errors.Errorf("Account not found by ID: %q", id)
 	}
 	newID := account.ID()
 	if id != newID {
 		found, err := s.Get(newID, &lookup)
 		if found {
 			if err != nil {
-				return errors.New("Account already exists with that account ID: " + newID)
+				return errors.Errorf("Account already exists with that account ID: %q", newID)
 			}
-			return errors.New("Account already exists with that account ID: " + lookup.Description())
+			return errors.Errorf("Account already exists with that account ID: %q", lookup.Description())
 		}
 		if err := s.Put(id, nil); err != nil {
 			return err
@@ -180,7 +180,7 @@ func (s *AccountStore) Add(account model.Account) error {
 	var lookup model.Account
 	found, _ := s.Get(id, &lookup)
 	if found {
-		return errors.New("Account already exists with that ID: " + id)
+		return errors.Errorf("Account already exists with that ID: %q", id)
 	}
 	return s.Put(id, account)
 }
@@ -190,7 +190,7 @@ func (s *AccountStore) Remove(id string) error {
 	var lookup model.Account
 	found, _ := s.Get(id, &lookup)
 	if !found {
-		return errors.New("Account not found by ID: " + id)
+		return errors.Errorf("Account not found by ID: %q", id)
 	}
 	return s.Put(id, nil)
 }

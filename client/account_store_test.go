@@ -4,10 +4,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/plaindb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNewAccountStore(t *testing.T) {
+	db := plaindb.NewMockDB(plaindb.MockConfig{})
+	store, err := NewAccountStore(db)
+	require.NoError(t, err)
+	bucket, err := db.Bucket("accounts", "2", &accountStoreUpgrader{})
+	require.NoError(t, err)
+	assert.Equal(t, bucket, store.Bucket)
+}
 
 func TestAccountStoreUpgradeV0(t *testing.T) {
 	for _, tc := range []struct {
@@ -368,4 +378,85 @@ func TestAccountStoreUpgradeV1(t *testing.T) {
 			assert.Equal(t, expected, output)
 		})
 	}
+}
+
+func TestAccountStoreUpdate(t *testing.T) {
+	setup := func() *AccountStore {
+		db := plaindb.NewMockDB(plaindb.MockConfig{})
+		store, err := NewAccountStore(db)
+		require.NoError(t, err)
+		return store
+	}
+
+	t.Run("update nothing", func(t *testing.T) {
+		store := setup()
+		err := store.Update("blah", nil)
+		require.Error(t, err, "Can't update when no records")
+		assert.Equal(t, err.Error(), `Account not found by ID: "blah"`)
+	})
+
+	t.Run("update field in-place", func(t *testing.T) {
+		store := setup()
+		require.NoError(t, store.Bucket.Put("1234", &model.BasicAccount{AccountID: "1234"}))
+		err := store.Update("1234", &model.BasicAccount{AccountID: "1234", AccountDescription: "hi"})
+		assert.NoError(t, err)
+		var savedAccount *model.BasicAccount
+		_, err = store.Bucket.Get("1234", &savedAccount)
+		assert.NoError(t, err)
+		assert.Equal(t, "hi", savedAccount.AccountDescription)
+	})
+
+	t.Run("update to different ID", func(t *testing.T) {
+		store := setup()
+		require.NoError(t, store.Bucket.Put("1234", &model.BasicAccount{AccountID: "1234"}))
+		err := store.Update("1234", &model.BasicAccount{AccountID: "5678", AccountDescription: "hi"})
+		assert.NoError(t, err)
+		var savedAccount *model.BasicAccount
+		_, err = store.Bucket.Get("5678", &savedAccount)
+		assert.NoError(t, err)
+		assert.Equal(t, "hi", savedAccount.AccountDescription)
+	})
+
+	t.Run("fail update to existing ID", func(t *testing.T) {
+		store := setup()
+		require.NoError(t, store.Bucket.Put("1234", &model.BasicAccount{AccountID: "1234"}))
+		require.NoError(t, store.Bucket.Put("5678", &model.BasicAccount{AccountID: "5678", AccountDescription: "5 description"}))
+		err := store.Update("1234", &model.BasicAccount{AccountID: "5678", AccountDescription: "hi"})
+		require.Error(t, err)
+		assert.Equal(t, err.Error(), `Account already exists with that account ID: "5 description"`)
+	})
+
+	t.Run("fail update with bad DB data", func(t *testing.T) {
+		store := setup()
+		require.NoError(t, store.Bucket.Put("1234", &model.BasicAccount{AccountID: "1234"}))
+		require.NoError(t, store.Bucket.Put("5678", "bad data"))
+		err := store.Update("1234", &model.BasicAccount{AccountID: "5678", AccountDescription: "hi"})
+		require.Error(t, err)
+		assert.Equal(t, `Account already exists with that account ID: "5678"`, err.Error())
+	})
+}
+
+func TestAccountStoreAdd(t *testing.T) {
+	db := plaindb.NewMockDB(plaindb.MockConfig{})
+	store, err := NewAccountStore(db)
+	require.NoError(t, err)
+
+	err = store.Add(&model.BasicAccount{AccountID: "1234"})
+	assert.NoError(t, err)
+	err = store.Add(&model.BasicAccount{AccountID: "1234"})
+	require.Error(t, err)
+	assert.Equal(t, `Account already exists with that ID: "1234"`, err.Error())
+}
+
+func TestAccountStoreRemove(t *testing.T) {
+	db := plaindb.NewMockDB(plaindb.MockConfig{})
+	store, err := NewAccountStore(db)
+	require.NoError(t, err)
+
+	require.NoError(t, store.Bucket.Put("1234", &model.BasicAccount{AccountID: "1234"}))
+	err = store.Remove("1234")
+	assert.NoError(t, err)
+	err = store.Remove("1234")
+	require.Error(t, err)
+	assert.Equal(t, `Account not found by ID: "1234"`, err.Error())
 }
