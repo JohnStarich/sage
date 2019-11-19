@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -128,4 +129,25 @@ hey there
   comment some comment
 
 `, rules.String())
+}
+
+func TestUnmarshalJSON(t *testing.T) {
+	require := func(r Rule, err error) Rule {
+		require.NoError(t, err)
+		return r
+	}
+
+	var r Rules
+	err := r.UnmarshalJSON([]byte("not JSON"))
+	assert.Error(t, err)
+
+	err = json.Unmarshal([]byte(`
+	[
+		{"Conditions": ["burgers"], "Account2": "some expenses"}
+	]
+	`), &r)
+	assert.NoError(t, err)
+	assert.Equal(t, Rules{
+		require(NewCSVRule("", "some expenses", "", "burgers")),
+	}, r)
 }
