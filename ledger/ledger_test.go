@@ -10,6 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	oneDay   = 24 * time.Hour
+	oneMonth = 30 * oneDay
+)
+
 func makeIDTag(s string) map[string]string {
 	return map[string]string{idTag: s}
 }
@@ -218,6 +223,21 @@ func TestLedgerValidate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFirstTransactionTime(t *testing.T) {
+	end := time.Now()
+	start := end.Add(-1 * time.Hour)
+	ldg, err := New([]Transaction{
+		{Payee: "some payee", Date: start},
+		{Payee: "some other payee", Date: end},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, start, ldg.FirstTransactionTime())
+
+	ldg, err = New(nil)
+	require.NoError(t, err)
+	assert.Zero(t, ldg.FirstTransactionTime())
 }
 
 func TestLastTransactionTime(t *testing.T) {
@@ -668,4 +688,199 @@ func TestMakeIDSet(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRenameAccount(t *testing.T) {
+	makeTxn := func(account, fid, accountID, randomStr string) Transaction {
+		return Transaction{
+			Payee: "some payee",
+			Postings: []Posting{
+				{Account: account, Tags: makeIDTag(fid + "-" + accountID + "-" + randomStr)},
+				{Account: "expenses"},
+			},
+		}
+	}
+	for _, tc := range []struct {
+		description      string
+		txns             []Transaction
+		oldName, newName string
+		oldID, newID     string
+		expectCount      int
+		expectTxns       []Transaction
+	}{
+		{
+			description: "no txns",
+		},
+		{
+			description: "change names",
+			oldName:     "ye olde bank",
+			newName:     "spiffy bank",
+			txns: []Transaction{
+				makeTxn("ye olde bank", "7101", "my-account", "1"),
+				makeTxn("something else", "7101", "my-account", "2"),
+			},
+			expectCount: 1,
+			expectTxns: []Transaction{
+				makeTxn("spiffy bank", "7101", "my-account", "1"),
+				makeTxn("something else", "7101", "my-account", "2"),
+			},
+		},
+		{
+			description: "change names and IDs",
+			oldName:     "ye olde bank",
+			newName:     "spiffy bank",
+			oldID:       "7101-my-account-",
+			newID:       "9625-my-other-account-",
+			txns: []Transaction{
+				makeTxn("ye olde bank", "7101", "my-account", "1"),
+				makeTxn("something else", "7101", "my-account", "2"),
+			},
+			expectCount: 1,
+			expectTxns: []Transaction{
+				makeTxn("spiffy bank", "9625", "my-other-account", "1"),
+				makeTxn("something else", "7101", "my-account", "2"),
+			},
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			ldg, err := New(tc.txns)
+			require.NoError(t, err)
+
+			count := ldg.RenameAccount(tc.oldName, tc.newName, tc.oldID, tc.newID)
+			assert.Equal(t, tc.expectCount, count)
+			expectLdg, err := New(tc.expectTxns)
+			require.NoError(t, err)
+			assert.Equal(t, expectLdg, ldg)
+		})
+	}
+}
+
+func TestBalances(t *testing.T) {
+	var date time.Time
+	makeTxn := func(account string, num float64, increment time.Duration) Transaction {
+		date = date.Add(increment)
+		return Transaction{
+			Date:  date,
+			Payee: "some payee",
+			Postings: []Posting{
+				{Account: "assets:something", Amount: *decFloat(-num)},
+				{Account: account, Amount: *decFloat(num)},
+			},
+		}
+	}
+	ldg, err := New([]Transaction{
+		makeTxn("ball", 1.0, oneDay),
+		makeTxn("food:fish", 1.5, oneDay),
+		makeTxn("food:taco", 3, oneDay),
+
+		makeTxn("food:taco", 40, oneMonth),
+		makeTxn("food:potato", 5, oneDay),
+	})
+	require.NoError(t, err)
+
+	start, end, balances := ldg.Balances()
+	assert.Equal(t, time.Time{}.AddDate(0, 0, 1), *start)
+	assert.Equal(t, time.Time{}.AddDate(0, 1, 3), *end)
+
+	floatBalances := make(map[string][]float64, len(balances))
+	for key, values := range balances {
+		for _, value := range values {
+			floatValue, exact := value.Float64()
+			require.True(t, exact)
+			floatBalances[key] = append(floatBalances[key], floatValue)
+		}
+	}
+	assert.Equal(t, map[string][]float64{
+		"ball":             {1, 1},
+		"food:fish":        {1.5, 1.5},
+		"food:taco":        {3, 43},
+		"food:potato":      {0, 5},
+		"assets:something": {-5.5, -50.5},
+	}, floatBalances)
+}
+
+func TestAccountBalance(t *testing.T) {
+	var date time.Time
+	makeTxn := func(account string, num float64, increment time.Duration) Transaction {
+		date = date.Add(increment)
+		return Transaction{
+			Date:  date,
+			Payee: "some payee",
+			Postings: []Posting{
+				{Account: "assets:some bank", Amount: *decFloat(-num)},
+				{Account: account, Amount: *decFloat(num)},
+			},
+		}
+	}
+	ldg, err := New([]Transaction{
+		makeTxn("food:Groceries", 10, oneDay),
+
+		makeTxn("gas", 25, oneMonth),
+		makeTxn("food:Restaurants", 20, oneDay),
+		makeTxn("food", 5, oneDay),
+	})
+	require.NoError(t, err)
+
+	// all txns
+	balDecimal := ldg.AccountBalance("food", time.Time{}, date)
+	bal, exact := balDecimal.Float64()
+	require.True(t, exact)
+	assert.EqualValues(t, 35, bal)
+
+	// skip first day
+	balDecimal = ldg.AccountBalance("food", time.Time{}.AddDate(0, 0, 2), date)
+	bal, exact = balDecimal.Float64()
+	require.True(t, exact)
+	assert.EqualValues(t, 25, bal)
+}
+
+func TestLeftOverAccountBalances(t *testing.T) {
+	makeTxn := func(account string, num float64) Transaction {
+		return Transaction{
+			Postings: []Posting{
+				{Account: account, Amount: *decFloat(num)},
+			},
+		}
+	}
+	ldg, err := New([]Transaction{
+		makeTxn("food:groceries", 1),
+		makeTxn("food:restaurants", 2),
+		makeTxn("food", 3),
+		makeTxn("shopping:electronics", 150),
+		makeTxn("shopping", 50),
+		makeTxn("shopping:gifts", 320),
+	})
+	require.NoError(t, err)
+
+	t.Run("exclude specific category", func(t *testing.T) {
+		balancesDecimal := ldg.LeftOverAccountBalances(time.Time{}, time.Time{}, "food:groceries")
+		balances := make(map[string]float64, len(balancesDecimal))
+		for key, value := range balancesDecimal {
+			var exact bool
+			balances[key], exact = value.Float64()
+			require.True(t, exact)
+		}
+		assert.Equal(t, map[string]float64{
+			"food:restaurants":     2,
+			"food":                 3,
+			"shopping":             50,
+			"shopping:electronics": 150,
+			"shopping:gifts":       320,
+		}, balances)
+	})
+
+	t.Run("exclude entire prefix", func(t *testing.T) {
+		balancesDecimal := ldg.LeftOverAccountBalances(time.Time{}, time.Time{}, "shopping")
+		balances := make(map[string]float64, len(balancesDecimal))
+		for key, value := range balancesDecimal {
+			var exact bool
+			balances[key], exact = value.Float64()
+			require.True(t, exact)
+		}
+		assert.Equal(t, map[string]float64{
+			"food:groceries":   1,
+			"food:restaurants": 2,
+			"food":             3,
+		}, balances)
+	})
 }
