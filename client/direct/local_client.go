@@ -37,6 +37,10 @@ func newLocalClient(url string, client *ofxgo.BasicClient) (ofxgo.Client, error)
 
 // RawRequest runs a raw request for the given URL and reader against localhost. Errors if the host isn't for localhost OR a password field is included.
 func (l *localClient) RawRequest(url string, r io.Reader) (*http.Response, error) {
+	return l.rawRequest(url, r, http.DefaultClient.Do)
+}
+
+func (l *localClient) rawRequest(url string, r io.Reader, doRequest func(*http.Request) (*http.Response, error)) (*http.Response, error) {
 	if !IsLocalhostTestURL(url) {
 		return nil, errBadLocalhost
 	}
@@ -49,12 +53,17 @@ func (l *localClient) RawRequest(url string, r io.Reader) (*http.Response, error
 	}
 	r = bytes.NewBuffer(body)
 
-	response, err := http.Post(url, "application/x-ofx", r) // nolint:gosec // URL variable required to fit OFX client interface
+	req, err := http.NewRequest(http.MethodPost, url, r) // nolint:gosec // URL variable required to fit OFX client interface
+	if err != nil {
+		panic("Impossible request error (covered by isLocalhost check): " + err.Error())
+	}
+	req.Header.Set("Content-Type", "application/x-ofx")
+	response, err := doRequest(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if response.StatusCode != 200 {
+	if response.StatusCode/100 != 2 {
 		return nil, errors.New("OFXQuery request status: " + response.Status)
 	}
 
@@ -69,11 +78,15 @@ func IsLocalhostTestURL(urlStr string) bool {
 
 // MarshalRequest implement the requestMarshaler interface to handle the special empty password case
 func (l *localClient) MarshalRequest(r *ofxgo.Request) (io.Reader, error) {
-	r.SetClientFields(l)
+	return l.marshalRequest(r, r.SetClientFields, r.Marshal)
+}
+
+func (l *localClient) marshalRequest(r *ofxgo.Request, setFieldsFn func(ofxgo.Client), marshaler func() (*bytes.Buffer, error)) (io.Reader, error) {
+	setFieldsFn(l)
 
 	const fakePassword = "something"
 	r.Signon.UserPass = fakePassword // bypass validity checks for including a password
-	b, err := r.Marshal()
+	b, err := marshaler()
 	if err != nil {
 		return nil, err
 	}
@@ -94,24 +107,35 @@ func (l *localClient) MarshalRequest(r *ofxgo.Request) (io.Reader, error) {
 
 // RequestNoParse runs a raw request by marshalling the given request, returns the raw response
 func (l *localClient) RequestNoParse(r *ofxgo.Request) (*http.Response, error) {
-	buf, err := l.MarshalRequest(r)
+	return l.requestNoParse(r, l.MarshalRequest, l.RawRequest)
+}
+
+func (l *localClient) requestNoParse(
+	r *ofxgo.Request,
+	marshaler func(r *ofxgo.Request) (io.Reader, error),
+	rawRequest func(url string, r io.Reader) (*http.Response, error),
+) (*http.Response, error) {
+	buf, err := marshaler(r)
 	if err != nil {
 		return nil, err
 	}
-	return l.RawRequest(r.URL, buf)
+	return rawRequest(r.URL, buf)
 }
 
 // Request runs the given request and parses the result
 func (l *localClient) Request(r *ofxgo.Request) (*ofxgo.Response, error) {
-	response, err := l.RequestNoParse(r)
+	return l.request(r, l.RequestNoParse, ofxgo.ParseResponse)
+}
+
+func (l *localClient) request(
+	r *ofxgo.Request,
+	requestNoParse func(r *ofxgo.Request) (*http.Response, error),
+	parse func(reader io.Reader) (*ofxgo.Response, error),
+) (*ofxgo.Response, error) {
+	response, err := requestNoParse(r)
 	if err != nil {
 		return nil, err
 	}
 	defer response.Body.Close()
-
-	ofxresp, err := ofxgo.ParseResponse(response.Body)
-	if err != nil {
-		return nil, err
-	}
-	return ofxresp, nil
+	return parse(response.Body)
 }
