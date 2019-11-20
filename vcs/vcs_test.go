@@ -74,6 +74,12 @@ func TestCommitFiles(t *testing.T) {
 	require.IsType(t, &syncRepo{}, repoInt)
 	repo := repoInt.(*syncRepo)
 
+	// committing nothing fails
+	err = repo.CommitFiles(nil, "")
+	require.Error(t, err)
+	assert.Equal(t, "No files to commit", err.Error())
+
+	// modify and commit files a few times
 	err = repo.CommitFiles(func() error {
 		return ioutil.WriteFile(filepath.Join(testDBPath, "some file.txt"), []byte("hello world"), 0750)
 	}, "add some file", filepath.Join(testDBPath, "some file.txt"))

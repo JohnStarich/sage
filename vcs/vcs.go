@@ -47,41 +47,41 @@ func initVCS(path string) (*git.Repository, error) {
 	var repo *git.Repository
 	var tree *git.Worktree
 	var status git.Status
-	return repo, pipe.Ops{
-		pipe.OpFunc(func() error {
+	return repo, pipe.OpFuncs{
+		func() error {
 			repo, err = git.PlainInit(path, false)
 			return err
-		}),
-		pipe.OpFunc(func() error {
+		},
+		func() error {
 			tree, err = repo.Worktree()
 			return err
-		}),
-		pipe.OpFunc(func() error {
+		},
+		func() error {
 			status, err = tree.Status()
 			return err
-		}),
-		pipe.OpFunc(func() error {
-			var ops pipe.Ops
+		},
+		func() error {
+			var ops pipe.OpFuncs
 			added := false
 			for file, stat := range status {
 				// add any untracked files, excluding hidden and tmp files
 				if stat.Worktree == git.Untracked && !strings.HasPrefix(file, ".") && !strings.HasSuffix(file, ".tmp") {
 					fileCopy := file
-					ops = append(ops, pipe.OpFunc(func() error {
+					ops = append(ops, func() error {
 						_, err := tree.Add(fileCopy)
 						return err
-					}))
+					})
 					added = true
 				}
 			}
 			if added {
-				ops = append(ops, pipe.OpFunc(func() error {
+				ops = append(ops, func() error {
 					_, err := tree.Commit("Initial commit", &git.CommitOptions{Author: sageAuthor()})
 					return err
-				}))
+				})
 			}
 			return ops.Do()
-		}),
+		},
 	}.Do()
 }
 
@@ -100,58 +100,64 @@ func (s *syncRepo) CommitFiles(prepFiles func() error, message string, paths ...
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := prepFiles(); err != nil {
-		return err
-	}
 
-	tree, err := s.repo.Worktree()
-	if err != nil {
-		return err
-	}
-	_, headErr := s.repo.Head()
-	if headErr != nil && headErr != plumbing.ErrReferenceNotFound {
-		return headErr
-	}
-	if headErr != plumbing.ErrReferenceNotFound {
-		if err := tree.Reset(&git.ResetOptions{}); err != nil { // unstage everything
+	var err error
+	var tree *git.Worktree
+	var repoStatus git.Status
+	return pipe.OpFuncs{
+		prepFiles,
+		func() error {
+			tree, err = s.repo.Worktree()
 			return err
-		}
-	}
-
-	// relativize paths to repo root
-	rootPath := tree.Filesystem.Root()
-	for i := range paths {
-		path, err := filepath.Rel(rootPath, paths[i])
-		if err != nil {
+		},
+		func() error {
+			_, headErr := s.repo.Head()
+			if headErr != nil && headErr != plumbing.ErrReferenceNotFound {
+				return headErr
+			}
+			if headErr != plumbing.ErrReferenceNotFound {
+				// if possible (HEAD exists), unstage all files
+				return tree.Reset(&git.ResetOptions{})
+			}
+			return nil
+		},
+		func() error {
+			var ops pipe.OpFuncs
+			rootPath := tree.Filesystem.Root()
+			for i := range paths {
+				path := &paths[i]
+				ops = append(ops, func() error {
+					*path, err = filepath.Rel(rootPath, *path)
+					return err
+				}, func() error {
+					_, err := tree.Add(*path)
+					return errors.Wrapf(err, "Failed to add %s to the git index", *path)
+				})
+			}
+			return ops.Do()
+		},
+		func() error {
+			repoStatus, err = tree.Status()
 			return err
-		}
-		paths[i] = path
-	}
+		},
+		func() error {
+			shouldCommit := false
+			for _, path := range paths {
+				status, ok := repoStatus[path]
+				if ok && status.Staging != git.Unmodified {
+					shouldCommit = true
+					break
+				}
+			}
+			if !shouldCommit {
+				return nil
+			}
 
-	for _, path := range paths {
-		if _, err = tree.Add(path); err != nil {
-			return errors.Wrapf(err, "Failed to add %s to the git index", path)
-		}
-	}
+			_, err = tree.Commit(message, &git.CommitOptions{
+				Author: sageAuthor(),
+			})
+			return err
+		},
+	}.Do()
 
-	repoStatus, err := tree.Status()
-	if err != nil {
-		return err
-	}
-	shouldCommit := false
-	for _, path := range paths {
-		status, ok := repoStatus[path]
-		if ok && status.Staging != git.Unmodified {
-			shouldCommit = true
-			break
-		}
-	}
-	if !shouldCommit {
-		return nil
-	}
-
-	_, err = tree.Commit(message, &git.CommitOptions{
-		Author: sageAuthor(),
-	})
-	return err
 }

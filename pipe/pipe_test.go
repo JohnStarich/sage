@@ -52,3 +52,32 @@ func TestOpsDo(t *testing.T) {
 		assert.False(t, ranAfterError)
 	})
 }
+
+func TestOpFuncsDo(t *testing.T) {
+	nilOp := func() error {
+		return nil
+	}
+	someErr := errors.New("some error")
+	errOp := func() error {
+		return someErr
+	}
+
+	detectOp := func(ran *bool) func() error {
+		return func() error {
+			*ran = true
+			return nil
+		}
+	}
+
+	t.Run("no errors", func(t *testing.T) {
+		var ranLast bool
+		assert.NoError(t, OpFuncs{nilOp, nilOp, nilOp, detectOp(&ranLast)}.Do())
+		assert.True(t, ranLast)
+	})
+
+	t.Run("stops on first error", func(t *testing.T) {
+		var ranAfterError bool
+		assert.Equal(t, someErr, OpFuncs{nilOp, errOp, detectOp(&ranAfterError), nilOp}.Do())
+		assert.False(t, ranAfterError)
+	})
+}
