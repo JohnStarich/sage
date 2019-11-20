@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/johnstarich/sage/pipe"
 	"github.com/pkg/errors"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -42,40 +43,46 @@ type syncRepo struct {
 }
 
 func initVCS(path string) (*git.Repository, error) {
-	repo, err := git.PlainInit(path, false)
-	if err != nil {
-		return nil, err
-	}
-	tree, err := repo.Worktree()
-	if err != nil {
-		return nil, err
-	}
-
-	status, err := tree.Status()
-	if err != nil {
-		return nil, err
-	}
-
-	added := false
-	for file, stat := range status {
-		// add any untracked files, excluding hidden and tmp files
-		if stat.Worktree == git.Untracked && !strings.HasPrefix(file, ".") && !strings.HasSuffix(file, ".tmp") {
-			_, err := tree.Add(file)
-			if err != nil {
-				return nil, err
+	var err error
+	var repo *git.Repository
+	var tree *git.Worktree
+	var status git.Status
+	return repo, pipe.Ops{
+		pipe.OpFunc(func() error {
+			repo, err = git.PlainInit(path, false)
+			return err
+		}),
+		pipe.OpFunc(func() error {
+			tree, err = repo.Worktree()
+			return err
+		}),
+		pipe.OpFunc(func() error {
+			status, err = tree.Status()
+			return err
+		}),
+		pipe.OpFunc(func() error {
+			var ops pipe.Ops
+			added := false
+			for file, stat := range status {
+				// add any untracked files, excluding hidden and tmp files
+				if stat.Worktree == git.Untracked && !strings.HasPrefix(file, ".") && !strings.HasSuffix(file, ".tmp") {
+					fileCopy := file
+					ops = append(ops, pipe.OpFunc(func() error {
+						_, err := tree.Add(fileCopy)
+						return err
+					}))
+					added = true
+				}
 			}
-			added = true
-		}
-	}
-	if added {
-		_, err := tree.Commit("Initial commit", &git.CommitOptions{
-			Author: sageAuthor(),
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	return repo, nil
+			if added {
+				ops = append(ops, pipe.OpFunc(func() error {
+					_, err := tree.Commit("Initial commit", &git.CommitOptions{Author: sageAuthor()})
+					return err
+				}))
+			}
+			return ops.Do()
+		}),
+	}.Do()
 }
 
 func sageAuthor() *object.Signature {

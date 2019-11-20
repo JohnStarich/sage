@@ -3,6 +3,7 @@ package vcs
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,18 +12,22 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
+const testDBPath = "./testdb"
+
+func cleanupTestDB(t *testing.T) {
+	t.Helper()
+	require.NoError(t, os.RemoveAll(testDBPath))
+}
+
 func TestOpen(t *testing.T) {
-	cleanup := func() {
-		require.NoError(t, os.RemoveAll("./testdb"))
-	}
-	cleanup()
-	defer cleanup()
-	err := os.MkdirAll("./testdb", 0750)
+	cleanupTestDB(t)
+	defer cleanupTestDB(t)
+	err := os.MkdirAll(testDBPath, 0750)
 	require.NoError(t, err)
-	err = ioutil.WriteFile("./testdb/bucket.json", []byte(`{}`), 0750)
+	err = ioutil.WriteFile(filepath.Join(testDBPath, "bucket.json"), []byte(`{}`), 0750)
 	require.NoError(t, err)
 
-	repoInt, err := Open("./testdb")
+	repoInt, err := Open(testDBPath)
 	require.NoError(t, err)
 	require.IsType(t, &syncRepo{}, repoInt)
 
@@ -49,21 +54,29 @@ func TestOpen(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
-func TestCommitFiles(t *testing.T) {
-	cleanup := func() {
-		require.NoError(t, os.RemoveAll("./testdb"))
-	}
-	cleanup()
-	defer cleanup()
+func TestOpenMkdirErr(t *testing.T) {
+	cleanupTestDB(t)
+	defer cleanupTestDB(t)
 
-	repoInt, err := Open("./testdb")
+	err := ioutil.WriteFile(testDBPath, []byte(`I'm not a database!`), 0750)
+	require.NoError(t, err)
+	_, err = Open(testDBPath)
+	require.Error(t, err)
+	assert.Equal(t, "mkdir testdb: not a directory", err.Error())
+}
+
+func TestCommitFiles(t *testing.T) {
+	cleanupTestDB(t)
+	defer cleanupTestDB(t)
+
+	repoInt, err := Open(testDBPath)
 	require.NoError(t, err)
 	require.IsType(t, &syncRepo{}, repoInt)
 	repo := repoInt.(*syncRepo)
 
 	err = repo.CommitFiles(func() error {
-		return ioutil.WriteFile("./testdb/some file.txt", []byte("hello world"), 0750)
-	}, "add some file", "./testdb/some file.txt")
+		return ioutil.WriteFile(filepath.Join(testDBPath, "some file.txt"), []byte("hello world"), 0750)
+	}, "add some file", filepath.Join(testDBPath, "some file.txt"))
 	require.NoError(t, err)
 
 	getCount := func() int {
@@ -81,27 +94,24 @@ func TestCommitFiles(t *testing.T) {
 	assert.Equal(t, 1, getCount())
 
 	err = repo.CommitFiles(func() error {
-		return ioutil.WriteFile("./testdb/some other file.txt", []byte("hello world"), 0750)
-	}, "add some other file", "./testdb/some other file.txt")
+		return ioutil.WriteFile(filepath.Join(testDBPath, "some other file.txt"), []byte("hello world"), 0750)
+	}, "add some other file", filepath.Join(testDBPath, "some other file.txt"))
 	require.NoError(t, err)
 	assert.Equal(t, 2, getCount())
 }
 
 func TestCommitNoChanges(t *testing.T) {
-	cleanup := func() {
-		require.NoError(t, os.RemoveAll("./testdb"))
-	}
-	cleanup()
-	defer cleanup()
+	cleanupTestDB(t)
+	defer cleanupTestDB(t)
 
-	repoInt, err := Open("./testdb")
+	repoInt, err := Open(testDBPath)
 	require.NoError(t, err)
 	require.IsType(t, &syncRepo{}, repoInt)
 	repo := repoInt.(*syncRepo)
 
 	err = repo.CommitFiles(func() error {
-		return ioutil.WriteFile("./testdb/some file.txt", []byte("hello world"), 0750)
-	}, "add some file", "./testdb/some file.txt")
+		return ioutil.WriteFile(filepath.Join(testDBPath, "some file.txt"), []byte("hello world"), 0750)
+	}, "add some file", filepath.Join(testDBPath, "some file.txt"))
 	require.NoError(t, err)
 
 	getCount := func() int {
@@ -118,7 +128,7 @@ func TestCommitNoChanges(t *testing.T) {
 	}
 	assert.Equal(t, 1, getCount())
 
-	err = repo.CommitFiles(func() error { return nil }, "add same file", "./testdb/some file.txt")
+	err = repo.CommitFiles(func() error { return nil }, "add same file", filepath.Join(testDBPath, "some file.txt"))
 	require.NoError(t, err)
 	assert.Equal(t, 1, getCount(), "no commit should be made for unchanged file")
 }
