@@ -8,11 +8,79 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestQuery(t *testing.T) {
+	for _, tc := range []struct {
+		description   string
+		txns          []Transaction
+		search        string
+		page, results int
+		expect        QueryResult
+	}{
+		{
+			description: "no txns",
+			page:        1,
+			results:     1,
+			expect: QueryResult{
+				Page:         1,
+				Results:      1,
+				Transactions: []Transaction{},
+			},
+		},
+		{
+			description: "search one txn",
+			txns: []Transaction{
+				{Payee: "hello there"},
+				{Payee: "hi there"},
+			},
+			search:  "hello",
+			page:    1,
+			results: 10,
+			expect: QueryResult{
+				Count:        1,
+				Page:         1,
+				Results:      10,
+				Transactions: []Transaction{{Payee: "hello there"}},
+			},
+		},
+		{
+			description: "paginate search",
+			txns: []Transaction{
+				{
+					Payee: "Opening balance",
+					Postings: []Posting{
+						{Account: "equity:Opening Balances", Tags: makeIDTag(OpeningBalanceID)},
+					},
+				},
+				{Payee: "hello there"},
+				{Payee: "hi there"},
+			},
+			search:  "there",
+			page:    1,
+			results: 1,
+			expect: QueryResult{
+				Count:   2,
+				Page:    1,
+				Results: 1,
+				Transactions: []Transaction{
+					{Payee: "hi there"}, // sorted results means 'hi' is last (we're paginating from the end backwards)
+				},
+			},
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			ldg, err := New(tc.txns)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expect, ldg.Query(tc.search, tc.page, tc.results))
+		})
+	}
+}
+
 func TestPaginateFromEnd(t *testing.T) {
 	for _, tc := range []struct {
 		page, results, size int
 		start, end          int
 	}{
+		{page: 1, results: 10, size: 0, start: 0, end: 0},
 		{page: 1, results: 10, size: 10, start: 0, end: 10},
 		{page: 1, results: 5, size: 10, start: 5, end: 10},
 		{page: 2, results: 5, size: 10, start: 0, end: 5},
