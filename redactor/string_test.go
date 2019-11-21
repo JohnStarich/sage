@@ -38,3 +38,21 @@ func TestPasswordUnmarshals(t *testing.T) {
 	assert.Equal(t, "username", someStruct.Username)
 	assert.Equal(t, String("password"), someStruct.Password)
 }
+
+func TestSetIndent(t *testing.T) {
+	var buf bytes.Buffer
+	enc := NewEncoder(&buf)
+	enc.SetIndent("a", "b")
+	jsonEnc := json.NewEncoder(&buf)
+	jsonEnc.SetIndent("a", "b")
+	assert.EqualValues(t, jsonEnc, enc)
+}
+
+func TestSetEscapeHTML(t *testing.T) {
+	var buf bytes.Buffer
+	enc := NewEncoder(&buf)
+	enc.SetEscapeHTML(true)
+	jsonEnc := json.NewEncoder(&buf)
+	jsonEnc.SetEscapeHTML(true)
+	assert.EqualValues(t, jsonEnc, enc)
+}
