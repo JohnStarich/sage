@@ -63,7 +63,7 @@ func Validate(account Account) error {
 	case *bankAccount:
 		errs.ErrIf(impl.BankID() == "", "Routing number must not be empty")
 		kind := ParseAccountType(impl.BankAccountType)
-		errs.ErrIf(kind != CheckingType && kind != SavingsType, "Account type must be %s or %s", CheckingType, SavingsType)
+		errs.ErrIf(kind != CheckingType && kind != SavingsType, "Account type must be %q or %q", CheckingType, SavingsType)
 	case Bank:
 		errs.ErrIf(impl.BankID() == "", "Routing number must not be empty")
 	case *CreditCard:
@@ -85,8 +85,6 @@ func UnmarshalAccount(b []byte) (Account, error) {
 	}
 
 	var creditCard CreditCard
-	if err := json.Unmarshal(b, &creditCard); err != nil {
-		return nil, err
-	}
-	return &creditCard, nil
+	err := json.Unmarshal(b, &creditCard)
+	return &creditCard, err
 }
