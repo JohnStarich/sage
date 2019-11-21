@@ -159,11 +159,17 @@ func (db *database) bucket(
 
 // Close locks all buckets to prepare for safe shutdown. Use after close has been called is not defined.
 func (db *database) Close() error {
+	return db.close(func(b *bucket) {
+		b.mu.Lock()
+	})
+}
+
+func (db *database) close(locker func(b *bucket)) error {
 	if db == nil {
 		return nil
 	}
 	for _, b := range db.buckets {
-		b.mu.Lock()
+		locker(b)
 	}
 	return nil
 }

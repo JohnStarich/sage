@@ -71,6 +71,27 @@ func TestOpenNewBucket(t *testing.T) {
 	}, b)
 }
 
+func TestClose(t *testing.T) {
+	db := NewMockDB(MockConfig{
+		FileReader: func(path string) ([]byte, error) {
+			return []byte(`{}`), nil
+		},
+	})
+	_, err := db.Bucket("something", "", &mockUpgrader{})
+	require.NoError(t, err)
+	_, err = db.Bucket("some other thing", "", &mockUpgrader{})
+	require.NoError(t, err)
+
+	closed := 0
+	db.(*mockDatabase).close(func(b *bucket) {
+		closed++
+	})
+	assert.Equal(t, 2, closed)
+
+	assert.NoError(t, db.Close())
+	assert.NoError(t, (*database)(nil).Close())
+}
+
 func intParser(dataVersion, id string, data json.RawMessage) (interface{}, error) {
 	i, err := strconv.ParseInt(string(data), 10, 64)
 	return int(i), err
@@ -333,4 +354,69 @@ func TestLegacyParse(t *testing.T) {
 			"2": "third**",
 		},
 	}, b)
+}
+
+func TestNewMockDB(t *testing.T) {
+	// builtin FileReader
+	db := NewMockDB(MockConfig{})
+	_, err := db.Bucket("something", "", &mockUpgrader{})
+	assert.Error(t, err)
+
+	// builtin Saver
+	db = NewMockDB(MockConfig{
+		FileReader: func(path string) ([]byte, error) {
+			return []byte(`{}`), nil
+		},
+	})
+	b, err := db.Bucket("something", "1", &mockUpgrader{})
+	require.NoError(t, err)
+	assert.NoError(t, b.Put("hi", "hi"))
+}
+
+func TestMockDBDump(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		db := NewMockDB(MockConfig{
+			FileReader: func(path string) ([]byte, error) {
+				return []byte(`{}`), nil
+			},
+		})
+		b, err := db.Bucket("something", "1", &mockUpgrader{})
+		require.NoError(t, err)
+		assert.Equal(t, `{
+    "Version": "1",
+    "Data": {}
+}
+`, db.Dump(b))
+	})
+
+	t.Run("not a *bucket", func(t *testing.T) {
+		type mockBucket struct {
+			bucket
+		}
+		db := NewMockDB(MockConfig{})
+		assert.Panics(t, func() {
+			db.Dump(&mockBucket{})
+		})
+	})
+
+	t.Run("not a mock bucket", func(t *testing.T) {
+		db := NewMockDB(MockConfig{})
+		assert.Panics(t, func() {
+			db.Dump(&bucket{})
+		})
+	})
+
+	t.Run("fail to encode", func(t *testing.T) {
+		db := NewMockDB(MockConfig{
+			FileReader: func(path string) ([]byte, error) {
+				return []byte(`{}`), nil
+			},
+		})
+		b, err := db.Bucket("something", "1", &mockUpgrader{})
+		require.NoError(t, err)
+		b.(*bucket).data["hi"] = json.RawMessage(`garbage`)
+		assert.Panics(t, func() {
+			db.Dump(b)
+		})
+	})
 }
