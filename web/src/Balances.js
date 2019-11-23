@@ -135,7 +135,7 @@ function BalanceSection({ name, accounts, getMessages }) {
     if (messages) {
       return <td className="balance-warning"><WarningTooltip messages={messages.map(m => m.Message)} /></td>
     }
-    return <td></td>
+    return null
   }
   return (
     <Table responsive>
