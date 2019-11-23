@@ -16,7 +16,7 @@ import WebConnect from './WebConnect';
 export default function Accounts({ match }) {
   const [accounts, setAccounts] = React.useState([])
   React.useEffect(() => {
-    API.get('/api/v1/getAccounts')
+    API.get('/v1/getAccounts')
       .then(res => setAccounts(res.data.Accounts))
   }, [])
 
