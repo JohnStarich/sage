@@ -10,7 +10,7 @@ import Password from './Password';
 import RadioGroup from './RadioGroup';
 import React from 'react';
 import Row from 'react-bootstrap/Row';
-import axios from 'axios';
+import API from './API';
 import { Redirect } from 'react-router-dom';
 
 
@@ -385,11 +385,11 @@ function accountFromForm(originalAccountID, { directConnectEnabled }) {
 
 function updateAccount(originalAccountID, account) {
   if (originalAccountID) {
-    return axios.post('/api/v1/updateAccount', Object.assign({}, { AccountID: originalAccountID }, account))
+    return API.post('/v1/updateAccount', Object.assign({}, { AccountID: originalAccountID }, account))
   }
-  return axios.post('/api/v1/addAccount', account)
+  return API.post('/v1/addAccount', account)
 }
 
 function verifyAccount(account) {
-  return axios.post('/api/v1/direct/verifyAccount', account)
+  return API.post('/v1/direct/verifyAccount', account)
 }

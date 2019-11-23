@@ -14,6 +14,7 @@ import (
 	"github.com/johnstarich/sage/consts"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/plaindb"
+	"github.com/johnstarich/sage/redactor"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/server"
 	"github.com/johnstarich/sage/sync"
@@ -46,11 +47,12 @@ func loadRules(fileName string) (rules.Rules, error) {
 }
 
 func start(
-	isServer bool, autoSync bool, port uint16,
+	isServer bool,
 	db plaindb.DB,
 	ledgerFile vcs.File, ldg *ledger.Ledger,
 	accountStore *client.AccountStore,
 	rulesFile vcs.File, rulesStore *rules.Store,
+	options server.Options,
 ) error {
 	logger, err := zap.NewProduction()
 	if os.Getenv("DEVELOPMENT") == "true" {
@@ -64,7 +66,7 @@ func start(
 		return sync.Sync(logger, ledgerFile, ldg, accountStore, rulesStore, false)
 	}
 	gin.SetMode(gin.ReleaseMode)
-	err = server.Run(autoSync, fmt.Sprintf("0.0.0.0:%d", port), db, ledgerFile, ldg, accountStore, rulesFile, rulesStore, logger)
+	err = server.Run(db, ledgerFile, ldg, accountStore, rulesFile, rulesStore, logger, options)
 	if err != nil {
 		logger.Error("Server run failed", zap.Error(err))
 	}
@@ -106,6 +108,7 @@ func handleErrors(db *plaindb.DB) (usageErr bool, err error) {
 	ledgerFileName := flagSet.String("ledger", "", "Required: Path to a ledger file")
 	dbDirName := flagSet.String("data", "", "Required: Path to a database directory")
 	requestVersion := flagSet.Bool("version", false, "Print the version and exit")
+	serverPassword := flagSet.String("password", "", "A password to lock the web UI and API")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		return true, err
 	}
@@ -154,7 +157,11 @@ func handleErrors(db *plaindb.DB) (usageErr bool, err error) {
 	rulesStore := rules.NewStore(r)
 	rulesFile := repo.File(*rulesFileName)
 
-	return false, start(*isServer, !*noSyncLoop, port, *db, ldgFile, ldg, accountStore, rulesFile, rulesStore)
+	return false, start(*isServer, *db, ldgFile, ldg, accountStore, rulesFile, rulesStore, server.Options{
+		Address:  fmt.Sprintf("0.0.0.0:%d", port),
+		AutoSync: !*noSyncLoop,
+		Password: redactor.String(*serverPassword),
+	})
 }
 
 func main() {

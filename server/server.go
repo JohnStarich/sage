@@ -13,6 +13,7 @@ import (
 	"github.com/johnstarich/sage/consts"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/plaindb"
+	"github.com/johnstarich/sage/redactor"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/sync"
 	"github.com/johnstarich/sage/vcs"
@@ -24,42 +25,60 @@ const (
 	loggerKey    = "logger"
 )
 
+// Options contains options for configuring the Sage HTTP server
+type Options struct {
+	Address  string
+	AutoSync bool
+	Password redactor.String
+}
+
 // Run starts the server
 func Run(
-	autoSync bool,
-	addr string,
 	db plaindb.DB,
 	ledgerFile vcs.File, ldg *ledger.Ledger,
 	accountStore *client.AccountStore,
 	rulesFile vcs.File, rulesStore *rules.Store,
 	logger *zap.Logger,
+	options Options,
 ) error {
 	engine := gin.New()
 	engine.Use(
 		ginzap.Ginzap(logger, time.RFC3339, true),
 		ginzap.RecoveryWithZap(logger, true),
+		func(c *gin.Context) {
+			c.Set(loggerKey, logger)
+		},
 	)
 	engine.GET("/", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/web") })
-	engine.StaticFS("/web", newDefaultRouteFS(
+
+	web := engine.Group("/web")
+	web.StaticFS("/", newDefaultRouteFS(
 		"/index.html",
 		AssetFile(),
 		"/static/",
 	))
 
+	engine.GET("/api/v1/getVersion", func(c *gin.Context) {
+		// add version route without auth
+		c.JSON(http.StatusOK, map[string]string{
+			"Version": consts.Version,
+		})
+	})
+
 	api := engine.Group("/api/v1")
-	api.Use(
-		func(c *gin.Context) {
-			c.Set(loggerKey, logger)
-		},
-	)
+	if len(options.Password) > 0 {
+		auth := newAuthenticator(options.Password)
+		engine.POST("/api/authz", signIn(auth))
+		api.Use(requireAuth(auth))
+	}
 	setupAPI(api, db, ledgerFile, ldg, accountStore, rulesFile, rulesStore)
 
 	done := make(chan bool, 1)
 	errs := make(chan error, 2)
 
-	logger.Info("Starting server", zap.String("addr", addr))
-	if !autoSync {
-		return engine.Run(addr)
+	logger.Info("Starting server", zap.String("addr", options.Address))
+	if !options.AutoSync {
+		return engine.Run(options.Address)
 	}
 
 	go func() {
@@ -91,7 +110,7 @@ func Run(
 	}()
 
 	go func() {
-		errs <- engine.Run(addr)
+		errs <- engine.Run(options.Address)
 		done <- true
 	}()
 
@@ -116,12 +135,6 @@ func setupAPI(
 	rulesFile vcs.File,
 	rulesStore *rules.Store,
 ) {
-	router.GET("/getVersion", func(c *gin.Context) {
-		c.JSON(http.StatusOK, map[string]string{
-			"Version": consts.Version,
-		})
-	})
-
 	router.POST("/syncLedger", syncLedger(ledgerFile, ldg, accountStore, rulesStore))
 	router.POST("/importOFX", importOFXFile(ledgerFile, ldg, accountStore, rulesStore))
 	router.POST("/renameLedgerAccount", renameLedgerAccount(ledgerFile, ldg))

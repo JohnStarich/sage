@@ -4,7 +4,7 @@ import Button from 'react-bootstrap/Button';
 import Crumb from './Breadcrumb';
 import React from 'react';
 import UTCDatePicker from './UTCDatePicker';
-import axios from 'axios';
+import API from './API';
 import { cleanCategory, CategoryPicker } from './CategoryPicker';
 
 
@@ -63,7 +63,7 @@ function lastOfMonth(date) {
 }
 
 function fetchEverythingElseDetails(start, end) {
-  return axios.get('/api/v1/getEverythingElseBudget', { params: { start, end } })
+  return API.get('/v1/getEverythingElseBudget', { params: { start, end } })
     .then(res => {
       const accounts = Object.entries(res.data.Accounts)
         .map(([Account, balance]) => {
@@ -88,7 +88,7 @@ export default function Budgets({ match }) {
 
   React.useEffect(() => {
     Promise.all([
-      axios.get('/api/v1/getBudgets', { params: { start, end } })
+      API.get('/v1/getBudgets', { params: { start, end } })
         .then(res => res.data.Budgets),
       fetchEverythingElseDetails(start, end),
     ]).then(([budgets, everythingElseDetails]) => {
@@ -110,12 +110,12 @@ export default function Budgets({ match }) {
       Account: account,
       Budget: budget,
     }
-    axios.post('/api/v1/addBudget', b)
+    API.post('/v1/addBudget', b)
       .then(() => {
         // fetch current amount before displaying budget
         // also fetch updated "everything else" budget
         Promise.all([
-          axios.get('/api/v1/getBudget', { params: { account, start, end } })
+          API.get('/v1/getBudget', { params: { account, start, end } })
             .then(res => res.data.Budget),
           fetchEverythingElseDetails(start, end),
         ]).then(([budget, everythingElseDetails]) => {
@@ -142,7 +142,7 @@ export default function Budgets({ match }) {
     const budget = Object.assign({}, existingBudget, {
       Budget: budgetAmount,
     })
-    axios.post('/api/v1/updateBudget', budget)
+    API.post('/v1/updateBudget', budget)
       .then(() => {
         const newBudgets = budgets.filter(b => b.Account !== account)
         newBudgets.push(budget)
@@ -154,7 +154,7 @@ export default function Budgets({ match }) {
   const removeBudget = budget => {
     if (window.confirm(`Are you sure you want to delete this budget? ${budget}`)) {
       Promise.all([
-        axios.get('/api/v1/deleteBudget', { params: { budget } }),
+        API.get('/v1/deleteBudget', { params: { budget } }),
         fetchEverythingElseDetails(start, end),
       ]).then(([_, everythingElseDetails]) => {
         setBudgets(budgets.filter(b => b.Account !== budget))

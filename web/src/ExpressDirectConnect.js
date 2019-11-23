@@ -1,4 +1,4 @@
-import axios from 'axios';
+import API from './API';
 import { Link } from "react-router-dom";
 import React from 'react';
 import Accordion from 'react-bootstrap/Accordion';
@@ -52,7 +52,7 @@ export default function({ created }) {
             setFindFeedback(null)
             setFindResult(null)
             const password = valueFromID("password")
-            axios.post('/api/v1/direct/fetchAccounts', {
+            API.post('/v1/direct/fetchAccounts', {
               InstDescription: valueFromID("description"),
               InstFID: valueFromID("fid"),
               InstOrg: valueFromID("org"),
@@ -196,7 +196,7 @@ export default function({ created }) {
               Promise.all(accounts.map(account => {
                 const checkbox = document.getElementById("add-" + account.AccountID)
                 if (checkbox.checked && !checkbox.disabled) {
-                  return axios.post('/api/v1/addAccount', account)
+                  return API.post('/v1/addAccount', account)
                     .then(res => {
                       checkbox.disabled = true
                       checkbox.classList.add("is-valid")

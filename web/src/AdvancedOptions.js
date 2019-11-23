@@ -1,5 +1,5 @@
 import React from 'react';
-import axios from 'axios';
+import API from './API';
 import './AdvancedOptions.css';
 
 import Button from 'react-bootstrap/Button';
@@ -44,7 +44,7 @@ function RenameAccount() {
   const [validated, setValidated] = React.useState(false)
 
   React.useEffect(() => {
-    axios.get('/api/v1/renameSuggestions')
+    API.get('/v1/renameSuggestions')
       .then(res => {
         if (res.data.Suggestions) {
           setRenameSuggestions(res.data.Suggestions)
@@ -72,7 +72,7 @@ function RenameAccount() {
             if (! window.confirm(`Are you sure you want to rename "${renameParams.Old}*" to "${renameParams.New}*"?`)) {
               return
             }
-            axios.post('/api/v1/renameLedgerAccount', renameParams)
+            API.post('/v1/renameLedgerAccount', renameParams)
               .then(res => {
                 const renamedCount = res.data.Renamed
                 setFeedback(`Success! Renamed ${renamedCount} postings.`)

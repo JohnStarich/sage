@@ -6,7 +6,7 @@ import BootstrapTable from 'react-bootstrap-table-next';
 import React from 'react';
 import ToolkitProvider, { Search } from 'react-bootstrap-table2-toolkit';
 import Transaction from './Transaction';
-import axios from 'axios';
+import API from './API';
 import paginationFactory from 'react-bootstrap-table2-paginator';
 import { cleanCategory } from './CategoryPicker';
 
@@ -87,7 +87,7 @@ export default function Transactions(props) {
       setPage(1)
       setSearch(searchText)
     }
-    axios.get('/api/v1/getTransactions', {
+    API.get('/v1/getTransactions', {
       params: { page, results: sizePerPage, search: searchText },
     })
       .then(res => {
@@ -111,7 +111,7 @@ export default function Transactions(props) {
       throw Error(`Tried to update invalid transaction: ${txn}`)
     }
     let { Postings } = txn
-    axios.post('/api/v1/updateTransaction', { ID: txn.ID, Postings })
+    API.post('/v1/updateTransaction', { ID: txn.ID, Postings })
       .then(res => {
         newTransactions[txnIndex] = Object.assign({}, newTransactions[txnIndex], txn)
         setTransactions(newTransactions)

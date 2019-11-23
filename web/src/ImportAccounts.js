@@ -1,4 +1,4 @@
-import axios from 'axios';
+import API from './API';
 import React from 'react';
 import Button from 'react-bootstrap/Button';
 import Col from 'react-bootstrap/Col';
@@ -27,7 +27,7 @@ export default function ImportAccounts() {
             if (files.length !== 1) {
               throw Error("Must provide one file to import")
             }
-            axios.post('/api/v1/importOFX', files[0])
+            API.post('/v1/importOFX', files[0])
               .then(() => window.location.reload())
               .catch(e => {
                 if (!e.response.data || !e.response.data.Error) {

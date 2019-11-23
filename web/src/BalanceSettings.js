@@ -11,7 +11,7 @@ import LoadingButton from './LoadingButton';
 import React from 'react';
 import Row from 'react-bootstrap/Row';
 import UTCDatePicker from './UTCDatePicker';
-import axios from 'axios';
+import API from './API';
 import cellEditFactory from 'react-bootstrap-table2-editor';
 
 
@@ -28,7 +28,7 @@ export default function BalanceSettings({ match }) {
   const [postings, setPostings] = React.useState([])
 
   React.useEffect(() => {
-    axios.get('/api/v1/getBalances')
+    API.get('/v1/getBalances')
       .then(res => {
         window.setTimeout(() => {
           if (res.data.Accounts) {
@@ -51,7 +51,7 @@ export default function BalanceSettings({ match }) {
       return
     }
 
-    axios.post('/api/v1/updateOpeningBalance', { Postings: postings, Date: start })
+    API.post('/v1/updateOpeningBalance', { Postings: postings, Date: start })
       .catch(e => alert(e))
   }
 
@@ -122,7 +122,7 @@ export default function BalanceSettings({ match }) {
             variant="outline-danger"
             onClick={() => {
               if (window.confirm(`Sync from the beginning of the ledger (${dateFormatter.format(start)})? This is a very time-consuming operation.`)) {
-                return axios.post('/api/v1/syncLedger?fromLedgerStart')
+                return API.post('/v1/syncLedger?fromLedgerStart')
               }
             }}>
             Sync from start

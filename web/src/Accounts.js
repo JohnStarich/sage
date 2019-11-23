@@ -1,6 +1,6 @@
 import React from 'react';
 import { Route, Link } from "react-router-dom";
-import axios from 'axios';
+import API from './API';
 import './Accounts.css';
 
 import Button from 'react-bootstrap/Button';
@@ -16,7 +16,7 @@ import WebConnect from './WebConnect';
 export default function Accounts({ match }) {
   const [accounts, setAccounts] = React.useState([])
   React.useEffect(() => {
-    axios.get('/api/v1/getAccounts')
+    API.get('/api/v1/getAccounts')
       .then(res => setAccounts(res.data.Accounts))
   }, [])
 
@@ -39,7 +39,7 @@ export default function Accounts({ match }) {
     if (!window.confirm(`Are you sure you want to delete your account '${account.AccountDescription}'?`)) {
       return
     }
-    axios.get('/api/v1/deleteAccount', {
+    API.get('/v1/deleteAccount', {
       params: { id: accountID },
     })
       .then(() =>
@@ -154,7 +154,7 @@ function ExpressDirectConnectAccounts({ created, match }) {
 function AccountEditor({ updated, match }) {
   const [account, setAccount] = React.useState(null)
   React.useEffect(() => {
-    axios.get('/api/v1/getAccount', {
+    API.get('/v1/getAccount', {
       params: { id: match.params.id },
     })
       .then(res => {

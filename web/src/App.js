@@ -1,5 +1,5 @@
 import React from 'react';
-import axios from 'axios';
+import API from './API';
 import { BrowserRouter as Router, Route, Switch, Link, NavLink } from "react-router-dom";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './common.css';
@@ -13,6 +13,7 @@ import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Budgets from './Budgets';
 import Categories from './Categories';
 import Dropdown from 'react-bootstrap/Dropdown';
+import Login from './Login';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import Sync from './Sync';
@@ -34,13 +35,12 @@ function AppContent({ match }) {
   const [syncTime, setSyncTime] = React.useState(new Date())
 
   React.useEffect(() => {
-    axios.get('/api/v1/getVersion')
+    API.get('/v1/getVersion')
       .then(res => {
         let version = res.data.Version
         if (version === "") {
           version = "dev"
         }
-        console.log("setting version to", version)
         setVersion(version)
       })
   }, [])
@@ -82,6 +82,7 @@ function AppContent({ match }) {
       <div className="app">
         <Switch>
           <Route path="/" exact component={() => <Activity syncTime={syncTime} />} />
+          <Route path="/login" component={Login} />
           <Route path="/budgets" component={Budgets} />
           <Route>
             <Breadcrumbs as={Breadcrumb} skip={1} render={({ title, match }) =>

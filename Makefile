@@ -98,6 +98,13 @@ start-app:
 	fi
 	npm --prefix=web run start-app
 
+.PHONY: start-pass
+start-pass:
+	trap 'jobs -p | xargs kill' EXIT; \
+	mkdir -p ./data; \
+	npm --prefix=web run start-api-pass & \
+	npm --prefix=web start
+
 .PHONY: apps
 apps: out
 	docker run \

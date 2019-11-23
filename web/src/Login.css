@@ -1,0 +1,15 @@
+.login {
+  max-width: 25em;
+}
+
+.login h2 {
+  margin: 1em 0;
+}
+
+.login-submit {
+  margin-top: 2em;
+}
+
+.login-feedback {
+  margin-bottom: 1em;
+}

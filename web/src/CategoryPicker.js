@@ -1,6 +1,6 @@
 import './CategoryPicker.css';
 import React from 'react';
-import axios from 'axios';
+import API from './API';
 import Form from 'react-bootstrap/Form';
 
 
@@ -16,7 +16,7 @@ let categoriesPromise = null
 
 export const Categories = () => {
   if (categoriesPromise === null) {
-    categoriesPromise = axios.get('/api/v1/getCategories')
+    categoriesPromise = API.get('/v1/getCategories')
       .then(res => res.data.Accounts)
       .then(accounts =>
         accounts.map(c => [c, c.replace(/:/g, ' > ')]))

@@ -1,5 +1,5 @@
 import React from 'react';
-import axios from 'axios';
+import API from './API';
 import './Balances.css';
 import Amount from './Amount';
 import Table from 'react-bootstrap/Table';
@@ -14,7 +14,7 @@ export default function Balances({ syncTime }) {
   const [messages, setMessages] = React.useState([])
 
   React.useEffect(() => {
-    axios.get('/api/v1/getBalances')
+    API.get('/v1/getBalances')
       .then(res => {
         setAccounts(res.data.Accounts || [])
         setMessages(res.data.Messages || [])

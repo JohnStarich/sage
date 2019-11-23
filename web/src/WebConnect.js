@@ -1,5 +1,5 @@
 import React from 'react';
-import axios from 'axios';
+import API from './API';
 import './WebConnect.css';
 
 import RadioGroup from './RadioGroup';
@@ -16,7 +16,7 @@ let driverNames = null
 
 function getDriverNames() {
   if (driverNames === null) {
-    driverNames = axios.get('/api/v1/web/getDriverNames')
+    driverNames = API.get('/v1/web/getDriverNames')
       .then(res => res.data.DriverNames)
   }
   return driverNames
@@ -222,7 +222,7 @@ function accountFromForm(originalAccountID) {
 
 function updateAccount(originalAccountID, account) {
   if (originalAccountID) {
-    return axios.post('/api/v1/updateAccount', Object.assign({}, { AccountID: originalAccountID }, account))
+    return API.post('/v1/updateAccount', Object.assign({}, { AccountID: originalAccountID }, account))
   }
-  return axios.post('/api/v1/addAccount', account)
+  return API.post('/v1/addAccount', account)
 }

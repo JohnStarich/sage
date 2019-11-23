@@ -6,7 +6,7 @@ import Container from 'react-bootstrap/Container';
 import Crumb from './Breadcrumb';
 import React from 'react';
 import Row from 'react-bootstrap/Row';
-import axios from 'axios';
+import API from './API';
 import './Categories.css';
 import cellEditFactory, { Type } from 'react-bootstrap-table2-editor';
 import { cleanCategory } from './CategoryPicker';
@@ -86,7 +86,7 @@ export default function Categories({ match }) {
   const [rules, setRules] = React.useState([])
 
   React.useEffect(() => {
-    axios.get('/api/v1/getRules').then(res => {
+    API.get('/v1/getRules').then(res => {
       let newRules = res.data.Rules || []
       newRules = newRules.map((rule, i) => {
         rule.ID = i + 1
@@ -102,7 +102,7 @@ export default function Categories({ match }) {
       ID: undefined,
       Conditions: rule.Conditions.split('\n'),
     }))
-    axios.post('/api/v1/updateRules', apiRules)
+    API.post('/v1/updateRules', apiRules)
       .then(() => setRules(newRules))
       .catch(e => alert(`Error saving rules. ${e.response.data.Error || ""}`))
   }

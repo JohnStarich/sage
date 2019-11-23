@@ -1,5 +1,5 @@
 import React from 'react';
-import axios from 'axios';
+import API from './API';
 import {
   Bar,
   BarChart,
@@ -21,7 +21,7 @@ export default function Expenses(props) {
   const [end, setEnd] = React.useState(null)
 
   React.useEffect(() => {
-    axios.get('/api/v1/getBalances', {
+    API.get('/v1/getBalances', {
       params: {
         accountTypes: ['expenses', 'revenues', 'uncategorized'],
       },

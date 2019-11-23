@@ -1,4 +1,4 @@
-import axios from 'axios';
+import API from './API';
 import React from 'react';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
@@ -6,7 +6,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import './Sync.css';
 
 function runSync() {
-  return axios.post('/api/v1/syncLedger')
+  return API.post('/v1/syncLedger')
     .then(res => res.data)
 }
 
