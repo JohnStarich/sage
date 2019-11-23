@@ -2,20 +2,27 @@
 
 Be your own accountant, without the stress.
 
-Automatically download transactions from your banks and credit cards, then categorize them based on your own rules.
+Examine your finances with ease.
+Automatically download transactions from your banks and credit cards, then run the numbers.
+
+Get the latest release [here](#install), then [let us know what you think][feedback]!
+
+[feedback]: https://github.com/JohnStarich/sage/issues/new
+
+![Activity page demo](.github/media/activity.png)
+<p align="center"><em>See your latest balances, expenses, and transactions.</em></p>
 
 ## Features
 
-* [x] Automatically sync your ledger with banks and credit card institutions
-* [x] Securely downloads data directly from your bank or credit card company
+* [x] Securely & automatically download data directly from your bank or credit card company
+* [x] View and edit transactions, balances, and budgets
 * [x] Uses [double-entry bookkeeping][] to keep things in check
-* [x] Web UI to view transactions, accounts, and balances
-* [x] Web UI to add credentials for new accounts 
+* [x] Web Connect <sup>(beta)</sup> and Direct Connect support
 * [x] Can deploy as a single binary or as a Docker container
+* [x] Automatic version control
 
-![Activity page demo](.github/media/activity.png)
-
-For future features, [see below](#future-work)
+![Budgets page demo](.github/media/budgets.png)
+<p align="center"><em>Manage monthly budgets to keep track of your expenses.</em></p>
 
 [double-entry bookkeeping]: https://en.wikipedia.org/wiki/Double-entry_bookkeeping_system
 
@@ -53,9 +60,15 @@ chmod +x sage
 
 For available options, run `sage -help`
 
+## Future work
+
+* Over-budget notifications
+* Forecasts on current transactions to identify trends
+* Smarter categorization by training on current ledger
+
 ## Data storage
 
-Sage uses a ledger ([plain text accounting][]) file, a simple JSON-encoded accounts file, and an [`hledger` rules][hledger rules] file.
+Sage uses a ledger ([plain text accounting][]) file, some simple JSON-encoded files, and an [`hledger` rules][hledger rules] file.
 **You won't need to know about these files to use Sage.** However, if you're a power-user, then these formats may come in handy.
 
 [plain text accounting]: https://plaintextaccounting.org
@@ -72,13 +85,6 @@ Currently, the web UI only supports `account2`.
 
 [hledger]: https://github.com/simonmichael/hledger
 [ledger tools]: https://plaintextaccounting.org/#plain-text-accounting-tools
-
-## Future work
-
-* [ ] Budget tracking (maybe add over-budget notifications)
-* [ ] Forecasts on current transactions to identify trends
-* [ ] Automatic version control to reduce risk of data loss
-* [ ] Smarter categorization by training on current ledger
 
 ## Awesome libraries 👏
 
