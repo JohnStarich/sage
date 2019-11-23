@@ -104,6 +104,7 @@ func (s *syncRepo) CommitFiles(prepFiles func() error, message string, paths ...
 	var err error
 	var tree *git.Worktree
 	var repoStatus git.Status
+	var rootPath string
 	return pipe.OpFuncs{
 		prepFiles,
 		func() error {
@@ -122,17 +123,27 @@ func (s *syncRepo) CommitFiles(prepFiles func() error, message string, paths ...
 			return nil
 		},
 		func() error {
+			rootPath, err = filepath.Abs(tree.Filesystem.Root())
+			return err
+		},
+		func() error {
 			var ops pipe.OpFuncs
-			rootPath := tree.Filesystem.Root()
 			for i := range paths {
 				path := &paths[i]
-				ops = append(ops, func() error {
-					*path, err = filepath.Rel(rootPath, *path)
-					return err
-				}, func() error {
-					_, err := tree.Add(*path)
-					return errors.Wrapf(err, "Failed to add %s to the git index", *path)
-				})
+				ops = append(ops,
+					func() error {
+						*path, err = filepath.Abs(*path)
+						return err
+					},
+					func() error {
+						*path, err = filepath.Rel(rootPath, *path)
+						return err
+					},
+					func() error {
+						_, err := tree.Add(*path)
+						return errors.Wrapf(err, "Failed to add %s to the git index", *path)
+					},
+				)
 			}
 			return ops.Do()
 		},
