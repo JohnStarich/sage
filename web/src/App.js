@@ -1,4 +1,5 @@
 import React from 'react';
+import axios from 'axios';
 import { BrowserRouter as Router, Route, Switch, Link, NavLink } from "react-router-dom";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './common.css';
@@ -29,12 +30,34 @@ function App() {
 export default App;
 
 function AppContent({ match }) {
+  const [version, setVersion] = React.useState(null)
   const [syncTime, setSyncTime] = React.useState(new Date())
+
+  React.useEffect(() => {
+    axios.get('/api/v1/getVersion')
+      .then(res => {
+        let version = res.data.Version
+        if (version === "") {
+          version = "dev"
+        }
+        console.log("setting version to", version)
+        setVersion(version)
+      })
+  }, [])
+
   return (
     <>
       <Crumb title="Sage" match={match} />
       <Navbar className="main-nav" bg="dark" expand="sm" variant="dark" sticky="top">
-        <NavLink exact to="/"><Navbar.Brand><Logo className="sage-logo dark" /> Sage</Navbar.Brand></NavLink>
+        <NavLink exact to="/">
+          <Navbar.Brand>
+            <Logo className="sage-logo dark" />
+            <div className="sage-title">
+              <span className="sage-name">Sage</span>
+              <span className="sage-version">{version}</span>
+            </div>
+          </Navbar.Brand>
+        </NavLink>
         <Navbar.Toggle />
         <Navbar.Collapse>
           <Nav className="mr-auto">

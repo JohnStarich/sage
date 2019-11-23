@@ -1,6 +1,36 @@
 .sage-logo {
   height: 1.5em;
-  margin-right: 0.25em;
+  margin-right: 0.5em;
+}
+
+.sage-title {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.sage-title:hover .sage-name {
+  transform: translateY(-0.1em);
+}
+
+.sage-title .sage-name {
+  transition: 0.5s transform;
+}
+
+.sage-title:hover .sage-version {
+  opacity: 1;
+  max-width: 20em;
+}
+
+.sage-title .sage-version {
+  font-size: 0.6em;
+  opacity: 0.5;
+  transform: translate(0.1em, -0.5em);
+  max-width: 4em;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+  transition-duration: 1.2s;
+  transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+  transition-property: opacity, max-width;
 }
 
 .app > * {

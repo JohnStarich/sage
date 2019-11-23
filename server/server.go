@@ -119,7 +119,7 @@ func setupAPI(
 ) {
 	router.GET("/getVersion", func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]string{
-			"version": consts.Version,
+			"Version": consts.Version,
 		})
 	})
 
