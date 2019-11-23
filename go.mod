@@ -5,7 +5,7 @@ require (
 	github.com/aclindsa/xml v0.0.0-20190701095008-453d2c6090c2
 	github.com/chromedp/cdproto v0.0.0-20191009033829-c22f49c9ff0a
 	github.com/chromedp/chromedp v0.5.1
-	github.com/gin-contrib/zap v0.0.0-20190528085758-3cc18cd8fce3
+	github.com/gin-contrib/zap v0.0.0-20190911144541-f473495929db
 	github.com/gin-gonic/gin v1.4.0
 	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
 	github.com/pkg/errors v0.8.1

@@ -37,8 +37,7 @@ func Run(
 	engine := gin.New()
 	engine.Use(
 		ginzap.Ginzap(logger, time.RFC3339, true),
-		//ginzap.RecoveryWithZap(logger, true), // TODO restore recovery when https://github.com/gin-contrib/zap/pull/10 is merged
-		recovery(logger, true),
+		ginzap.RecoveryWithZap(logger, true),
 	)
 	engine.GET("/", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/web") })
 	engine.StaticFS("/web", newDefaultRouteFS(
