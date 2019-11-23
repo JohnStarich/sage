@@ -16,12 +16,14 @@ COPY . .
 ARG VERSION
 RUN make build
 
-FROM scratch
 
-COPY --from=builder /src/out/sage /
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+FROM chromedp/headless-shell:79.0.3945.45
+ENV PATH=$PATH:/headless-shell
 
 WORKDIR /data
 ENTRYPOINT ["/sage"]
 CMD ["-port=8080", "-rules=/data/ledger.rules", "-ledger=/data/ledger.journal", "-data=/data"]
 VOLUME ["/data"]
+
+COPY --from=builder /src/out/sage /
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
