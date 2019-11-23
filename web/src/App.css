@@ -22,9 +22,12 @@
 }
 
 .sage-title .sage-version {
+  align-self: baseline;
+  position: absolute;
+  bottom: 0;
   font-size: 0.6em;
   opacity: 0.5;
-  transform: translate(0.1em, -0.5em);
+  transform: translateY(-0.5em);
   max-width: 4em;
   overflow-x: hidden;
   text-overflow: ellipsis;
