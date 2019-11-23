@@ -89,19 +89,23 @@ const AmountTooltip = ({ active, payload, label }) => {
       <span className="account-name">{account.name}</span>
       <Amount amount={account.value} prefix='$' />
     </li>
+  const total = amounts =>
+    amounts
+      .map(v => v.value)
+      .reduce((acc, v) => acc + v)
 
   return (
     <div className="amount-tooltip">
       <p className="label">{label}</p>
       {revenues.length === 0 ? null :
         <>
-          <p className="group">Revenues:</p>
+          <p className="group">Revenues: <Amount prefix="$" amount={total(revenues)} /></p>
           <ul>{revenues.map(makeEntry)}</ul>
         </>
       }
       {expenses.length === 0 ? null :
         <>
-          <p className="group">Expenses:</p>
+          <p className="group">Expenses: <Amount prefix="$" amount={total(expenses)} /></p>
           <ul>{expenses.map(makeEntry)}</ul>
         </>
       }
