@@ -246,13 +246,13 @@ func deleteBudget(db plaindb.DB) gin.HandlerFunc {
 		panic(err)
 	}
 	return func(c *gin.Context) {
-		account := c.Query("account")
+		account := c.Query("budget") // budget is an account name internally
 		if account == "" {
-			abortWithClientError(c, http.StatusBadRequest, errors.New("Account name is required"))
+			abortWithClientError(c, http.StatusBadRequest, errors.New("Budget name is required"))
 			return
 		}
 		if isBuiltinBudget(account) {
-			abortWithClientError(c, http.StatusBadRequest, errors.New("Account name is reserved and can not be deleted"))
+			abortWithClientError(c, http.StatusBadRequest, errors.New("Budget name is reserved and can not be deleted"))
 			return
 		}
 		if err := store.Remove(account); err != nil {

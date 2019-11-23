@@ -151,13 +151,13 @@ export default function Budgets({ match }) {
       })
   }
 
-  const removeBudget = account => {
-    if (window.confirm(`Are you sure you want to delete this account? ${account}`)) {
+  const removeBudget = budget => {
+    if (window.confirm(`Are you sure you want to delete this budget? ${budget}`)) {
       Promise.all([
-        axios.get('/api/v1/deleteBudget', { params: { account } }),
+        axios.get('/api/v1/deleteBudget', { params: { budget } }),
         fetchEverythingElseDetails(start, end),
       ]).then(([_, everythingElseDetails]) => {
-        setBudgets(budgets.filter(b => b.Account !== account))
+        setBudgets(budgets.filter(b => b.Account !== budget))
         setEverythingElse(everythingElseDetails)
       })
     }
