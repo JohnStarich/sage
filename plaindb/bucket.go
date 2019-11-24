@@ -88,8 +88,12 @@ func saveBucketToDisk(b *bucket) (returnErr error) {
 	if err != nil {
 		return b.wrapErr(err)
 	}
+	closed := false
 	defer func() {
-		closeErr := file.Close()
+		var closeErr error
+		if !closed {
+			closeErr = file.Close()
+		}
 		rmErr := os.Remove(file.Name()) // clean up tmp file, if it wasn't renamed
 		if returnErr == nil {
 			if rmErr != nil && !os.IsNotExist(rmErr) {
@@ -106,7 +110,10 @@ func saveBucketToDisk(b *bucket) (returnErr error) {
 	if err != nil {
 		return b.wrapErr(err)
 	}
-
+	closed = true
+	if err := file.Close(); err != nil {
+		return b.wrapErr(err)
+	}
 	return b.wrapErr(os.Rename(file.Name(), b.path))
 }
 
