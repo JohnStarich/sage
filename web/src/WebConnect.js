@@ -83,8 +83,8 @@ export default function ({ account, editable, updated }) {
                 }
               })
               .catch(err => {
-                setFeedback((err.response.data && err.response.data.Error) || "An internal server error occurred")
-                if (!err.response.data || !err.response.data.Error) {
+                setFeedback((err.response && err.response.data && err.response.data.Error) || "An internal server error occurred")
+                if (!err.response || !err.response.data || !err.response.data.Error) {
                   throw err
                 }
               })
@@ -222,7 +222,7 @@ function accountFromForm(originalAccountID) {
 
 function updateAccount(originalAccountID, account) {
   if (originalAccountID) {
-    return API.post('/v1/updateAccount', Object.assign({}, { AccountID: originalAccountID }, account))
+    return API.post('/v1/updateAccount', Object.assign({}, { PreviousAccountID: originalAccountID }, account))
   }
   return API.post('/v1/addAccount', account)
 }

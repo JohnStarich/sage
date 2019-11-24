@@ -41,3 +41,8 @@
 .balances .balance-cash {
   color: #009900;
 }
+
+.no-balances {
+  margin-bottom: 2em;
+  text-align: center;
+}

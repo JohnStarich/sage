@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -30,21 +31,32 @@ func abortWithClientError(c *gin.Context, status int, err error) {
 	})
 }
 
-func readAndValidateAccount(r io.ReadCloser, accountStore *client.AccountStore) (model.Account, error) {
+func readAndValidateAccount(r io.Reader, accountStore *client.AccountStore) (originalAccountID string, account model.Account, err error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	account, err := client.UnmarshalAccount(b)
+	var original struct {
+		PreviousAccountID string
+	}
+	if err := json.Unmarshal(b, &original); err != nil {
+		return "", nil, err
+	}
+
+	account, err = client.UnmarshalAccount(b)
 	if err != nil {
-		return nil, err
+		return "", nil, err
+	}
+	originalAccountID = account.ID()
+	if original.PreviousAccountID != "" {
+		originalAccountID = original.PreviousAccountID
 	}
 
 	if connector, ok := account.Institution().(direct.Connector); ok && connector.Password() == "" {
 		var currentAccount model.Account
-		found, err := accountStore.Get(account.ID(), &currentAccount)
+		found, err := accountStore.Get(originalAccountID, &currentAccount)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		if found {
 			currentConn, currentOK := currentAccount.Institution().(direct.Connector)
@@ -55,9 +67,9 @@ func readAndValidateAccount(r io.ReadCloser, accountStore *client.AccountStore) 
 	} else if connector, ok := account.Institution().(web.PasswordConnector); ok && connector.Password() == "" {
 		// TODO combine these implementations?
 		var currentAccount model.Account
-		found, err := accountStore.Get(account.ID(), &currentAccount)
+		found, err := accountStore.Get(originalAccountID, &currentAccount)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		if found {
 			currentConn, currentOK := currentAccount.Institution().(web.PasswordConnector)
@@ -68,7 +80,7 @@ func readAndValidateAccount(r io.ReadCloser, accountStore *client.AccountStore) 
 	}
 
 	err = client.ValidateAccount(account)
-	return account, err
+	return originalAccountID, account, err
 }
 
 func readAndValidateDirectConnector(r io.ReadCloser) (direct.Connector, error) {
@@ -122,24 +134,24 @@ func getAccounts(accountStore *client.AccountStore) gin.HandlerFunc {
 
 func updateAccount(accountStore *client.AccountStore, ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		account, err := readAndValidateAccount(c.Request.Body, accountStore)
+		accountID, account, err := readAndValidateAccount(c.Request.Body, accountStore)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
 
 		var currentAccount model.Account
-		exists, err := accountStore.Get(account.ID(), &currentAccount)
+		exists, err := accountStore.Get(accountID, &currentAccount)
 		if err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
 		if !exists {
-			c.AbortWithStatus(http.StatusNotFound)
+			abortWithClientError(c, http.StatusNotFound, errors.Errorf("Account not found with ID: %q", accountID))
 			return
 		}
 
-		if err := accountStore.Update(account.ID(), account); err != nil {
+		if err := accountStore.Update(accountID, account); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
@@ -162,7 +174,7 @@ func updateAccount(accountStore *client.AccountStore, ledgerFile vcs.File, ldg *
 
 func addAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		account, err := readAndValidateAccount(c.Request.Body, accountStore)
+		_, account, err := readAndValidateAccount(c.Request.Body, accountStore)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
@@ -192,7 +204,7 @@ func removeAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 
 func verifyAccount(accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		account, err := readAndValidateAccount(c.Request.Body, accountStore)
+		_, account, err := readAndValidateAccount(c.Request.Body, accountStore)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return

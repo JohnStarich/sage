@@ -67,3 +67,8 @@
 .expenses .amount-tooltip .missing {
   color: #888;
 }
+
+.no-expenses {
+  margin-bottom: 2em;
+  text-align: center;
+}

@@ -65,10 +65,9 @@ export default function Balances({ syncTime }) {
   return (
     <div className="balances">
           {accounts.length === 0 ?
-            <tr>
-              <td><Link to="/accounts" className="btn btn-outline-primary">Add your first account</Link></td>
-              <td></td>
-            </tr>
+            <div className="no-balances">
+              <Link to="/accounts" className="btn btn-outline-primary">Add your first account</Link>
+            </div>
           : balanceSections}
           {remainingAccountMessages.map(msgs =>
             <p key={msgs[0].AccountID} className="message">
