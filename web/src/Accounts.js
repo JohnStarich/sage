@@ -17,7 +17,11 @@ export default function Accounts({ match }) {
   const [accounts, setAccounts] = React.useState([])
   React.useEffect(() => {
     API.get('/v1/getAccounts')
-      .then(res => setAccounts(res.data.Accounts))
+      .then(res => {
+        if (res.data.Accounts) {
+          setAccounts(res.data.Accounts)
+        }
+      })
   }, [])
 
   const accountCreated = (...newAccounts) => {
@@ -68,7 +72,7 @@ export default function Accounts({ match }) {
                 <p>Alternatively, import an OFX or QFX file downloaded from your institution.</p>
               </Col>
             </Row>
-            {accounts ? accounts.map(a =>
+            {accounts.map(a =>
               <Row key={a.AccountID}>
                 <Col>{a.AccountDescription}</Col>
                 <Col className="account-buttons">
@@ -76,7 +80,7 @@ export default function Accounts({ match }) {
                   <Button variant="outline-danger" onClick={() => deleteAccount(a.AccountID)}>Delete</Button>
                 </Col>
               </Row>
-            ) : null}
+            )}
             <Row>
               <Col className="account-actions">
                 <Link to={`${match.url}/direct-connect`} className="btn btn-primary add-direct">Add new Direct Connect</Link>
