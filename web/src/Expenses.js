@@ -39,7 +39,7 @@ export default function Expenses(props) {
       })
   }, [syncTime])
 
-  const noData = <div class="no-expenses">No expenses data to display</div>
+  const noData = <div className="no-expenses">No expenses data to display</div>
   if (!accounts) {
     return noData
   }
