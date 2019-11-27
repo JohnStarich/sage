@@ -71,6 +71,10 @@ func importTransactions(
 func ReadOFX(r io.Reader) ([]model.Account, []ledger.Transaction, error) {
 	resp, err := ofxgo.ParseResponse(r)
 	if err != nil {
+		if err.Error() == "Invalid CurrSymbol: XXX" {
+			// Invalid currency symbol can occur when no transactions are present
+			return nil, nil, nil
+		}
 		return nil, nil, err
 	}
 	return ParseOFX(resp)

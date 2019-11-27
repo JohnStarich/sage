@@ -228,14 +228,50 @@ func TestImportTransactions(t *testing.T) {
 }
 
 func TestReadOFX(t *testing.T) {
-	_, _, err := ReadOFX(strings.NewReader(`
+	t.Run("no signon", func(t *testing.T) {
+		_, _, err := ReadOFX(strings.NewReader(`
 OFXHEADER:100
 DATA:OFXSGML
 VERSION:102
 
 <OFX></OFX>`))
-	require.Error(t, err)
-	assert.Equal(t, "Missing opening SIGNONMSGSRSV1 xml element", err.Error())
+		require.Error(t, err)
+		assert.Equal(t, "Missing opening SIGNONMSGSRSV1 xml element", err.Error())
+	})
+
+	t.Run("no transactions", func(t *testing.T) {
+		_, _, err := ReadOFX(strings.NewReader(`
+OFXHEADER:100
+DATA:OFXSGML
+VERSION:102
+
+<OFX>
+<SIGNONMSGSRSV1>
+	<SONRS>
+		<STATUS>
+			<CODE>0
+			<SEVERITY>INFO
+		</STATUS>
+		<LANGUAGE>ENG
+		<FI>
+			<ORG>SOMEORG
+			<FID>SOMEFID
+		</FI>
+	</SONRS>
+</SIGNONMSGSRSV1>
+<BANKMSGSRSV1>
+	<STMTTRNRS>
+		<TRNUID>0
+		<STATUS>
+			<CODE>0
+			<SEVERITY>INFO
+		</STATUS>
+	</STMTTRNRS>
+</BANKMSGSRSV1>
+</OFX>
+`))
+		require.NoError(t, err)
+	})
 }
 
 func TestParseOFX(t *testing.T) {
