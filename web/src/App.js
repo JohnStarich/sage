@@ -33,6 +33,7 @@ export default App;
 function AppContent({ match }) {
   const [version, setVersion] = React.useState(null)
   const [syncTime, setSyncTime] = React.useState(new Date())
+  const [appClasses, setAppClasses] = React.useState([])
 
   React.useEffect(() => {
     API.get('/v1/getVersion')
@@ -43,12 +44,15 @@ function AppContent({ match }) {
         }
         setVersion(version)
       })
+    if (navigator.userAgent.includes('Sage/1.0.0') && navigator.userAgent.includes('Macintosh')) {
+      setAppClasses(["electron"])
+    }
   }, [])
 
   return (
-    <>
+    <div className={["app"].concat(appClasses).join(" ")}>
       <Crumb title="Sage" match={match} />
-      <Navbar className="main-nav" bg="dark" expand="sm" variant="dark" sticky="top">
+      <Navbar className="sage-nav" bg="dark" expand="sm" variant="dark" sticky="top">
         <NavLink exact to="/">
           <Navbar.Brand>
             <Logo className="sage-logo dark" />
@@ -79,7 +83,7 @@ function AppContent({ match }) {
         </Navbar.Collapse>
       </Navbar>
 
-      <div className="app">
+      <div className="content">
         <Switch>
           <Route path="/" exact component={() => <Activity syncTime={syncTime} />} />
           <Route path="/login" component={Login} />
@@ -96,6 +100,6 @@ function AppContent({ match }) {
           </Route>
         </Switch>
       </div>
-    </>
+    </div>
   )
 }

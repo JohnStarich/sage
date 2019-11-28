@@ -1,3 +1,11 @@
+.app.electron .sage-nav {
+  padding-top: 1em;
+}
+
+.sage-nav {
+  -webkit-app-region: drag;
+}
+
 .sage-logo {
   height: 1.5em;
   margin-right: 0.5em;
@@ -36,7 +44,7 @@
   transition-property: opacity, max-width;
 }
 
-.app > * {
+.content > * {
   max-width: 40em;
   display: block;
   margin: 0 auto;
