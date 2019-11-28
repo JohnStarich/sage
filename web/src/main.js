@@ -22,7 +22,7 @@ if (require('electron-squirrel-startup')) { // eslint-disable-line global-requir
 const DataDirectory = path.join(app.getPath('userData'), "data")
 const LedgerFile = path.join(DataDirectory, "ledger.journal")
 const RulesFile = path.join(DataDirectory, "ledger.rules")
-const LogFile = path.join(DataDirectory, "server.log")
+const LogFile = path.join(DataDirectory, "..", "server.log")
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
