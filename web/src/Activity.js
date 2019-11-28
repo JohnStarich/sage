@@ -12,7 +12,7 @@ import Transactions from './Transactions';
 export default function Activity(props) {
   const { syncTime } = props;
   return (
-    <Container className="content">
+    <Container className="activity">
       <Row>
         <Col lg xl={5}><Balances syncTime={syncTime} /></Col>
         <Col xl={7}><Expenses syncTime={syncTime} /></Col>

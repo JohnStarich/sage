@@ -1,17 +1,17 @@
-.app .content {
+.activity {
   max-width: initial;
 }
 
-.content > .row {
+.activity > .row {
   padding: 3em 0;
   padding-bottom: 0;
   box-sizing: border-box;
 }
 
-.content > .row:first-child {
+.activity > .row:first-child {
   padding-top: 4em;
 }
 
-.content > .row > div {
+.activity > .row > div {
   padding: 0 2em;
 }
