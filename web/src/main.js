@@ -4,6 +4,7 @@ const {
   Menu,
   app,
   dialog,
+  session,
   shell,
 } = require('electron');
 const { spawn } = require('child_process');
@@ -29,7 +30,10 @@ const LogFile = path.join(DataDirectory, "..", "server.log")
 let mainWindow;
 let sageServer;
 
-const createWindow = () => {
+const createWindow = async function() {
+  // Clear cached data so UI changes will load properly after client update
+  await session.defaultSession.clearCache();
+
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 800,
