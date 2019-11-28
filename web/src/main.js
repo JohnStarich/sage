@@ -3,9 +3,10 @@ const {
   BrowserWindow,
   Menu,
   app,
+  dialog,
   shell,
 } = require('electron');
-const { execFile } = require('child_process');
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -21,6 +22,7 @@ if (require('electron-squirrel-startup')) { // eslint-disable-line global-requir
 const DataDirectory = path.join(app.getPath('userData'), "data")
 const LedgerFile = path.join(DataDirectory, "ledger.journal")
 const RulesFile = path.join(DataDirectory, "ledger.rules")
+const LogFile = path.join(DataDirectory, "server.log")
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -112,21 +114,27 @@ if (process.platform === 'win32') {
 }
 fs.mkdirSync(DataDirectory, {recursive: true})
 
-sageServer = execFile(executable, [
+const serverLogStream = fs.createWriteStream(LogFile, {
+  flags: fs.constants.O_TRUNC|fs.constants.O_APPEND|fs.constants.O_CREAT|fs.constants.O_WRONLY,
+  mode: 0o750,
+})
+
+sageServer = spawn(executable, [
   '-server', '-port', SagePort,
   '-data', DataDirectory,
   '-ledger', LedgerFile,
   '-rules', RulesFile,
-], function(err) {
-  if (err === null) {
-    return
-  }
-  app.quit()
-  throw Error(`Failed to run ${executable}: ${err}`)
-})
-
+])
 sageServer.stdout.pipe(process.stdout)
+sageServer.stdout.pipe(serverLogStream)
 sageServer.stderr.pipe(process.stderr)
+sageServer.stderr.pipe(serverLogStream)
+sageServer.on('close', code => {
+  if (code !== 0) {
+    app.quit()
+    dialog.showErrorBox(`Sage closed unexpectedly`, `Log file: ${LogFile}`)
+  }
+})
 
 app.on('quit', () => {
   sageServer.kill('SIGINT')
