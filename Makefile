@@ -54,6 +54,14 @@ clean: out
 out:
 	mkdir out
 
+out/ofxhome.xml: out
+	# API v1.1.2
+	if [[ ! -f out/ofxhome.xml ]]; then \
+		curl -v -o out/ofxhome.xml http://www.ofxhome.com/api.php?dump=yes; \
+	else \
+		touch out/ofxhome.xml; \
+	fi
+
 .PHONY: release
 release: clean
 	$(MAKE) -j4 dist
@@ -77,10 +85,10 @@ static-deps:
 	npm ci --prefix=web
 
 .PHONY: static
-static: static-deps
-	npm run --prefix=web build
+static: out/ofxhome.xml static-deps
+	#npm run --prefix=web build
 	# Unset vars from upcoming targets
-	GOOS= GOARCH= go generate ./server
+	GOOS= GOARCH= go generate ./server ./client/direct/drivers
 
 .PHONY: start
 start:

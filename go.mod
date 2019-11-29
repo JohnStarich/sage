@@ -8,10 +8,11 @@ require (
 	github.com/gin-contrib/zap v0.0.0-20190911144541-f473495929db
 	github.com/gin-gonic/gin v1.4.0
 	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
+	github.com/johnstarich/go/regext v0.0.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.8.1
 	github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.4.0
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/zap v1.10.0
 	golang.org/x/exp v0.0.0-20190718202018-cfdd5522f6f6
