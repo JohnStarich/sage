@@ -1,8 +1,11 @@
 package direct
 
-import "strings"
+import (
+	"strings"
+)
 
 type Driver interface {
+	ID() string
 	Description() string
 	FID() string
 	Org() string
@@ -18,21 +21,27 @@ const (
 	MessageCreditCard
 )
 
-var directConnectInstitutions []Driver
+var directConnectInstitutions = make(map[string]Driver)
 
 func Register(drivers ...Driver) {
 	if len(directConnectInstitutions) == 0 {
-		directConnectInstitutions = make([]Driver, 0, len(drivers))
+		directConnectInstitutions = make(map[string]Driver, len(drivers))
 	}
 	for _, driver := range drivers {
-		for _, support := range driver.MessageSupport() {
-			switch support {
-			case MessageBank, MessageCreditCard:
-				directConnectInstitutions = append(directConnectInstitutions, driver)
-				return
-			}
+		if supportedDriver(driver) {
+			directConnectInstitutions[driver.ID()] = driver
 		}
 	}
+}
+
+func supportedDriver(d Driver) bool {
+	for _, support := range d.MessageSupport() {
+		switch support {
+		case MessageBank, MessageCreditCard:
+			return true
+		}
+	}
+	return false
 }
 
 func Search(query string) []Driver {

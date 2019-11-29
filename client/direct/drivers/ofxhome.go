@@ -5,11 +5,16 @@ package drivers
 import "github.com/johnstarich/sage/client/direct"
 
 type OFXHomeInstitution struct {
+	InstID          string
 	InstDescription string
 	InstFID         string
 	InstOrg         string
 	InstURL         string
 	InstSupport     []direct.DriverMessage
+}
+
+func (o OFXHomeInstitution) ID() string {
+	return o.InstID
 }
 
 func (o OFXHomeInstitution) Description() string {

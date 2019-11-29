@@ -15,6 +15,10 @@ import (
 	"github.com/johnstarich/sage/client/direct/drivers"
 )
 
+const (
+	ofxhomePrefix = "ofxhome:"
+)
+
 var (
 	newLineLocations = regext.MustCompile(`
 		(?:" [^"]* ")?   # don't capture new line locations inside quotes
@@ -60,13 +64,16 @@ func run(ofxhomePath, outputPath string) error {
 }
 
 type xmlInstitution struct {
-	XMLName    xml.Name `xml:"institution"`
-	Name       string   `xml:"name"`
-	FID        string   `xml:"fid"`
-	Org        string   `xml:"org"`
-	URL        string   `xml:"url"`
-	Bank       bool     `xml:"profile>bankmsgset"`
-	CreditCard bool     `xml:"profile>creditcardmsgset"`
+	XMLName xml.Name `xml:"institution"`
+	ID      string   `xml:"id,attr"`
+	Name    string   `xml:"name"`
+	FID     string   `xml:"fid"`
+	Org     string   `xml:"org"`
+	URL     string   `xml:"url"`
+	Profile struct {
+		Bank       bool `xml:"bankmsgset,attr"`
+		CreditCard bool `xml:"creditcardmsgset,attr"`
+	} `xml:"profile"`
 }
 
 func decodeOFXHomeDump(r io.Reader) ([]xmlInstitution, error) {
@@ -95,15 +102,16 @@ func generateOFXHome(r io.Reader) (io.Reader, error) {
 	ofxDrivers := make([]direct.Driver, 0, len(dump))
 	for _, inst := range dump {
 		d := drivers.OFXHomeInstitution{
+			InstID:          ofxhomePrefix + inst.ID,
 			InstDescription: inst.Name,
 			InstFID:         inst.FID,
 			InstOrg:         inst.Org,
 			InstURL:         inst.URL,
 		}
-		if inst.Bank {
+		if inst.Profile.Bank {
 			d.InstSupport = append(d.InstSupport, direct.MessageBank)
 		}
-		if inst.CreditCard {
+		if inst.Profile.CreditCard {
 			d.InstSupport = append(d.InstSupport, direct.MessageCreditCard)
 		}
 		ofxDrivers = append(ofxDrivers, d)

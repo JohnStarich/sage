@@ -289,3 +289,24 @@ func getWebConnectDrivers() gin.HandlerFunc {
 		})
 	}
 }
+
+func getDirectConnectDrivers() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		results := direct.Search(c.Query("search"))
+
+		type driverResult struct {
+			ID          string
+			Description string
+		}
+		response := make([]driverResult, 0, len(results))
+		for _, result := range results {
+			response = append(response, driverResult{
+				ID:          result.ID(),
+				Description: result.Description(),
+			})
+		}
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"Drivers": response,
+		})
+	}
+}

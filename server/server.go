@@ -152,6 +152,7 @@ func setupAPI(
 
 	router.GET("/web/getDriverNames", getWebConnectDrivers())
 
+	router.GET("/direct/getDrivers", getDirectConnectDrivers())
 	router.POST("/direct/verifyAccount", verifyAccount(accountStore))
 	router.POST("/direct/fetchAccounts", fetchDirectConnectAccounts())
 

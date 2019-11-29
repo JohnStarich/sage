@@ -10,6 +10,12 @@ linters:
     - scopelint
     - bodyclose
 
+run:
+  skip-files:
+    # Skip all dynamically generated files
+    - bindata.go
+    - generated.go
+
 issues:
   exclude:
     # Disable scopelint errors on table driven tests
