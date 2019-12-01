@@ -42,10 +42,11 @@ build: static
 
 .PHONY: docker
 docker:
-	docker build \
-		--build-arg VERSION=${VERSION} \
-		-t johnstarich/sage:${VERSION} \
-		.
+	./goproxy.sh \
+		docker build \
+			--build-arg VERSION=${VERSION} \
+			-t johnstarich/sage:${VERSION} \
+			.
 
 .PHONY: clean
 clean: out
