@@ -1,8 +1,11 @@
-out
-ignore
+.dockerignore
 .git
 Dockerfile
-tags
 data
-web/node_modules
+ignore
+out
 sage
+tags
+web/build
+web/node_modules
+web/out

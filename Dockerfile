@@ -2,6 +2,7 @@ FROM golang:1.12-alpine as builder
 
 RUN apk add --no-cache \
             bash \
+            curl \
             git \
             make \
             npm \
