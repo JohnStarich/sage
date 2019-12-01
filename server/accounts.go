@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
@@ -284,8 +285,16 @@ func fetchDirectConnectAccounts() gin.HandlerFunc {
 
 func getWebConnectDrivers() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		results := web.Drivers()
+		response := make([]string, 0, len(results))
+		search := strings.ToLower(c.Query("search"))
+		for _, result := range results {
+			if strings.Contains(strings.ToLower(result), search) {
+				response = append(response, result)
+			}
+		}
 		c.JSON(http.StatusOK, map[string]interface{}{
-			"DriverNames": web.Drivers(),
+			"DriverNames": response,
 		})
 	}
 }
@@ -297,13 +306,30 @@ func getDirectConnectDrivers() gin.HandlerFunc {
 		type driverResult struct {
 			ID          string
 			Description string
+			FID         string
+			Org         string
+			URL         string
+			Bank        bool
+			CreditCard  bool
 		}
 		response := make([]driverResult, 0, len(results))
 		for _, result := range results {
-			response = append(response, driverResult{
+			d := driverResult{
 				ID:          result.ID(),
 				Description: result.Description(),
-			})
+				FID:         result.FID(),
+				Org:         result.Org(),
+				URL:         result.URL(),
+			}
+			for _, support := range result.MessageSupport() {
+				switch support {
+				case direct.MessageCreditCard:
+					d.CreditCard = true
+				case direct.MessageBank:
+					d.Bank = true
+				}
+			}
+			response = append(response, d)
 		}
 		c.JSON(http.StatusOK, map[string]interface{}{
 			"Drivers": response,

@@ -45,9 +45,10 @@ func supportedDriver(d Driver) bool {
 }
 
 func Search(query string) []Driver {
+	query = strings.ToLower(query)
 	results := make([]Driver, 0)
 	for _, driver := range directConnectInstitutions {
-		if strings.Contains(driver.Description(), query) {
+		if strings.Contains(strings.ToLower(driver.Description()), query) {
 			results = append(results, driver)
 		}
 	}

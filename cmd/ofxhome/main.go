@@ -80,8 +80,8 @@ func decodeOFXHomeDump(r io.Reader) ([]xmlInstitution, error) {
 	decoder := xml.NewDecoder(r)
 	decoder.Strict = false
 	var dump []xmlInstitution
-	var inst xmlInstitution
 	for {
+		var inst xmlInstitution
 		err := decoder.Decode(&inst)
 		if err == io.EOF {
 			return dump, nil
@@ -114,7 +114,9 @@ func generateOFXHome(r io.Reader) (io.Reader, error) {
 		if inst.Profile.CreditCard {
 			d.InstSupport = append(d.InstSupport, direct.MessageCreditCard)
 		}
-		ofxDrivers = append(ofxDrivers, d)
+		if updatedDriver, shouldAdd := checkDriver(d); shouldAdd {
+			ofxDrivers = append(ofxDrivers, updatedDriver)
+		}
 	}
 	return formatOFXHomeGoFile(ofxDrivers)
 }
@@ -145,4 +147,14 @@ var ofxDrivers =`)
 	driverSliceStr := s.String()
 	result, err := format.Source([]byte(driverSliceStr))
 	return bytes.NewReader(result), err
+}
+
+func checkDriver(d direct.Driver) (update direct.Driver, shouldAdd bool) {
+	switch {
+	case strings.HasPrefix(d.URL(), "https://ofx.discovercard.com"):
+		// Discover OFX has been disabled
+		return d, false
+	default:
+		return d, true
+	}
 }

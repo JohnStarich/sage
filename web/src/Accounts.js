@@ -3,12 +3,12 @@ import { Route, Link } from "react-router-dom";
 import API from './API';
 import './Accounts.css';
 
+import CommonAccount from './CommonAccount';
 import Button from 'react-bootstrap/Button';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Crumb from './Breadcrumb';
 import DirectConnect from './DirectConnect';
-import ExpressDirectConnect from './ExpressDirectConnect';
 import ImportAccounts from './ImportAccounts';
 import Row from 'react-bootstrap/Row';
 import WebConnect from './WebConnect';
@@ -68,7 +68,7 @@ export default function Accounts({ match }) {
             </Row>
             <Row>
               <Col>
-                <p>Add a new Direct Connect or Web Connect account to automatically download transactions directly from your institution.</p>
+                <p>Add a new account to automatically download transactions directly from your institution.</p>
                 <p>Alternatively, import an OFX or QFX file downloaded from your institution.</p>
               </Col>
             </Row>
@@ -83,19 +83,36 @@ export default function Accounts({ match }) {
             )}
             <Row>
               <Col className="account-actions">
-                <Link to={`${match.url}/direct-connect`} className="btn btn-primary add-direct">Add new Direct Connect</Link>
+                <Link to={`${match.url}/new`} className="btn btn-primary new">Add New</Link>
                 <Link to={`${match.url}/import`} className="btn btn-secondary import">Import OFX/QFX</Link>
-                <Link to={`${match.url}/web-connect`} className="btn btn-warning add-web">Add new Web Connect <sup>(beta)</sup></Link>
               </Col>
             </Row>
           </Container>
         </>
       } />
       <Route path={`${match.path}/edit/:id`} component={props => <AccountEditor updated={accountUpdated} {...props} />} />
-      <Route path={`${match.path}/direct-connect`} component={props => <ExpressDirectConnectAccounts created={accountCreated} {...props} />} />
+      <Route path={`${match.path}/new`} component={props => <NewAccount created={accountCreated} {...props} />} />
       <Route path={`${match.path}/advanced-direct-connect`} component={props => <NewDirectConnect created={accountCreated} {...props} />} />
-      <Route path={`${match.path}/web-connect`} component={props => <NewWebConnect created={accountCreated} {...props} />} />
       <Route path={`${match.path}/import`} component={Import} />
+    </>
+  )
+}
+
+function NewAccount({ created, match }) {
+  return (
+    <>
+      <Crumb title="New Account" match={match} />
+      <Container>
+        <Row><Col><h2>New Account</h2></Col></Row>
+        <Row>
+          <Col>
+            <p><em>Advanced users can enter all direct connect details <Link to={`/accounts/advanced-direct-connect`}>here</Link>.</em></p>
+          </Col>
+        </Row>
+        <Row>
+          <CommonAccount created={created} />
+        </Row>
+      </Container>
     </>
   )
 }
@@ -116,41 +133,13 @@ function NewDirectConnect({ created, match }) {
             <p>For advanced users only. Input known direct connect details to add an account.</p>
             <p>Sometimes the password is a PIN rather than the sign-in password, and the username could be an ID only provided in their instructions.</p>
             &nbsp;
-            <p>If you're <strong>not</strong> an advanced user, then use the express direct connect page <Link to="/accounts/direct-connect">here</Link>.</p>
+            <p>If you're <strong>not</strong> an advanced user, then use the new account page <Link to="/accounts/new">here</Link>.</p>
           </Col>
         </Row>
         <Row>
           <DirectConnect editable updated={updated} />
         </Row>
       </Container>
-    </>
-  )
-}
-
-function NewWebConnect({ created, match }) {
-  const updated = (_, account) => {
-    if (created) {
-      created(account)
-    }
-  }
-  return (
-    <>
-      <Crumb title="Web Connect Beta" match={match} />
-      <Container>
-        <Row><Col><h2>Web Connect <sup>(beta)</sup></h2></Col></Row>
-        <Row>
-          <WebConnect editable updated={updated} />
-        </Row>
-      </Container>
-    </>
-  )
-}
-
-function ExpressDirectConnectAccounts({ created, match }) {
-  return (
-    <>
-      <Crumb title="Direct Connect" match={match} />
-      <ExpressDirectConnect created={created} />
     </>
   )
 }

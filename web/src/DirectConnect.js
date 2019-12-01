@@ -78,7 +78,7 @@ export default function(props) {
       }
   }
 
-  const testClicked = () => {
+  const testClicked = async () => {
     const form = document.getElementById(makeID("form"))
     if (form.checkValidity() === false) {
       setValidated(true)
@@ -86,8 +86,8 @@ export default function(props) {
     }
     const newAccount = accountFromForm(id, { directConnectEnabled })
     setValidated(true)
-    return verifyAccount(newAccount)
-      .then(res => {
+    return await verifyAccount(newAccount)
+      .then(() => {
         setVerified(true)
         setTestFeedback(null)
       })
@@ -157,7 +157,7 @@ export default function(props) {
       >
         <Form.Group>
           <Row>
-            <Form.Label column sm={labelWidth}>Account Description</Form.Label>
+            <Form.Label column sm={labelWidth}>Account name</Form.Label>
             <Col><Form.Control id={makeID("description")} type="text" defaultValue={account ? account.AccountDescription : null} {...formControlDefaults} required /></Col>
           </Row>
           <RadioGroup

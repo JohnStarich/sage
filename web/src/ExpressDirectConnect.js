@@ -1,20 +1,22 @@
+import './ExpressDirectConnect.css';
 import API from './API';
-import { Link } from "react-router-dom";
-import React from 'react';
 import Accordion from 'react-bootstrap/Accordion';
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
+import LoadingButton from './LoadingButton';
 import Password from './Password';
+import React from 'react';
 import Row from 'react-bootstrap/Row';
+import { Link } from "react-router-dom";
 
 
 const labelWidth = 4
 const inputWidth = 12 - labelWidth
 
-export default function({ created }) {
+export default function({ driver, created }) {
   const [validated, setValidated] = React.useState(false)
   const [accounts, setAccounts] = React.useState(null)
   const [findFeedback, setFindFeedback] = React.useState(null)
@@ -26,71 +28,63 @@ export default function({ created }) {
     throw Error("Created prop must be set")
   }
 
+  const valueFromID = id => document.getElementById(id).value
+  const submit = async e => {
+    e.preventDefault()
+    e.stopPropagation()
+    setValidated(true)
+    const form = e.currentTarget
+    if (form.checkValidity() === false) {
+      return
+    }
+    setFindFeedback(null)
+    setFindResult(null)
+    const password = valueFromID("password")
+    const res = await API.post('/v1/direct/fetchAccounts', {
+      InstDescription: driver.Description,
+      InstFID: driver.FID,
+      InstOrg: driver.Org,
+      ConnectorURL: driver.URL,
+      ConnectorUsername: valueFromID("username"),
+      ConnectorPassword: password,
+      ConnectorConfig: {
+        ClientID: valueFromID("clientID"),
+        AppID: valueFromID("appID"),
+        AppVersion: valueFromID("appVersion"),
+        OFXVersion: valueFromID("ofxVersion"),
+      },
+    })
+
+    try {
+      if (! res.data || res.data.length === 0) {
+        setFindFeedback("No accounts found")
+        return
+      }
+      res.data.forEach(a => {
+        a.DirectConnect.ConnectorPassword = password // copy in password since API redacts it
+      })
+      setAccounts(res.data)
+      setFindResult("Success! Select desired accounts below:")
+    } catch(e) {
+      if (!e.response || !e.response.data || !e.response.data.Error) {
+        console.error(e)
+        throw e
+      }
+      setFindFeedback(e.response.data.Error)
+    }
+  }
+
   return (
     <Container>
-      <Row><Col><h2>Direct Connect</h2></Col></Row>
-      <Row>
-        <Col>
-          <p>Find available accounts for Direct Connect at your institution.</p>
-          <p>If accounts were not found, try checking your institution's website for instructions to use Quicken, Quickbooks, or Microsoft Money.</p>
-          <p>Sometimes the password is a PIN rather than the sign-in password, and the username could be an ID only provided in their instructions.</p>
-          &nbsp;
-          <p>If you're an advanced user, and have all of your connection details already, then enter them manually <Link to="/accounts/advanced-direct-connect">here</Link>.</p>
-          &nbsp;
-        </Col>
-      </Row>
       <Form
         noValidate
         validated={validated}
-        onSubmit={e => {
-          e.preventDefault()
-          e.stopPropagation()
-          const form = e.currentTarget
-          setValidated(true)
-          if (form.checkValidity() !== false) {
-            const valueFromID = id => document.getElementById(id).value
-            setFindFeedback(null)
-            setFindResult(null)
-            const password = valueFromID("password")
-            API.post('/v1/direct/fetchAccounts', {
-              InstDescription: valueFromID("description"),
-              InstFID: valueFromID("fid"),
-              InstOrg: valueFromID("org"),
-              ConnectorURL: valueFromID("url"),
-              ConnectorUsername: valueFromID("username"),
-              ConnectorPassword: password,
-              ConnectorConfig: {
-                ClientID: valueFromID("clientID"),
-                AppID: valueFromID("appID"),
-                AppVersion: valueFromID("appVersion"),
-                OFXVersion: valueFromID("ofxVersion"),
-              },
-            })
-              .then(res => {
-                if (! res.data || res.data.length === 0) {
-                  setFindFeedback("No accounts found")
-                  return
-                }
-                res.data.forEach(a => {
-                  a.DirectConnect.ConnectorPassword = password // copy in password since API redacts it
-                })
-                setAccounts(res.data)
-                setFindResult("Success! Select desired accounts below:")
-              })
-              .catch(e => {
-                if (!e.response || !e.response.data || !e.response.data.Error) {
-                  console.error(e)
-                  throw e
-                }
-                setFindFeedback(e.response.data.Error)
-              })
-          }
-        }}
+        onSubmit={submit}
       >
         <Form.Group controlId="username" as={Row}>
           <Form.Label column sm={labelWidth}>Username</Form.Label>
           <Col sm={inputWidth}>
-            <Form.Control type="text" required />
+            <Form.Control type="text" required autoFocus />
           </Col>
         </Form.Group>
         <Form.Group controlId="password" as={Row}>
@@ -98,36 +92,6 @@ export default function({ created }) {
           <Col sm={inputWidth}>
             <Password />
           </Col>
-        </Form.Group>
-
-        <Form.Group>
-          <Form.Group controlId="description" as={Row}>
-            <Form.Label column sm={labelWidth}>Institution name</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="text" required />
-            </Col>
-          </Form.Group>
-
-          <p>To look up your institution's FID, Org, and Direct Connect details, visit <a href="https://www.ofxhome.com/index.php/home/directory" target="_blank" rel="noopener noreferrer">ofxhome.com</a>.</p>
-          <Form.Group controlId="fid" as={Row}>
-            <Form.Label column sm={labelWidth}>FID</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="text" required />
-            </Col>
-          </Form.Group>
-
-          <Form.Group controlId="org" as={Row}>
-            <Form.Label column sm={labelWidth}>Org</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="text" required />
-            </Col>
-          </Form.Group>
-          <Form.Group controlId="url" as={Row}>
-            <Form.Label column sm={labelWidth}>Direct Connect URL</Form.Label>
-            <Col sm={inputWidth}>
-              <Form.Control type="url" pattern="(https://|http://localhost).*" required />
-            </Col>
-          </Form.Group>
         </Form.Group>
 
         <Form.Group>
@@ -140,6 +104,7 @@ export default function({ created }) {
               </Card.Header>
               <Accordion.Collapse eventKey="0">
                 <Card.Body>
+                  <p>If you're an advanced user, and have all of your connection details already, then enter them manually <Link to="/accounts/advanced-direct-connect">here</Link>.</p>
                   <Form.Group controlId="clientID" as={Row}>
                     <Form.Label column sm={labelWidth}>Client ID</Form.Label>
                     <Col sm={inputWidth}>
@@ -174,7 +139,9 @@ export default function({ created }) {
         </Form.Group>
         &nbsp;
         <Form.Row>
-          <Col sm={labelWidth}><Button type="submit">Find</Button></Col>
+          <Col sm={labelWidth}>
+            <LoadingButton type="submit" onClick={submit}>Find</LoadingButton>
+          </Col>
           <Col>
             <p>{findFeedback}</p>
             <p>{findResult}</p>
@@ -182,6 +149,10 @@ export default function({ created }) {
         </Form.Row>
       </Form>
       &nbsp;
+
+      {findFeedback && !(findResult && findResult.startsWith("Success! ")) ?
+        <p>If your username and password don't work, visit your institution's website for more information on "Direct Connect." Instructions for Direct Connect may be located under "QuickBooks" or "Quicken." Sometimes the username is an account ID and the password a PIN instead.</p>
+      : null}
 
       {!accounts ? null :
         <Form
@@ -193,22 +164,22 @@ export default function({ created }) {
             if (form.checkValidity() !== false) {
               setAddFeedback(null)
               setSubmittingAccounts(true)
-              Promise.all(accounts.map(account => {
-                const checkbox = document.getElementById("add-" + account.AccountID)
-                if (checkbox.checked && !checkbox.disabled) {
-                  return API.post('/v1/addAccount', account)
-                    .then(res => {
-                      checkbox.disabled = true
-                      checkbox.classList.add("is-valid")
-                      return account
-                    })
+              Promise.all(accounts.map(async account => {
+                const checkbox = document.getElementById("add-account-id-" + account.AccountID)
+                const accountName = document.getElementById("add-account-name-" + account.AccountID).value
+                if (!checkbox.checked || checkbox.disabled) {
+                  return null
                 }
-                return null
+                const updatedAccount = Object.assign({}, account, { AccountDescription: accountName })
+                await API.post('/v1/addAccount', updatedAccount)
+                checkbox.disabled = true
+                checkbox.classList.add("is-valid")
+                return updatedAccount
               }))
                 .then(accounts => {
                   setTimeout(() => {
-                    created(...accounts)
                     document.getElementById("return-to-accounts").click()
+                    created(...accounts)
                   }, 1000)
                 })
                 .catch(e => {
@@ -225,11 +196,18 @@ export default function({ created }) {
           }}
         >
           {accounts.map(a =>
-            <Form.Group key={a.AccountID} controlId={"add-" + a.AccountID} as={Row}>
-              <Col>
+            <Form.Row key={a.AccountID} className="account-suggestion">
+              <Form.Group controlId={"add-account-id-" + a.AccountID} as={Col} sm="5">
                 <Form.Check type="checkbox" label={a.AccountDescription} readOnly={submittingAccounts} />
-              </Col>
-            </Form.Group>
+              </Form.Group>
+              <Form.Group controlId={"add-account-name-" + a.AccountID} as={Col} sm="7">
+                <Form.Control type="text" defaultValue={
+                  a.AccountDescription.includes(' ')
+                  ? a.AccountDescription
+                  : `${a.DirectConnect.InstDescription} - ****${a.AccountDescription.substring(a.AccountDescription.length - 4)}`
+                } />
+              </Form.Group>
+            </Form.Row>
           )}
           <Form.Row>
             <Col sm={labelWidth}>
@@ -238,7 +216,7 @@ export default function({ created }) {
                 disabled={submittingAccounts}
                 onClick={() => {
                   accounts.forEach(a => {
-                    document.getElementById("add-"+a.AccountID).checked = true
+                    document.getElementById("add-account-id-"+a.AccountID).checked = true
                   })
                 }}
               >

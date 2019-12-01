@@ -17,13 +17,16 @@ export default function LoadingButton(props) {
   if (className) {
     fullClassName += " " + className
   }
+  if (! onClick) {
+    throw Error("onClick handler is required to test loading")
+  }
 
   return (
     <Button
       className={fullClassName}
-      onClick={() => {
+      onClick={e => {
         setIsLoading(true)
-        Promise.resolve(onClick())
+        Promise.resolve(onClick(e))
           .finally(() => setIsLoading(false))
       }}
       {...remainingProps}

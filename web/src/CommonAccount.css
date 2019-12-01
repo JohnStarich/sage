@@ -1,0 +1,32 @@
+.institution-title {
+  margin: 1em 0;
+}
+
+.common-account .institution-name:not(:focus) + .suggestions {
+  visibility: hidden;
+}
+
+.common-account .suggestions {
+  position: absolute;
+  backdrop-filter: blur(0.1rem);
+  background-color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(205, 205, 205, 0.8);
+  border-top: none;
+  border-bottom-left-radius: 1em;
+  border-bottom-right-radius: 1em;
+  width: 90%;
+  z-index: 1;
+  transition: 0.1s 0 visibility;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.common-account .suggestions li {
+  padding: 0.5em 0.7em;
+}
+
+.common-account .suggestions li:hover {
+  background-color: #EEE;
+}

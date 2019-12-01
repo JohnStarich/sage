@@ -112,7 +112,7 @@ export default function ({ account, editable, updated }) {
         {driverName ?
           <>
             <Row>
-              <Form.Label column sm={labelWidth}>Account Description</Form.Label>
+              <Form.Label column sm={labelWidth}>Account name</Form.Label>
               <Col><Form.Control id={makeID("description")} type="text" defaultValue={account ? account.AccountDescription : driverName} {...formControlDefaults} required /></Col>
             </Row>
             <Form.Group controlId={makeID("id")} as={Row}>
