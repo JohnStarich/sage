@@ -1,4 +1,4 @@
-//go:generate go run github.com/johnstarich/sage/cmd/ofxhome -ofxhome ../../../out/ofxhome.xml -out generated.go
+//go:generate go run github.com/johnstarich/sage/cmd/ofxhome -ofxhome ../../../cache/ofxhome.xml -out generated.go
 
 package drivers
 

@@ -49,18 +49,21 @@ docker:
 			.
 
 .PHONY: clean
-clean: out
-	rm -rf out/
+clean: cache out
+	rm -rf cache/ out/
+
+cache:
+	mkdir cache
 
 out:
 	mkdir out
 
-out/ofxhome.xml: out
+cache/ofxhome.xml: cache
 	# API v1.1.2
-	if [[ ! -f out/ofxhome.xml ]]; then \
-		curl -v -o out/ofxhome.xml http://www.ofxhome.com/api.php?dump=yes; \
+	if [[ ! -f cache/ofxhome.xml ]]; then \
+		curl -v -o cache/ofxhome.xml http://www.ofxhome.com/api.php?dump=yes; \
 	else \
-		touch out/ofxhome.xml; \
+		touch cache/ofxhome.xml; \
 	fi
 
 .PHONY: release
@@ -86,8 +89,8 @@ static-deps:
 	npm ci --prefix=web
 
 .PHONY: static
-static: out/ofxhome.xml static-deps
-	#npm run --prefix=web build
+static: cache/ofxhome.xml static-deps
+	npm run --prefix=web build
 	# Unset vars from upcoming targets
 	GOOS= GOARCH= go generate ./server ./client/direct/drivers
 
