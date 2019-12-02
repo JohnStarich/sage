@@ -1,3 +1,22 @@
-.account-suggestion {
+.new-direct-connect .account-suggestion {
   align-items: baseline;
+}
+
+.new-direct-connect .account-suggestion input[type="checkbox"] + label {
+  display: inline;
+}
+
+.new-direct-connect .align-row {
+  align-items: baseline;
+}
+
+.new-direct-connect .direct-connect-url {
+  color: #888;
+  word-break: break-all;
+  break-inside: auto;
+}
+
+.new-direct-connect .direct-connect-url .direct-connect-hostname {
+  color: #000;
+  font-weight: 700;
 }

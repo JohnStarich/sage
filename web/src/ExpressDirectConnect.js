@@ -34,7 +34,7 @@ export default function({ driver, created }) {
     e.stopPropagation()
     setValidated(true)
     const form = e.currentTarget
-    if (form.checkValidity() === false) {
+    if (form.checkValidity() === false || ! document.getElementById("urlAccepted").checked) {
       return
     }
     setFindFeedback(null)
@@ -75,12 +75,31 @@ export default function({ driver, created }) {
   }
 
   return (
-    <Container>
+    <Container className="new-direct-connect">
       <Form
         noValidate
         validated={validated}
         onSubmit={submit}
       >
+        <Form.Group>
+          <Form.Group as={Row} className="align-row">
+            <Form.Label column sm={labelWidth}>URL</Form.Label>
+            <Col sm={inputWidth}>
+              <HighlightHost url={driver.URL} />
+            </Col>
+          </Form.Group>
+          <Row>
+            <Col sm={labelWidth} />
+            <Col sm={inputWidth}><p>The above URL points to my institution.</p></Col>
+          </Row>
+          <Form.Group controlId="urlAccepted" as={Row} className="align-row">
+            <Col sm={labelWidth}></Col>
+            <Col sm={inputWidth}><Form.Check label="I agree" required /></Col>
+          </Form.Group>
+        </Form.Group>
+
+        &nbsp;
+
         <Form.Group controlId="username" as={Row}>
           <Form.Label column sm={labelWidth}>Username</Form.Label>
           <Col sm={inputWidth}>
@@ -197,16 +216,16 @@ export default function({ driver, created }) {
         >
           {accounts.map(a =>
             <Form.Row key={a.AccountID} className="account-suggestion">
-              <Form.Group controlId={"add-account-id-" + a.AccountID} as={Col} sm="5">
-                <Form.Check type="checkbox" label={a.AccountDescription} readOnly={submittingAccounts} />
-              </Form.Group>
-              <Form.Group controlId={"add-account-name-" + a.AccountID} as={Col} sm="7">
-                <Form.Control type="text" defaultValue={
+              <Col sm="5">
+                <Form.Check id={"add-account-id-" + a.AccountID} type="checkbox" label={a.AccountDescription} readOnly={submittingAccounts} />
+              </Col>
+              <Col sm="7">
+                <Form.Control id={"add-account-name-" + a.AccountID} type="text" defaultValue={
                   a.AccountDescription.includes(' ')
                   ? a.AccountDescription
                   : `${a.DirectConnect.InstDescription} - ****${a.AccountDescription.substring(a.AccountDescription.length - 4)}`
                 } />
-              </Form.Group>
+              </Col>
             </Form.Row>
           )}
           <Form.Row>
@@ -233,5 +252,31 @@ export default function({ driver, created }) {
       }
       <Link id="return-to-accounts" to="/accounts" style={{display:"none"}}>Back to accounts</Link>
     </Container>
+  )
+}
+
+function HighlightHost({
+  url: urlString,
+  className: externalClassNames,
+  ...props
+}) {
+  if (! urlString) {
+    throw Error("URL is required")
+  }
+  const url = new URL(urlString)
+  const hostnameMatches = url.hostname.match(/[^.]+\.co\.[^.]+$|[^.]+\.[^.]+$/)
+  if (! hostnameMatches) {
+    return url
+  }
+  const hostname = hostnameMatches[0]
+  const index = urlString.indexOf(hostname)
+  const prefix = urlString.substring(0, index)
+  const suffix = urlString.substring(index + hostname.length)
+
+  const classNames = externalClassNames || ""
+  return (
+    <div className={"direct-connect-url "+classNames} {...props}>
+      {prefix}<span className="direct-connect-hostname">{hostname}</span>{suffix}
+    </div>
   )
 }
