@@ -39,6 +39,8 @@ export default function({ created }) {
         <Col>
           <Form.Control
             autoFocus
+            autoCorrect="off"
+            spellCheck="false"
             className="institution-name"
             sm="8"
             value={name}
