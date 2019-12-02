@@ -16,7 +16,7 @@
   border-bottom-right-radius: 1em;
   width: 90%;
   z-index: 1;
-  transition: 0.1s 0 visibility;
+  transition: 0.3s 0 visibility;
   list-style: none;
   margin: 0;
   padding: 0;
