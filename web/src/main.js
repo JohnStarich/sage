@@ -35,11 +35,15 @@ const createWindow = async function() {
   await session.defaultSession.clearCache();
 
   // Create the browser window.
-  mainWindow = new BrowserWindow({
+  const browserOpts = {
     width: 800,
     height: 600,
     titleBarStyle: 'hidden',
-  });
+  };
+  if (process.platform === 'linux') {
+    browserOpts.icon = "logo/sage-app.png"
+  }
+  mainWindow = new BrowserWindow(browserOpts);
 
   // and load the index.html of the app.
   mainWindow.loadURL(`http://localhost:${SagePort}`);

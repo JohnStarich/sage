@@ -44,6 +44,7 @@
       "packagerConfig": {
         "asar": true,
         "executableName": "sage",
+        "icon": "src/logo/sage-app",
         "afterCopy": [
           "src/build-scripts/afterCopy.js"
         ]

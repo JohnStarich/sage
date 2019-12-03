@@ -18,7 +18,7 @@ import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import Sync from './Sync';
 import { Crumb, Breadcrumbs } from './Breadcrumb';
-import { ReactComponent as Logo } from './sage.svg';
+import { ReactComponent as Logo } from './logo/sage.svg';
 
 function App() {
   return (
