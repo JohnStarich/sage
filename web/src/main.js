@@ -124,12 +124,18 @@ const serverLogStream = fs.createWriteStream(LogFile, {
   mode: 0o750,
 })
 
-sageServer = spawn(executable, [
+const sageArgs = [
   '-server', '-port', SagePort,
   '-data', DataDirectory,
   '-ledger', LedgerFile,
   '-rules', RulesFile,
-])
+]
+if (process.env['npm_lifecycle_event'] == 'start-app') {
+  // development mode detected
+  sageArgs.push('-no-auto-sync')
+}
+sageServer = spawn(executable, sageArgs)
+
 sageServer.stdout.pipe(process.stdout)
 sageServer.stdout.pipe(serverLogStream)
 sageServer.stderr.pipe(process.stderr)
