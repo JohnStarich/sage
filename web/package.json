@@ -83,7 +83,7 @@
     "react-datepicker": "^2.8.0",
     "react-dom": "^16.8.6",
     "react-router-dom": "^5.0.1",
-    "react-scripts": "^3.3.0",
+    "react-scripts": "3.0.1",
     "react-side-effect": "^1.1.5",
     "recharts": "^1.6.2"
   },
