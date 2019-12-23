@@ -1,5 +1,7 @@
 module github.com/johnstarich/sage
 
+go 1.12
+
 require (
 	github.com/aclindsa/ofxgo v0.1.1-0.20190701101117-ebf7f5b757ed
 	github.com/aclindsa/xml v0.0.0-20190701095008-453d2c6090c2
