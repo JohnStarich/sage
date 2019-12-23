@@ -60,12 +60,21 @@ function AppContent({ match }) {
             <Logo className="sage-logo dark" />
             <div className="sage-title">
               <span className="sage-name">Sage</span>
-              {needsUpdate
-                ? <span className="sage-version needs-update" onClick={() => {
-                    window.open("https://github.com/JohnStarich/sage/releases/latest", "_blank")
-                  }}>{version}</span>
-                : <span className="sage-version">{version}</span>
-              }
+              <span className="sage-version-container" onClick={e => {
+                    // Creates a detached element and clicks it. This is required to
+                    // 1) avoid nested link issues with NavLink
+                    // 2) and correctly open a new window in Electron
+                    e.preventDefault()
+                    let elem = document.createElement('a')
+                    elem.setAttribute('href', 'https://github.com/JohnStarich/sage/releases/latest')
+                    elem.setAttribute('target', '_blank')
+                    elem.click()
+                  }}>
+                <span className="sage-version">{version}</span>
+                {needsUpdate ?
+                  <span className="needs-update"></span>
+                : null}
+              </span>
             </div>
           </Navbar.Brand>
         </NavLink>

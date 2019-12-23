@@ -24,32 +24,37 @@
   transition: 0.5s transform;
 }
 
+.sage-title .sage-version-container {
+  align-self: baseline;
+  position: absolute;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  transform: translateY(2em);
+  font-size: 0.6em;
+}
+
 .sage-title:hover .sage-version {
   color: unset;
   max-width: 20em;
 }
 
-.sage-title .sage-version {
-  align-self: baseline;
-  position: absolute;
-  font-size: 0.6em;
-  color: #888;
-  transform: translateY(2em);
+.sage-version-container:hover .sage-version {
+  text-decoration: underline;
+}
+
+.sage-version-container .sage-version {
   max-width: 4em;
-  overflow-x: hidden;
+  overflow: hidden;
   text-overflow: ellipsis;
+  color: #888;
   transition-duration: 1.2s;
   transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
   transition-property: color, max-width;
 }
 
-.sage-version.needs-update:after {
-  content: "";
-  display: block;
-  float: right;
-  margin-left: 0.25em;
-  margin-top: 0.55em;
-
+.sage-version-container .needs-update {
+  transform: translate(0.2em, 0.5em);
   width: 0.5em;
   height: 0.5em;
   border-radius: 1em;

@@ -72,6 +72,17 @@ function main() {
       mainWindow = null;
     });
 
+    mainWindow.webContents.on('new-window', (_, __, ___, ____, options) => {
+      const [x, y] = mainWindow.getPosition()
+      const offset = 20
+      Object.assign(options, {
+        parent: mainWindow,
+        titleBarStyle: undefined,
+        x: x + offset,
+        y: y + offset,
+      })
+    })
+
     const defaultMenuItems = Menu.getApplicationMenu().items;
     const firstMenus = [], remainingMenus = [];
     let foundSplitMenu = false;
