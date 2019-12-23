@@ -32,6 +32,7 @@ export default App;
 
 function AppContent({ match }) {
   const [version, setVersion] = React.useState(null)
+  const [needsUpdate, setNeedsUpdate] = React.useState(false)
   const [syncTime, setSyncTime] = React.useState(new Date())
   const [appClasses, setAppClasses] = React.useState([])
 
@@ -43,6 +44,7 @@ function AppContent({ match }) {
           version = "dev"
         }
         setVersion(version)
+        setNeedsUpdate(res.data.UpdateAvailable)
       })
     if (navigator.userAgent.includes('Sage/1.0.0') && navigator.userAgent.includes('Macintosh')) {
       setAppClasses(["electron"])
@@ -58,7 +60,12 @@ function AppContent({ match }) {
             <Logo className="sage-logo dark" />
             <div className="sage-title">
               <span className="sage-name">Sage</span>
-              <span className="sage-version">{version}</span>
+              {needsUpdate
+                ? <span className="sage-version needs-update" onClick={() => {
+                    window.open("https://github.com/JohnStarich/sage/releases/latest", "_blank")
+                  }}>{version}</span>
+                : <span className="sage-version">{version}</span>
+              }
             </div>
           </Navbar.Brand>
         </NavLink>

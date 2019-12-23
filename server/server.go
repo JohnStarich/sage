@@ -11,7 +11,6 @@ import (
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
-	"github.com/johnstarich/sage/consts"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/plaindb"
 	"github.com/johnstarich/sage/redactor"
@@ -59,12 +58,7 @@ func Run(
 		"/static/",
 	))
 
-	engine.GET("/api/v1/getVersion", func(c *gin.Context) {
-		// add version route without auth
-		c.JSON(http.StatusOK, map[string]string{
-			"Version": consts.Version,
-		})
-	})
+	engine.GET("/api/v1/getVersion", getVersion(http.DefaultClient, "api.github.com", "JohnStarich/sage")) // add version route without auth
 
 	api := engine.Group("/api/v1")
 	if len(options.Password) > 0 {
