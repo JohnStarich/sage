@@ -15,9 +15,21 @@ const fs = require('fs');
 const SagePort = 46745
 
 function main() {
+  const isDevelopmentMode = process.env['npm_lifecycle_event'] == 'start-app';
+
   // Handle creating/removing shortcuts on Windows when installing/uninstalling.
   if (require('electron-squirrel-startup')) { // eslint-disable-line global-require
     app.quit();
+    return;
+  }
+
+  if (process.platform === 'darwin' && ! app.isInApplicationsFolder() && ! isDevelopmentMode) {
+    if (app.moveToApplicationsFolder()) {
+      // triggers a restart too
+      app.quit();
+      return;
+    }
+    dialog.showErrorBox("Failed to move Sage.app to /Applications");
   }
 
   // All user data is stored here
@@ -51,7 +63,7 @@ function main() {
 
     // Open the DevTools.
     //mainWindow.webContents.openDevTools();
-
+    
     // Emitted when the window is closed.
     mainWindow.on('closed', () => {
       // Dereference the window object, usually you would store windows
@@ -135,8 +147,7 @@ function main() {
     '-ledger', LedgerFile,
     '-rules', RulesFile,
   ]
-  if (process.env['npm_lifecycle_event'] == 'start-app';) {
-    // development mode detected
+  if (isDevelopmentMode) {
     sageArgs.push('-no-auto-sync')
   }
   sageServer = spawn(executable, sageArgs)
