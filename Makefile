@@ -142,10 +142,10 @@ docker-apps:
 		zip
 	fakeroot $(MAKE) static-deps
 	# Fix wrong 7-zip architecture for win32 build
-	wget -O /tmp/7z.7z https://www.7-zip.org/a/7z1900-extra.7z
-	7zr x -o/tmp/7z-files /tmp/7z.7z
-	cp /tmp/7z-files/7za.dll ./web/node_modules/electron-winstaller/vendor/7z.dll
-	cp /tmp/7z-files/7za.exe ./web/node_modules/electron-winstaller/vendor/7z.exe
+	#wget -O /tmp/7z.7z https://www.7-zip.org/a/7z1900-extra.7z
+	#7zr x -o/tmp/7z-files /tmp/7z.7z
+	#cp /tmp/7z-files/7za.dll ./web/node_modules/electron-winstaller/vendor/7z.dll
+	#cp /tmp/7z-files/7za.exe ./web/node_modules/electron-winstaller/vendor/7z.exe
 	npm config set loglevel verbose
 	(for i in {1..60}; do sleep 60; echo "Keeping Travis CI happy $$i"; done &) && \
 		npm run --prefix=web windows && cp -fr web/out/make/* out/ && \
