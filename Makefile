@@ -140,7 +140,7 @@ docker-apps:
 	apt install -y --no-install-recommends \
 		fakeroot \
 		p7zip \
-		wine32 \
+		winehq-stable:i386 \
 		zip
 	fakeroot $(MAKE) static-deps
 	# Fix wrong 7-zip architecture for win32 build
