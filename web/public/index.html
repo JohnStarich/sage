@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
+      connect-src 'self'<%= process.env.NODE_ENV === 'development' && " ws:" || "" %>; <% // Remove ws: after https://bugs.webkit.org/show_bug.cgi?id=201591 is fixed %>
       script-src 'self'<%= process.env.NODE_ENV === 'development' && " 'unsafe-inline'" || "" %>;
       style-src 'self' 'unsafe-inline';
       img-src 'self' data:;<% // Remove data: after https://github.com/twbs/bootstrap/issues/25394 is fixed %>
