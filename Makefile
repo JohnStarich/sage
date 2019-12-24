@@ -135,7 +135,7 @@ apps: out
 
 .PHONY: docker-apps
 docker-apps:
-	dpkg --add-architecture i386
+	dpkg --add-architecture i386  # Fix for 32-bit wine https://github.com/electron/electron-packager/issues/654#issuecomment-304026724
 	apt update
 	apt install -y --no-install-recommends \
 		fakeroot \
