@@ -135,13 +135,12 @@ apps: out
 
 .PHONY: docker-apps
 docker-apps:
-	dpkg --add-architecture i386  # Fix for 32-bit wine https://github.com/electron/electron-packager/issues/654#issuecomment-304026724
 	apt update
 	apt install -y --no-install-recommends \
 		fakeroot \
 		p7zip \
-		winehq-stable:i386 \
 		zip
+	rm -rf ~/.wine
 	fakeroot $(MAKE) static-deps
 	# Fix wrong 7-zip architecture for win32 build
 	wget -O /tmp/7z.7z https://www.7-zip.org/a/7z1900-extra.7z
