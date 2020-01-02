@@ -140,6 +140,7 @@ docker-apps:
 		fakeroot \
 		p7zip \
 		zip
+	rm -rf ~/.wine
 	fakeroot $(MAKE) static-deps
 	# Fix wrong 7-zip architecture for win32 build
 	wget -O /tmp/7z.7z https://www.7-zip.org/a/7z1900-extra.7z
