@@ -222,7 +222,7 @@ function Budget({
   budget: externalBudget,
   setBudget: setExternalBudget,
 
-  disabled,
+  disabled = false,
   details: externalDetails,
   addBudget,
   removeBudget,
