@@ -16,7 +16,6 @@ type Budget interface {
 	NextYear() Budget
 
 	Month(month time.Month) Accounts
-	AllMonths() []Accounts
 	SetMonth(month time.Month, account string, budget decimal.Decimal) error
 	RemoveMonth(month time.Month, account string) error
 }
@@ -68,10 +67,10 @@ func (b *budget) Month(month time.Month) Accounts {
 		defer b.mu.RUnlock()
 		return b.Months[month]
 	}
-	return b.AllMonths()[month-1]
+	return b.allMonths()[month-1]
 }
 
-func (b *budget) AllMonths() []Accounts {
+func (b *budget) allMonths() []Accounts {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	months := make([]Accounts, time.December)
