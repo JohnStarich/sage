@@ -12,6 +12,7 @@
 .budgets h2 {
   text-align: center;
   margin: 0.5em 0;
+  margin-bottom: 1.5em;
 }
 
 .budgets h2 input {
