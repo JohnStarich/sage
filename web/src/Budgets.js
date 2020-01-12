@@ -87,6 +87,7 @@ export default function Budgets({ match }) {
   const [start, setStart] = React.useState(firstOfMonth(new Date()))
   const [end, setEnd] = React.useState(lastOfMonth(new Date()))
   const [everythingElse, setEverythingElse] = React.useState(null)
+  const [controlsEnabled, setControlsEnabled] = React.useState(false)
 
   const [addCategory, setAddCategory] = React.useState(null)
 
@@ -101,6 +102,7 @@ export default function Budgets({ match }) {
       const progress = (now.getTime() - start.getTime()) / (end.getTime() - start.getTime())
       setTimeProgress(Math.min(1, progress))
       setEverythingElse(everythingElseDetails)
+      setControlsEnabled(firstOfMonth(now).getTime() === start.getTime())
     })
   }, [start, end])
 
@@ -170,14 +172,6 @@ export default function Budgets({ match }) {
   return (
     <div className="budgets">
       <Crumb title="Budgets" match={match} />
-      <div className="budget-add">
-        <CategoryPicker
-          category={addCategory}
-          setCategory={setAddCategory}
-          filter={c => !budgets.find(b => b.Account === c)}
-        />
-        <Button onClick={() => addBudget(addCategory, 0)} disabled={addCategory === null}>Add budget</Button>
-      </div>
       <h2>
         <UTCDatePicker
           dateFormat="MMM yyyy"
@@ -190,6 +184,17 @@ export default function Budgets({ match }) {
           showMonthYearPicker
         />
       </h2>
+      <div className="budget-add">
+        <CategoryPicker
+          category={addCategory}
+          setCategory={setAddCategory}
+          filter={c => !budgets.find(b => b.Account === c)}
+        />
+        <Button
+          onClick={() => addBudget(addCategory, 0)}
+          disabled={addCategory === null || !controlsEnabled}
+          >Add budget</Button>
+      </div>
       {budgets.map(budget =>
         <Budget
           key={budget.Account}
@@ -200,6 +205,7 @@ export default function Budgets({ match }) {
           setBudget={a => updateBudget(budget.Account, a)}
 
           details={budget.Account === "builtin:everything else" && everythingElse ? everythingElse.Accounts : null}
+          disabled={!controlsEnabled}
           timeProgress={timeProgress}
           addBudget={addBudget}
           removeBudget={() => removeBudget(budget.Account)}
@@ -216,6 +222,7 @@ function Budget({
   budget: externalBudget,
   setBudget: setExternalBudget,
 
+  disabled,
   details: externalDetails,
   addBudget,
   removeBudget,
@@ -260,12 +267,12 @@ function Budget({
         </div>
         <div className="budget-controls">
           <div className="budget-amount">
-            <Button className="budget-decrease" variant="outline-secondary" onClick={() => setExternalBudget(budget - deltaForIncrement(budget - 1))}>–</Button>
-            <Amount prefix="$" amount={budget} onChange={setExternalBudget} editable />
-            <Button className="budget-increase" variant="outline-secondary" onClick={() => setExternalBudget(budget + deltaForIncrement(budget))}>+</Button>
+            <Button className="budget-decrease" variant="outline-secondary" disabled={disabled} onClick={() => setExternalBudget(budget - deltaForIncrement(budget - 1))}>–</Button>
+            <Amount prefix="$" amount={budget} disabled={disabled} onChange={setExternalBudget} editable />
+            <Button className="budget-increase" variant="outline-secondary" disabled={disabled} onClick={() => setExternalBudget(budget + deltaForIncrement(budget))}>+</Button>
           </div>
           {account !== 'builtin:everything else' ?
-            <Button className="budget-delete" variant="outline-danger" onClick={removeBudget}>x</Button>
+            <Button className="budget-delete" variant="outline-danger" disabled={disabled} onClick={removeBudget}>x</Button>
             : null}
         </div>
       </div>
@@ -285,6 +292,7 @@ function Budget({
                 <Amount prefix="$" amount={budget.Balance} />
                 <Button
                   variant="outline-secondary"
+                  disabled={disabled}
                   onClick={() => {
                     addBudget(budget.Account, budget.Balance)
                   }}
