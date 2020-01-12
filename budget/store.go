@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/johnstarich/sage/pipe"
 	"github.com/johnstarich/sage/plaindb"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -29,14 +30,26 @@ func formatYear(year int) string {
 }
 
 func (s *Store) Month(year int, month time.Month) (Accounts, error) {
-	budget, err := s.getYear(year)
-	if err != nil {
-		return nil, err
-	}
-	return budget.Month(month), nil
+	var budget Budget
+	var accounts Accounts
+	return accounts, pipe.OpFuncs{
+		func() error {
+			var err error
+			budget, err = s.getYear(year)
+			return err
+		},
+		func() error {
+			accounts = budget.Month(month)
+			return nil
+		},
+	}.Do()
 }
 
 func (s *Store) getYear(year int) (Budget, error) {
+	return s.getYearWithTime(time.Now, year)
+}
+
+func (s *Store) getYearWithTime(getTime func() time.Time, year int) (Budget, error) {
 	// NOTE: If getYear is called for a non-existent year, it will generate a new one *without* inserting it. Be sure to lock to prevent races on write calls
 	var budget Budget
 	found, err := s.bucket.Get(formatYear(year), &budget)
@@ -46,7 +59,7 @@ func (s *Store) getYear(year int) (Budget, error) {
 	if found {
 		return budget, nil
 	}
-	now := time.Now().UTC()
+	now := getTime().UTC()
 	if year > now.Year() {
 		return budget, errors.Errorf("No budget found for year: %d", year)
 	}
@@ -62,6 +75,9 @@ func (s *Store) getYear(year int) (Budget, error) {
 	if err != nil {
 		return nil, err
 	}
+	if closestBudget == nil {
+		return New(year), nil
+	}
 	for closestBudget.Year() != year {
 		closestBudget = closestBudget.NextYear()
 	}
@@ -71,27 +87,37 @@ func (s *Store) getYear(year int) (Budget, error) {
 func (s *Store) SetMonth(year int, month time.Month, account string, budget decimal.Decimal) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	yearBudget, err := s.getYear(year)
-	if err != nil {
-		return err
-	}
-	err = yearBudget.SetMonth(month, account, budget)
-	if err != nil {
-		return err
-	}
-	return s.bucket.Put(formatYear(year), yearBudget)
+	var yearBudget Budget
+	return pipe.OpFuncs{
+		func() error {
+			var err error
+			yearBudget, err = s.getYear(year)
+			return err
+		},
+		func() error {
+			return yearBudget.SetMonth(month, account, budget)
+		},
+		func() error {
+			return s.bucket.Put(formatYear(year), yearBudget)
+		},
+	}.Do()
 }
 
 func (s *Store) RemoveMonth(year int, month time.Month, account string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	budget, err := s.getYear(year)
-	if err != nil {
-		return err
-	}
-	err = budget.RemoveMonth(month, account)
-	if err != nil {
-		return err
-	}
-	return s.bucket.Put(formatYear(year), budget)
+	var budget Budget
+	return pipe.OpFuncs{
+		func() error {
+			var err error
+			budget, err = s.getYear(year)
+			return err
+		},
+		func() error {
+			return budget.RemoveMonth(month, account)
+		},
+		func() error {
+			return s.bucket.Put(formatYear(year), budget)
+		},
+	}.Do()
 }
