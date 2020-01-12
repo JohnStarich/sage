@@ -42,7 +42,7 @@ test:
 	printf '##########################\n' >&2; \
 	printf '### Coverage is %6s ###\n' "$$coverage" >&2; \
 	printf '##########################\n' >&2; \
-	echo "$$coverage"
+	echo "$$coverage"; \
 	if [[ -n "$$COVERALLS_TOKEN" ]]; then \
 		go get github.com/mattn/goveralls; \
 		goveralls -coverprofile="$$tmpfile" -service=travis-ci -repotoken "$$COVERALLS_TOKEN"; \
