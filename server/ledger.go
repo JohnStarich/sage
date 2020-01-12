@@ -170,91 +170,97 @@ func (t txnToAccountMap) Find(accountName string) (account model.Account, found 
 
 func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		start, end, balanceMap := ldg.Balances()
-		resp := BalanceResponse{
-			Start: start,
-			End:   end,
-		}
-		accountIDMap, err := newAccountIDMap(accountStore)
+		resp, err := getBalancesResponse(ldg, accountStore, c.QueryArray(accountTypesQuery))
 		if err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
-
-		accountTypes := map[string]bool{
-			// return assets and liabilities by default
-			// useful for a simple balance table
-			model.AssetAccount:     true,
-			model.LiabilityAccount: true,
-		}
-		if accountTypesQueryArray := c.QueryArray(accountTypesQuery); len(accountTypesQueryArray) > 0 {
-			accountTypes = make(map[string]bool, len(accountTypesQueryArray))
-			for _, value := range accountTypesQueryArray {
-				accountTypes[value] = true
-			}
-		}
-
-		var openingBalances ledger.Transaction
-		if balances, found := ldg.OpeningBalances(); found {
-			resp.OpeningBalanceDate = &balances.Date
-			openingBalances = balances
-		}
-		findOpeningBalance := func(accountName string) *decimal.Decimal {
-			for _, p := range openingBalances.Postings {
-				if p.Account == accountName {
-					return &p.Amount
-				}
-			}
-			return nil
-		}
-
-		for accountName, balances := range balanceMap {
-			account := AccountResponse{
-				ID:             accountName,
-				OpeningBalance: findOpeningBalance(accountName),
-				Balances:       balances,
-			}
-			if extractAccount(&account, accountName, accountTypes, accountIDMap.Find) {
-				resp.Accounts = append(resp.Accounts, account)
-			}
-		}
-
-		var accounts []model.Account
-		var a model.Account
-		err = accountStore.Iter(&a, func(id string) bool {
-			format := model.LedgerFormat(a)
-			if len(accountTypes) == 0 || accountTypes[format.AccountType] {
-				accounts = append(accounts, a)
-			}
-			return true
-		})
-		if err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
-			return
-		}
-		for _, account := range accounts {
-			ledgerAccount := model.LedgerFormat(account)
-			accountName := ledgerAccount.String()
-			if _, inBalances := balanceMap[accountName]; !inBalances {
-				resp.Accounts = append(resp.Accounts, AccountResponse{
-					ID:             accountName,
-					Account:        account.Description(),
-					AccountType:    ledgerAccount.AccountType,
-					OpeningBalance: findOpeningBalance(accountName),
-				})
-			}
-		}
-		sort.Slice(resp.Accounts, func(a, b int) bool {
-			return resp.Accounts[a].ID < resp.Accounts[b].ID
-		})
-
-		resp.Messages = append(resp.Messages, getOpeningBalanceMessages(ldg, accounts)...)
-		sort.Slice(resp.Messages, func(a, b int) bool {
-			return resp.Messages[a].AccountID < resp.Messages[b].AccountID
-		})
-
 		c.JSON(http.StatusOK, resp)
 	}
+}
+
+func getBalancesResponse(ldg *ledger.Ledger, accountStore *client.AccountStore, accountTypesQueryArray []string) (interface{}, error) {
+	start, end, balanceMap := ldg.Balances()
+	resp := BalanceResponse{
+		Start: start,
+		End:   end,
+	}
+	accountIDMap, err := newAccountIDMap(accountStore)
+	if err != nil {
+		return nil, err
+	}
+
+	accountTypes := map[string]bool{
+		// return assets and liabilities by default
+		// useful for a simple balance table
+		model.AssetAccount:     true,
+		model.LiabilityAccount: true,
+	}
+	if len(accountTypesQueryArray) > 0 {
+		accountTypes = make(map[string]bool, len(accountTypesQueryArray))
+		for _, value := range accountTypesQueryArray {
+			accountTypes[value] = true
+		}
+	}
+
+	var openingBalances ledger.Transaction
+	if balances, found := ldg.OpeningBalances(); found {
+		resp.OpeningBalanceDate = &balances.Date
+		openingBalances = balances
+	}
+	findOpeningBalance := func(accountName string) *decimal.Decimal {
+		for _, p := range openingBalances.Postings {
+			if p.Account == accountName {
+				return &p.Amount
+			}
+		}
+		return nil
+	}
+
+	for accountName, balances := range balanceMap {
+		account := AccountResponse{
+			ID:             accountName,
+			OpeningBalance: findOpeningBalance(accountName),
+			Balances:       balances,
+		}
+		if extractAccount(&account, accountName, accountTypes, accountIDMap.Find) {
+			resp.Accounts = append(resp.Accounts, account)
+		}
+	}
+
+	var accounts []model.Account
+	var a model.Account
+	err = accountStore.Iter(&a, func(id string) bool {
+		format := model.LedgerFormat(a)
+		if len(accountTypes) == 0 || accountTypes[format.AccountType] {
+			accounts = append(accounts, a)
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, account := range accounts {
+		ledgerAccount := model.LedgerFormat(account)
+		accountName := ledgerAccount.String()
+		if _, inBalances := balanceMap[accountName]; !inBalances {
+			resp.Accounts = append(resp.Accounts, AccountResponse{
+				ID:             accountName,
+				Account:        account.Description(),
+				AccountType:    ledgerAccount.AccountType,
+				OpeningBalance: findOpeningBalance(accountName),
+			})
+		}
+	}
+	sort.Slice(resp.Accounts, func(a, b int) bool {
+		return resp.Accounts[a].ID < resp.Accounts[b].ID
+	})
+
+	resp.Messages = append(resp.Messages, getOpeningBalanceMessages(ldg, accounts)...)
+	sort.Slice(resp.Messages, func(a, b int) bool {
+		return resp.Messages[a].AccountID < resp.Messages[b].AccountID
+	})
+	return resp, nil
 }
 
 // extractAccount attempts to fill in the account response, returns true if the account should be added
