@@ -42,7 +42,9 @@ func (a Accounts) Get(account string) decimal.Decimal {
 	return a[strings.ToLower(account)]
 }
 
-// New returns a budget that's bound to a given year. Every year can have monthly budgets for various accounts. Each new month copies the previous month of budgets automatically.
+// New returns a budget that's bound to a given year.
+// Every year can have monthly budgets for various accounts. Each new month copies the previous
+// month of budgets automatically.
 func New(year int) Budget {
 	return &budget{
 		BudgetYear: year,
