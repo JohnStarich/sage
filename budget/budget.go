@@ -99,9 +99,17 @@ func (b *budget) setMonth(getTime func() time.Time, month time.Month, account st
 	if account == "" {
 		return errors.New("Account must be specified")
 	}
+
+	b.ensureMonth(getTime, month)
+	b.mu.Lock()
+	b.Months[month].set(account, budget)
+	b.mu.Unlock()
+	return nil
+}
+
+func (b *budget) ensureMonth(getTime func() time.Time, month time.Month) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-
 	_, exists := b.Months[month]
 	switch {
 	case !exists:
@@ -124,8 +132,6 @@ func (b *budget) setMonth(getTime func() time.Time, month time.Month, account st
 			}
 		}
 	}
-	b.Months[month].set(account, budget)
-	return nil
 }
 
 func (b *budget) RemoveMonth(month time.Month, account string) error {
@@ -133,12 +139,14 @@ func (b *budget) RemoveMonth(month time.Month, account string) error {
 }
 
 func (b *budget) removeMonth(getTime func() time.Time, month time.Month, account string) error {
-	// set month to ensure one has been allocated (and provide validation), then remove this specific budget
-	// TODO refactor ensureMonth into it's own func?
-	err := b.setMonth(getTime, month, account, decimal.Zero)
-	if err != nil {
-		return err
+	if month < time.January || month > time.December {
+		return errors.Errorf("Invalid month: %d", month)
 	}
+	if account == "" {
+		return errors.New("Account must be specified")
+	}
+
+	b.ensureMonth(getTime, month)
 	b.mu.Lock()
 	b.Months[month].remove(account)
 	b.mu.Unlock()
