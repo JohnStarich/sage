@@ -159,7 +159,6 @@ func setupAPI(
 
 	router.GET("/getBudgets", getBudgets(db, ldg))
 	router.GET("/getBudget", getBudget(db, ldg))
-	router.POST("/addBudget", addBudget(db))
 	router.POST("/updateBudget", updateBudget(db))
 	router.GET("/deleteBudget", deleteBudget(db))
 	router.GET("/getEverythingElseBudget", getEverythingElseBudgetDetails(db, ldg))

@@ -2,12 +2,11 @@ package server
 
 import (
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/johnstarich/sage/budgets"
+	"github.com/johnstarich/sage/budget"
 	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/plaindb"
@@ -25,12 +24,12 @@ func isBuiltinBudget(account string) bool {
 }
 
 type monthlyBudget struct {
-	budgets.Budget
-
-	Amount decimal.Decimal
+	Account string
+	Budget  decimal.Decimal
+	Balance decimal.Decimal
 }
 
-func getStartEndTimes(startQuery, endQuery string) (start, end time.Time, err error) {
+func getStartEndTimes(startQuery, endQuery string, minStart func(end time.Time) time.Time) (start, end time.Time, err error) {
 	if endQuery != "" {
 		end, err = time.Parse(time.RFC3339, endQuery)
 		if err != nil {
@@ -45,14 +44,21 @@ func getStartEndTimes(startQuery, endQuery string) (start, end time.Time, err er
 			return
 		}
 	} else {
-		// round down to beginning of this month
-		start = time.Date(end.Year(), end.Month(), 1, 0, 0, 0, 0, time.UTC)
+		start = minStart(end)
 	}
 	return
 }
 
-func getEverythingElseSum(allBudgets []budgets.Budget, ldg *ledger.Ledger, start, end time.Time) decimal.Decimal {
-	leftOverAccounts := ldg.LeftOverAccountBalances(start, end, everythingElseAccounts(allBudgets)...)
+func startOfMonth(end time.Time) time.Time {
+	return time.Date(end.Year(), end.Month(), 1, 0, 0, 0, 0, time.UTC)
+}
+
+func twelveMonthsTotal(end time.Time) time.Time {
+	return startOfMonth(end).AddDate(0, -11, 0)
+}
+
+func getEverythingElseSum(accounts budget.Accounts, ldg *ledger.Ledger, start, end time.Time) decimal.Decimal {
+	leftOverAccounts := ldg.LeftOverAccountBalances(start, end, everythingElseAccounts(accounts)...)
 	var balance decimal.Decimal
 	for _, amount := range leftOverAccounts {
 		balance = balance.Add(amount.Abs()) // flip sign of revenues so nothing cancels out
@@ -61,83 +67,95 @@ func getEverythingElseSum(allBudgets []budgets.Budget, ldg *ledger.Ledger, start
 }
 
 func getBudgets(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
-	store, err := budgets.New(db)
+	store, err := budget.NewStore(db)
 	if err != nil {
 		panic(err)
 	}
 	return func(c *gin.Context) {
-		allBudgets, err := store.GetAll()
-		if err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
-			return
-		}
-		sort.Slice(allBudgets, func(a, b int) bool {
-			return allBudgets[a].Account < allBudgets[b].Account
-		})
-
-		start, end, err := getStartEndTimes(c.Query("start"), c.Query("end"))
+		start, end, err := getStartEndTimes(c.Query("start"), c.Query("end"), twelveMonthsTotal)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
-
-		foundEverythingElse := false
-		monthlyBudgets := make([]monthlyBudget, 0, len(allBudgets))
-		for _, b := range allBudgets {
-			var balance decimal.Decimal
-			if isBuiltinBudget(b.Account) {
-				switch strings.ToLower(b.Account) {
-				case everythingElseBudget:
-					foundEverythingElse = true
-					balance = getEverythingElseSum(allBudgets, ldg, start, end)
-				default:
-					abortWithClientError(c, http.StatusInternalServerError, errors.Errorf("Invalid builtin account: %s", b.Account))
-					return
-				}
-			} else {
-				balance = ldg.AccountBalance(b.Account, start, end)
-			}
-			if strings.HasPrefix(b.Account, model.RevenueAccount+":") || b.Account == model.RevenueAccount {
-				balance = balance.Neg()
-			}
-			monthlyBudgets = append(monthlyBudgets, monthlyBudget{
-				Budget: b,
-				Amount: balance,
-			})
+		now := time.Now()
+		if end.After(now) {
+			end = now
 		}
 
-		if !foundEverythingElse {
-			monthlyBudgets = append(monthlyBudgets, monthlyBudget{
-				Budget: budgets.Budget{Account: everythingElseBudget},
-				Amount: getEverythingElseSum(allBudgets, ldg, start, end),
-			})
+		allMonthlyBudgets := make([]budget.Accounts, 0, 12)
+		for current := start; current.Before(end); current = current.AddDate(0, 1, 0) {
+			month, err := store.Month(start.Year(), start.Month())
+			if err != nil {
+				abortWithClientError(c, http.StatusInternalServerError, err)
+				return
+			}
+			allMonthlyBudgets = append(allMonthlyBudgets, month)
+		}
+		budgetResults, err := calculateBudgetBalances(allMonthlyBudgets, ldg, start, end)
+		if err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
 		}
 
 		c.JSON(http.StatusOK, struct {
 			Start, End string
-			Budgets    []monthlyBudget
+			Budgets    [][]monthlyBudget
 		}{
 			Start:   start.UTC().Format(time.RFC3339),
 			End:     end.UTC().Format(time.RFC3339),
-			Budgets: monthlyBudgets,
+			Budgets: budgetResults,
 		})
 	}
 }
 
+func calculateBudgetBalances(allMonthlyBudgets []budget.Accounts, ldg *ledger.Ledger, start, end time.Time) ([][]monthlyBudget, error) {
+	budgetResults := make([][]monthlyBudget, 0, 12)
+	for _, accounts := range allMonthlyBudgets {
+		foundEverythingElse := false
+		monthResults := make([]monthlyBudget, 0, len(accounts)+1)
+		for account, budgetAmt := range accounts {
+			var balance decimal.Decimal
+			if isBuiltinBudget(account) {
+				switch strings.ToLower(account) {
+				case everythingElseBudget:
+					foundEverythingElse = true
+					balance = getEverythingElseSum(accounts, ldg, start, end)
+				default:
+					return nil, errors.Errorf("Invalid builtin account: %s", account)
+				}
+			} else {
+				balance = ldg.AccountBalance(account, start, end)
+			}
+			if strings.HasPrefix(account, model.RevenueAccount+":") || account == model.RevenueAccount {
+				balance = balance.Neg()
+			}
+			monthResults = append(monthResults, monthlyBudget{
+				Account: account,
+				Budget:  budgetAmt,
+				Balance: balance,
+			})
+		}
+
+		if !foundEverythingElse {
+			monthResults = append(monthResults, monthlyBudget{
+				Account: everythingElseBudget,
+				Balance: getEverythingElseSum(accounts, ldg, start, end),
+			})
+		}
+		budgetResults = append(budgetResults, monthResults)
+	}
+	return budgetResults, nil
+}
+
 func getBudget(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
-	store, err := budgets.New(db)
+	store, err := budget.NewStore(db)
 	if err != nil {
 		panic(err)
 	}
 	return func(c *gin.Context) {
-		account := c.Query("account")
+		account := strings.ToLower(c.Query("account"))
 		if account == "" {
 			abortWithClientError(c, http.StatusBadRequest, errors.New("Account name is required"))
-			return
-		}
-		budget, err := store.Get(account)
-		if err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -160,11 +178,21 @@ func getBudget(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
 				return
 			}
 		} else {
-			start = time.Date(end.Year(), end.Month(), 1, 0, 0, 0, 0, time.UTC)
+			start = startOfMonth(end)
+		}
+		if start.Month() != end.Month() || start.Year() != end.Year() {
+			// no more than one month allowed
+			start = startOfMonth(end)
 		}
 
-		balance := ldg.AccountBalance(budget.Account, start, end)
-		if strings.HasPrefix(budget.Account, model.RevenueAccount+":") {
+		budget, err := store.Month(start.Year(), start.Month())
+		if err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+
+		balance := ldg.AccountBalance(account, start, end)
+		if strings.HasPrefix(account, model.RevenueAccount+":") {
 			balance = balance.Neg()
 		}
 
@@ -175,64 +203,41 @@ func getBudget(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
 			Start: start.UTC().Format(time.RFC3339),
 			End:   end.UTC().Format(time.RFC3339),
 			Budget: monthlyBudget{
-				Budget: budget,
-				Amount: balance,
+				Account: account,
+				Budget:  budget.Get(account),
+				Balance: balance,
 			},
 		})
 	}
 }
 
-func addBudget(db plaindb.DB) gin.HandlerFunc {
-	store, err := budgets.New(db)
-	if err != nil {
-		panic(err)
-	}
-	return func(c *gin.Context) {
-		var budget budgets.Budget
-		if err := c.BindJSON(&budget); err != nil {
-			abortWithClientError(c, http.StatusBadRequest, err)
-			return
-		}
-		if isBuiltinBudget(budget.Account) {
-			abortWithClientError(c, http.StatusBadRequest, errors.New("Account name is reserved and can not be added"))
-			return
-		}
-		if err := store.Add(budget); err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
-			return
-		}
-		c.Status(http.StatusNoContent)
-	}
-}
-
 func updateBudget(db plaindb.DB) gin.HandlerFunc {
-	store, err := budgets.New(db)
+	store, err := budget.NewStore(db)
 	if err != nil {
 		panic(err)
 	}
 	return func(c *gin.Context) {
-		var budget budgets.Budget
-		if err := c.BindJSON(&budget); err != nil {
+		var monthBudget monthlyBudget
+		if err := c.BindJSON(&monthBudget); err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
-		if isBuiltinBudget(budget.Account) {
-			switch strings.ToLower(budget.Account) {
+		if isBuiltinBudget(monthBudget.Account) {
+			switch strings.ToLower(monthBudget.Account) {
 			case everythingElseBudget:
 			default:
-				abortWithClientError(c, http.StatusBadRequest, errors.Errorf("Invalid builtin account name: %s", budget.Account))
+				abortWithClientError(c, http.StatusBadRequest, errors.Errorf("Invalid builtin account name: %s", monthBudget.Account))
 				return
 			}
-			// ensure exists
-			_, getErr := store.Get(budget.Account)
-			if getErr != nil {
-				if err := store.Add(budget); err != nil {
-					abortWithClientError(c, http.StatusInternalServerError, err)
-					return
-				}
-			}
 		}
-		if err := store.Update(budget.Account, budget); err != nil {
+
+		start, _, err := getStartEndTimes(c.Query("start"), time.Now().Format(time.RFC3339), startOfMonth)
+		if err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		year, month := start.Year(), start.Month()
+		if err := store.SetMonth(year, month, monthBudget.Account, monthBudget.Budget); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
@@ -241,7 +246,7 @@ func updateBudget(db plaindb.DB) gin.HandlerFunc {
 }
 
 func deleteBudget(db plaindb.DB) gin.HandlerFunc {
-	store, err := budgets.New(db)
+	store, err := budget.NewStore(db)
 	if err != nil {
 		panic(err)
 	}
@@ -255,7 +260,13 @@ func deleteBudget(db plaindb.DB) gin.HandlerFunc {
 			abortWithClientError(c, http.StatusBadRequest, errors.New("Budget name is reserved and can not be deleted"))
 			return
 		}
-		if err := store.Remove(account); err != nil {
+
+		start, _, err := getStartEndTimes(c.Query("start"), time.Now().Format(time.RFC3339), startOfMonth)
+		if err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		if err := store.RemoveMonth(start.Year(), start.Month(), account); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
@@ -263,37 +274,41 @@ func deleteBudget(db plaindb.DB) gin.HandlerFunc {
 	}
 }
 
-func everythingElseAccounts(budgets []budgets.Budget) []string {
-	accounts := make([]string, 0, len(budgets)+3)
-	accounts = append(accounts,
+func everythingElseAccounts(accounts budget.Accounts) []string {
+	accountNames := make([]string, 0, len(accounts)+3)
+	accountNames = append(accountNames,
 		model.AssetAccount,
 		model.LiabilityAccount,
 		builtinBudget,
 	)
-	for _, b := range budgets {
-		accounts = append(accounts, b.Account)
+	for account := range accounts {
+		accountNames = append(accountNames, account)
 	}
-	return accounts
+	return accountNames
 }
 
 func getEverythingElseBudgetDetails(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
-	store, err := budgets.New(db)
+	store, err := budget.NewStore(db)
 	if err != nil {
 		panic(err)
 	}
 	return func(c *gin.Context) {
-		budgets, err := store.GetAll()
-		if err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
-			return
-		}
-		start, end, err := getStartEndTimes(c.Query("start"), c.Query("end"))
+		start, end, err := getStartEndTimes(c.Query("start"), c.Query("end"), startOfMonth)
 		if err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
+		if start.Year() != end.Year() || start.Month() != end.Month() {
+			start = startOfMonth(end)
+		}
 
-		leftOverAccounts := ldg.LeftOverAccountBalances(start, end, everythingElseAccounts(budgets)...)
+		accounts, err := store.Month(start.Year(), start.Month())
+		if err != nil {
+			abortWithClientError(c, http.StatusNotFound, err)
+			return
+		}
+
+		leftOverAccounts := ldg.LeftOverAccountBalances(start, end, everythingElseAccounts(accounts)...)
 		var sum decimal.Decimal
 		for account, balance := range leftOverAccounts {
 			if strings.HasPrefix(account, model.RevenueAccount+":") {
@@ -304,12 +319,12 @@ func getEverythingElseBudgetDetails(db plaindb.DB, ldg *ledger.Ledger) gin.Handl
 		c.JSON(http.StatusOK, struct {
 			Start    string
 			End      string
-			Amount   decimal.Decimal
+			Balance  decimal.Decimal
 			Accounts map[string]decimal.Decimal
 		}{
 			Start:    start.UTC().Format(time.RFC3339),
 			End:      end.UTC().Format(time.RFC3339),
-			Amount:   sum,
+			Balance:  sum,
 			Accounts: leftOverAccounts,
 		})
 	}

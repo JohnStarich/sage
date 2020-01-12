@@ -11,7 +11,7 @@ import { cleanCategory, CategoryPicker } from './CategoryPicker';
 function parseBudget(budget) {
   return Object.assign({}, budget, {
     Description: cleanCategory(budget.Account),
-    Amount: Number(budget.Amount),
+    Balance: Number(budget.Balance),
     Budget: Number(budget.Budget),
   })
 }
@@ -67,14 +67,18 @@ function fetchEverythingElseDetails(start, end) {
     .then(res => {
       const accounts = Object.entries(res.data.Accounts)
         .map(([Account, balance]) => {
-          return { Account, Amount: Number(balance), Description: cleanCategory(Account) }
+          return { Account, Balance: Number(balance), Description: cleanCategory(Account) }
         })
         .sort(sortBudgets)
       return {
-        Amount: Number(res.data.Amount),
+        Balance: Number(res.data.Balance),
         Accounts: accounts,
       }
     })
+}
+
+function parseAllBudgets(budgets) {
+  return budgets.map(accounts => accounts.map(parseBudget).sort(sortBudgets))
 }
 
 export default function Budgets({ match }) {
@@ -92,7 +96,7 @@ export default function Budgets({ match }) {
         .then(res => res.data.Budgets),
       fetchEverythingElseDetails(start, end),
     ]).then(([budgets, everythingElseDetails]) => {
-      setBudgets(budgets.map(parseBudget).sort(sortBudgets))
+      setBudgets(parseAllBudgets(budgets)[0])
       const now = new Date()
       const progress = (now.getTime() - start.getTime()) / (end.getTime() - start.getTime())
       setTimeProgress(Math.min(1, progress))
@@ -110,9 +114,9 @@ export default function Budgets({ match }) {
       Account: account,
       Budget: budget,
     }
-    API.post('/v1/addBudget', b)
+    API.post('/v1/updateBudget', b)
       .then(() => {
-        // fetch current amount before displaying budget
+        // fetch current balance before displaying budget
         // also fetch updated "everything else" budget
         Promise.all([
           API.get('/v1/getBudget', { params: { account, start, end } })
@@ -130,9 +134,9 @@ export default function Budgets({ match }) {
       })
   }
 
-  const updateBudget = (account, budgetAmount) => {
-    if (budgetAmount < 0) {
-      budgetAmount = 0
+  const updateBudget = (account, budgetBalance) => {
+    if (budgetBalance < 0) {
+      budgetBalance = 0
     }
     const existingBudget = budgets.find(b => b.Account === account)
     if (!existingBudget) {
@@ -140,7 +144,7 @@ export default function Budgets({ match }) {
     }
 
     const budget = Object.assign({}, existingBudget, {
-      Budget: budgetAmount,
+      Budget: budgetBalance,
     })
     API.post('/v1/updateBudget', budget)
       .then(() => {
@@ -191,7 +195,7 @@ export default function Budgets({ match }) {
           key={budget.Account}
           name={budget.Description}
           account={budget.Account}
-          amount={budget.Account === "builtin:everything else" && everythingElse ? everythingElse.Amount : budget.Amount}
+          balance={budget.Account === "builtin:everything else" && everythingElse ? everythingElse.Balance : budget.Balance}
           budget={budget.Budget}
           setBudget={a => updateBudget(budget.Account, a)}
 
@@ -208,7 +212,7 @@ export default function Budgets({ match }) {
 function Budget({
   name,
   account,
-  amount: externalAmount,
+  balance: externalBalance,
   budget: externalBudget,
   setBudget: setExternalBudget,
 
@@ -221,18 +225,18 @@ function Budget({
   React.useEffect(() => {
     setBudget(externalBudget)
   }, [externalBudget])
-  const [amount, setAmount] = React.useState(externalAmount)
+  const [balance, setBalance] = React.useState(externalBalance)
   React.useEffect(() => {
-    setAmount(externalAmount)
-  }, [externalAmount])
+    setBalance(externalBalance)
+  }, [externalBalance])
   const [details, setDetails] = React.useState(externalDetails)
   React.useEffect(() => {
     setDetails(externalDetails)
   }, [externalDetails])
 
-  const percentage = amount === 0 ? 0 : Math.min(1, amount / budget)
+  const percentage = balance === 0 ? 0 : Math.min(1, balance / budget)
   let budgetColor
-  if (amount > budget) {
+  if (balance > budget) {
     budgetColor = "exceeded-budget"
   } else if (percentage - 0.02 > timeProgress) {
     budgetColor = "over-budget"
@@ -270,7 +274,7 @@ function Budget({
           <div className="budget-filled" style={{ width: `${percentage * 100}%` }} />
           <div className="budget-progress" style={{ width: `${timeProgress * 100}%` }} />
         </div>
-        <Amount prefix="$" amount={amount} />
+        <Amount prefix="$" amount={balance} />
       </div>
       {details ?
         <ul className="budget-details">
@@ -278,11 +282,11 @@ function Budget({
             <li key={budget.Account}>
               {budget.Description}
               <div>
-                <Amount prefix="$" amount={budget.Amount} />
+                <Amount prefix="$" amount={budget.Balance} />
                 <Button
                   variant="outline-secondary"
                   onClick={() => {
-                    addBudget(budget.Account, budget.Amount)
+                    addBudget(budget.Account, budget.Balance)
                   }}
                 >+</Button>
               </div>
