@@ -35,6 +35,13 @@ type LegacyUpgrader interface {
 	ParseLegacy(legacyData json.RawMessage) (version string, data map[string]json.RawMessage, err error)
 }
 
+// BucketUpgrader is only used for schema-level upgrades to a bucket, e.g. updating the ID format. Only runs once, then bucket items are processed.
+// For a simpler upgrade implementation, stick to just Upgrader.
+type BucketUpgrader interface {
+	// UpgradeAll attempts to upgrade all of data once, prior to individual item upgrades
+	UpgradeAll(dataVersion string, data map[string]interface{}) (newVersion string, newData map[string]interface{}, err error)
+}
+
 // DB creates buckets that can read or write JSON data
 type DB interface {
 	io.Closer
@@ -123,25 +130,24 @@ func (db *database) bucket(
 	}
 
 	if bucketBytes.Version != version {
-		for id := range data {
-			currentVersion := bucketBytes.Version
-			upgradeAttempts := 0
-			for currentVersion != version {
-				if upgradeAttempts > MaxUpgradeAttempts {
-					return nil, errors.Errorf("Too many upgrade attempts to version: %q. Possibly a version upgrade loop? Current version: %q", version, currentVersion)
-				}
-				upgradeAttempts++
-
-				newVersion, newValue, err := upgrader.Upgrade(currentVersion, id, data[id])
-				if err != nil {
-					return nil, err
-				}
-				if newVersion == currentVersion {
-					return nil, errors.Errorf("Could not upgrade %q data from %q to %q: %+v", name, currentVersion, version, data[id])
-				}
-				currentVersion = newVersion
-				data[id] = newValue
+		if bucketUpgrader, ok := upgrader.(BucketUpgrader); ok {
+			// Attempt an upgrade for the whole bucket first, i.e. ID format changes.
+			// Runs only once, since hard to guarantee when it would re-run.
+			// Definitely shouldn't re-run during individual item upgrades.
+			var err error
+			bucketBytes.Version, data, err = bucketUpgrader.UpgradeAll(bucketBytes.Version, data)
+			if err != nil {
+				return nil, err
 			}
+		}
+	}
+	if bucketBytes.Version != version {
+		for id := range data {
+			upgradedItem, err := upgradeItem(bucketBytes.Version, version, name, upgrader, id, data[id])
+			if err != nil {
+				return nil, err
+			}
+			data[id] = upgradedItem
 		}
 	}
 
@@ -155,6 +161,27 @@ func (db *database) bucket(
 
 	db.buckets[name] = b
 	return b, nil
+}
+
+func upgradeItem(currentVersion, finalVersion, name string, upgrader Upgrader, id string, item interface{}) (interface{}, error) {
+	upgradeAttempts := 0
+	for currentVersion != finalVersion {
+		if upgradeAttempts > MaxUpgradeAttempts {
+			return nil, errors.Errorf("Too many upgrade attempts to version: %q. Possibly a version upgrade loop? Current version: %q", finalVersion, currentVersion)
+		}
+		upgradeAttempts++
+
+		newVersion, newItem, err := upgrader.Upgrade(currentVersion, id, item)
+		if err != nil {
+			return nil, err
+		}
+		if newVersion == currentVersion {
+			return nil, errors.Errorf("Could not upgrade %q data from %q to %q: %+v", name, currentVersion, finalVersion, item)
+		}
+		currentVersion = newVersion
+		item = newItem
+	}
+	return item, nil
 }
 
 // Close locks all buckets to prepare for safe shutdown. Use after close has been called is not defined.

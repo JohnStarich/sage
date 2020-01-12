@@ -35,6 +35,15 @@ func (m *mockLegacyUpgrader) ParseLegacy(legacyData json.RawMessage) (version st
 	return m.legacyParser(legacyData)
 }
 
+type mockBucketUpgrader struct {
+	mockUpgrader
+	bucketUpgrader func(dataVersion string, data map[string]interface{}) (newVersion string, newData map[string]interface{}, err error)
+}
+
+func (m *mockBucketUpgrader) UpgradeAll(dataVersion string, data map[string]interface{}) (newVersion string, newData map[string]interface{}, err error) {
+	return m.bucketUpgrader(dataVersion, data)
+}
+
 func TestOpenNewBucket(t *testing.T) {
 	var db DB
 	var tmpDir string
@@ -419,4 +428,44 @@ func TestMockDBDump(t *testing.T) {
 			db.Dump(b)
 		})
 	})
+}
+
+func TestBucketUpgrader(t *testing.T) {
+	db := NewMockDB(MockConfig{
+		FileReader: func(string) ([]byte, error) {
+			return []byte(`{
+				"Version": "1",
+				"Data": {
+					"old": 1
+				}
+			}`), nil
+		},
+	})
+	mock := mockBucketUpgrader{
+		mockUpgrader: mockUpgrader{
+			parser:   intParser,
+			upgrader: intUpgrader,
+		},
+		bucketUpgrader: func(dataVersion string, data map[string]interface{}) (string, map[string]interface{}, error) {
+			return "", nil, errors.New("Unimplemented")
+		},
+	}
+	_, err := db.Bucket("budgets", "2", &mock)
+	require.Error(t, err)
+	assert.Equal(t, "Unimplemented", err.Error())
+
+	mock.bucketUpgrader = func(dataVersion string, data map[string]interface{}) (newVersion string, newData map[string]interface{}, err error) {
+		newData = make(map[string]interface{}, len(data))
+		for oldID, value := range data {
+			newData["newIDFormat-"+oldID] = value
+		}
+		return "2", newData, nil
+	}
+	bucket, err := db.Bucket("budgets", "2", &mock)
+	require.NoError(t, err)
+	var num int
+	found, err := bucket.Get("newIDFormat-old", &num)
+	assert.True(t, found)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, num)
 }
