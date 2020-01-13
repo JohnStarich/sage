@@ -84,7 +84,7 @@ func getBudgets(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
 
 		allMonthlyBudgets := make([]budget.Accounts, 0, 12)
 		for current := start; current.Before(end); current = current.AddDate(0, 1, 0) {
-			month, err := store.Month(start.Year(), start.Month())
+			month, err := store.Month(current.Year(), current.Month())
 			if err != nil {
 				abortWithClientError(c, http.StatusInternalServerError, err)
 				return
