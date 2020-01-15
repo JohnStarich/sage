@@ -69,8 +69,9 @@ func (s *Store) getYearWithTime(getTime func() time.Time, year int) (Budget, err
 	err = s.bucket.Iter(&budget, func(string) bool {
 		if budget.Year() < year && (closestBudget == nil || budget.Year() > closestBudget.Year()) {
 			closestBudget = budget
+			return closestBudget.Year() != year-1
 		}
-		return closestBudget.Year() != year-1
+		return true
 	})
 	if err != nil {
 		return nil, err

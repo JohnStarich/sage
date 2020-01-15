@@ -53,7 +53,8 @@ export default function ({ budgets: rawBudgets, date, setMonth }) {
             )
           }
         ).reduce((arr, item, index) => {
-          // currently fixed at exactly 2 rows
+          // alternates which month goes where so the column layout appears to be in order by row
+          // NOTE: currently fixed at exactly 2 rows
           index *= 2
           if (index >= budgets.length) {
             index = (index + 1) % budgets.length
