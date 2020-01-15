@@ -1,5 +1,6 @@
 import './Budgets.css';
 import Amount from './Amount';
+import BudgetsHistory from './BudgetsHistory';
 import Button from 'react-bootstrap/Button';
 import Crumb from './Breadcrumb';
 import React from 'react';
@@ -62,6 +63,10 @@ function lastOfMonth(date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0))
 }
 
+function someMonthsAgo(date, months = 12) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - (months - 1), 1))
+}
+
 function fetchEverythingElseDetails(start, end) {
   return API.get('/v1/getEverythingElseBudget', { params: { start, end } })
     .then(res => {
@@ -82,6 +87,7 @@ function parseAllBudgets(budgets) {
 }
 
 export default function Budgets({ match }) {
+  const [allBudgets, setAllBudgets] = React.useState(null)
   const [budgets, setBudgets] = React.useState(null)
   const [timeProgress, setTimeProgress] = React.useState(null)
   const [start, setStart] = React.useState(firstOfMonth(new Date()))
@@ -97,14 +103,27 @@ export default function Budgets({ match }) {
         .then(res => res.data.Budgets),
       fetchEverythingElseDetails(start, end),
     ]).then(([budgets, everythingElseDetails]) => {
-      setBudgets(parseAllBudgets(budgets)[0])
+      const all = parseAllBudgets(budgets)
+      setBudgets(all[all.length-1])
       const now = new Date()
       const progress = (now.getTime() - start.getTime()) / (end.getTime() - start.getTime())
       setTimeProgress(Math.min(1, progress))
       setEverythingElse(everythingElseDetails)
-      setControlsEnabled(firstOfMonth(now).getTime() === start.getTime())
+      setControlsEnabled(firstOfMonth(now).getTime() === start.getTime() && lastOfMonth(now).getTime() === end.getTime())
     })
   }, [start, end])
+
+  React.useEffect(() => {
+    const now = new Date()
+    const start = someMonthsAgo(now, 12), end = lastOfMonth(now)
+    API.get('/v1/getBudgets', { params: { start, end } })
+      .then(res => {
+        setAllBudgets(Object.assign(
+          { Budgets: parseAllBudgets(res.data.Budgets) },
+          res.data,
+        ))
+      })
+  }, [])
 
   if (budgets === null) {
     return <em>Loading...</em>
@@ -172,6 +191,14 @@ export default function Budgets({ match }) {
   return (
     <div className="budgets">
       <Crumb title="Budgets" match={match} />
+        <BudgetsHistory
+          budgets={allBudgets}
+          date={start}
+          setMonth={start => {
+            setStart(start)
+            setEnd(lastOfMonth(start))
+          }}
+          />
       <h2>
         <UTCDatePicker
           dateFormat="MMM yyyy"
