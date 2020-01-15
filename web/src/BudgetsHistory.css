@@ -1,0 +1,50 @@
+.budgets-history {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  height: 7em; /* approximately enough to allow only 2 rows */
+}
+
+.budgets-history .budget {
+  align-items: stretch;
+  padding: 0;
+  margin: 0;
+  font-size: 0.9em;
+  min-height: 3.8em;
+  max-height: 3.8em;
+}
+
+.budgets-history .budget-delta {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: baseline;
+
+  padding: 0.25em 0.5em;
+  font-weight: 600;
+  border-radius: 0.25em;
+  color: white;
+  background-color: #0A0;
+}
+
+.budgets-history .budget-over .budget-delta {
+  background-color: #C00;
+}
+
+.budgets-history .budget-trend {
+  margin-right: 0.3em;
+}
+
+.budgets-history .budget-date {
+  text-align: left;
+  margin: 0 0.5em;
+}
+
+.budgets-history button {
+  transition: opacity 0.1s;
+}
+
+.budgets-history button:not(.active):not(:hover) {
+  opacity: 0.7;
+}
