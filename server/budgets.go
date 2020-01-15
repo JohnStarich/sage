@@ -49,12 +49,20 @@ func getStartEndTimes(startQuery, endQuery string, minStart func(end time.Time) 
 	return
 }
 
+func endOfMonth(end time.Time) time.Time {
+	return time.Date(end.Year(), end.Month()+1, 0, 0, 0, 0, 0, time.UTC)
+}
+
 func startOfMonth(end time.Time) time.Time {
 	return time.Date(end.Year(), end.Month(), 1, 0, 0, 0, 0, time.UTC)
 }
 
 func twelveMonthsTotal(end time.Time) time.Time {
 	return startOfMonth(end).AddDate(0, -11, 0)
+}
+
+func addMonths(t time.Time, months int) time.Time {
+	return time.Date(t.Year(), t.Month()+time.Month(months), 1, 0, 0, 0, 0, time.UTC)
 }
 
 func getEverythingElseSum(accounts budget.Accounts, ldg *ledger.Ledger, start, end time.Time) decimal.Decimal {
@@ -110,7 +118,9 @@ func getBudgets(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
 
 func calculateBudgetBalances(allMonthlyBudgets []budget.Accounts, ldg *ledger.Ledger, start, end time.Time) ([][]monthlyBudget, error) {
 	budgetResults := make([][]monthlyBudget, 0, 12)
-	for _, accounts := range allMonthlyBudgets {
+	for monthOffset, accounts := range allMonthlyBudgets {
+		monthStart := addMonths(start, monthOffset)
+		monthEnd := endOfMonth(monthStart)
 		foundEverythingElse := false
 		monthResults := make([]monthlyBudget, 0, len(accounts)+1)
 		for account, budgetAmt := range accounts {
@@ -119,12 +129,12 @@ func calculateBudgetBalances(allMonthlyBudgets []budget.Accounts, ldg *ledger.Le
 				switch strings.ToLower(account) {
 				case everythingElseBudget:
 					foundEverythingElse = true
-					balance = getEverythingElseSum(accounts, ldg, start, end)
+					balance = getEverythingElseSum(accounts, ldg, monthStart, monthEnd)
 				default:
 					return nil, errors.Errorf("Invalid builtin account: %s", account)
 				}
 			} else {
-				balance = ldg.AccountBalance(account, start, end)
+				balance = ldg.AccountBalance(account, monthStart, monthEnd)
 			}
 			if strings.HasPrefix(account, model.RevenueAccount+":") || account == model.RevenueAccount {
 				balance = balance.Neg()
@@ -139,7 +149,7 @@ func calculateBudgetBalances(allMonthlyBudgets []budget.Accounts, ldg *ledger.Le
 		if !foundEverythingElse {
 			monthResults = append(monthResults, monthlyBudget{
 				Account: everythingElseBudget,
-				Balance: getEverythingElseSum(accounts, ldg, start, end),
+				Balance: getEverythingElseSum(accounts, ldg, monthStart, monthEnd),
 			})
 		}
 		budgetResults = append(budgetResults, monthResults)
