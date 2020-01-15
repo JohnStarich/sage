@@ -31,38 +31,36 @@ export default function ({ budgets: rawBudgets, date, setMonth }) {
         .map(b => b.Balance - b.Budget)
         .reduce((a, b) => a + b))
   return (
-    <>
-      <div className="budgets-history">
-        {budgets.map((delta, i) => {
-          const month = addMonths(start, i)
-          const active = date.getTime() === month.getTime()
-          return (
-            <Button
-              key={i}
-              className={"budget " + (delta < 0 ? "budget-under" : "budget-over")}
-              onClick={() => setMonth(month)}
-              active={active}
-              variant="light"
-              >
-              <div className="budget-delta">
-                <div className="budget-trend">{delta < 0 ? '▼' : '▲'}</div>
-                <Amount prefix="$" amount={Math.abs(delta)} />
-              </div>
-              <div className="budget-date">{monthFormat.format(month)}</div>
-            </Button>
-            )
-          }
-        ).reduce((arr, item, index) => {
-          // alternates which month goes where so the column layout appears to be in order by row
-          // NOTE: currently fixed at exactly 2 rows
-          index *= 2
-          if (index >= budgets.length) {
-            index = (index + 1) % budgets.length
-          }
-          arr[index] = item
-          return arr
-        }, new Array(budgets.length))}
-      </div>
-    </>
+    <div className="budgets-history">
+      {budgets.map((delta, i) => {
+        const month = addMonths(start, i)
+        const active = date.getTime() === month.getTime()
+        return (
+          <Button
+            key={i}
+            className={"budget " + (delta < 0 ? "budget-under" : "budget-over")}
+            onClick={() => setMonth(month)}
+            active={active}
+            variant="light"
+            >
+            <div className="budget-delta">
+              <div className="budget-trend">{delta < 0 ? '▼' : '▲'}</div>
+              <Amount prefix="$" amount={Math.abs(delta)} />
+            </div>
+            <div className="budget-date">{monthFormat.format(month)}</div>
+          </Button>
+          )
+        }
+      ).reduce((arr, item, index) => {
+        // alternates which month goes where so the column layout appears to be in order by row
+        // NOTE: currently fixed at exactly 2 rows
+        index *= 2
+        if (index >= budgets.length) {
+          index = (index + 1) % budgets.length
+        }
+        arr[index] = item
+        return arr
+      }, new Array(budgets.length))}
+    </div>
   )
 }
