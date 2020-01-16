@@ -1,3 +1,14 @@
+.category-picker {
+  position: static; /* fix overflow issues inside tables */
+}
+
+.category-picker .dropdown-toggle {
+  width: 100%;
+  display: flex; /* push dropdown arrow to the far right and text to the left */
+  justify-content: space-between;
+  align-items: center;
+}
+
 .category {
   text-transform: capitalize;
 }

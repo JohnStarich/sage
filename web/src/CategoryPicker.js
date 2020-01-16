@@ -1,7 +1,7 @@
 import './CategoryPicker.css';
 import React from 'react';
 import API from './API';
-import Form from 'react-bootstrap/Form';
+import Dropdown from 'react-bootstrap/Dropdown';
 
 
 export function cleanCategory(account) {
@@ -14,12 +14,16 @@ export function cleanCategory(account) {
 
 let categoriesPromise = null
 
+function render(category) {
+  return category.replace(/:/g, ' > ')
+}
+
 export const Categories = () => {
   if (categoriesPromise === null) {
     categoriesPromise = API.get('/v1/getCategories')
       .then(res => res.data.Accounts)
       .then(accounts =>
-        accounts.map(c => [c, c.replace(/:/g, ' > ')]))
+        accounts.map(c => [c, render(c)]))
   }
   return categoriesPromise
 }
@@ -45,16 +49,18 @@ export function CategoryPicker({ category, setCategory, filter, disabled }) {
     return null
   }
   return (
-    <Form.Control
-      as="select"
+    <Dropdown
       disabled={disabled}
-      value={category || ""}
-      onChange={e => setCategory(e.target.value)}
-      className="category">
-      {categories.map(c =>
-        <option key={c[0]} value={c[0]}>{c[1]}</option>
-      )}
-    </Form.Control>
+      className="category-picker"
+      onSelect={(_, e) => setCategory(e.target.getAttribute('value'))}
+      >
+      <Dropdown.Toggle variant="secondary" className="category">{render(category)}</Dropdown.Toggle>
+      <Dropdown.Menu>
+        {categories.map(c =>
+          <Dropdown.Item key={c[0]} value={c[0]} className="category">{c[1]}</Dropdown.Item>
+        )}
+      </Dropdown.Menu>
+    </Dropdown>
   )
 }
 
