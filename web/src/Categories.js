@@ -73,7 +73,7 @@ const columns = [
 
       let accountClass = category === 'uncategorized' ? 'account-uncategorized' : null
       return (
-        <div className="category">
+        <div className="categories-category">
           <Badge pill variant={variant}>{accountType}</Badge>
           <span className={accountClass}>{category}</span>
         </div>

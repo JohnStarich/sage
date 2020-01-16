@@ -38,7 +38,7 @@ const columns = [
       return <span className={className}>{categories.join(", ")}</span>
     },
     headerClasses: 'table-hide-no-wrap',
-    classes: "category table-hide-no-wrap",
+    classes: "category-name table-hide-no-wrap",
   },
   {
     dataField: 'SummaryAmount',

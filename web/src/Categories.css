@@ -10,12 +10,12 @@
   margin: 0.25em;
 }
 
-.categories .category span, .categories .category .badge {
+.categories .categories-category span, .categories .categories-category .badge {
   display: inline-block; /* fix problem where spans weren't separated by spaces to be considered separate blocks */
   text-transform: capitalize;
 }
 
-.categories .category .badge {
+.categories .categories-category .badge {
   margin-right: 1em;
 }
 
