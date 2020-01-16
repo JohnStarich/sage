@@ -9,6 +9,40 @@
   align-items: center;
 }
 
+.category-picker .dropdown-menu {
+  padding-top: 0;
+}
+
+.category-picker input[type="search"] {
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  padding: 0 1.5em;
+  box-sizing: border-box;
+}
+
 .category {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.category-name {
   text-transform: capitalize;
+}
+
+.dropdown-toggle .category-id {
+  display: none;
+}
+
+.category-id {
+  margin-top: -0.4em;
+  color: #888;
+  font-weight: 400;
+  font-size: 0.8em;
+}
+
+.new-category .new-category-prompt {
+  margin-top: 1em;
+  margin-left: 1.5em;
 }
