@@ -10,15 +10,6 @@
   margin: 0.25em;
 }
 
-.categories .categories-category span, .categories .categories-category .badge {
-  display: inline-block; /* fix problem where spans weren't separated by spaces to be considered separate blocks */
-  text-transform: capitalize;
-}
-
-.categories .categories-category .badge {
-  margin-right: 1em;
-}
-
 .categories .account-uncategorized {
   font-style: italic;
 }

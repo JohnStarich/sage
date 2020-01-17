@@ -1,6 +1,7 @@
 import Badge from 'react-bootstrap/Badge';
 import BootstrapTable from 'react-bootstrap-table-next';
 import Button from 'react-bootstrap/Button';
+import { Category } from './CategoryPicker';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Crumb from './Breadcrumb';
@@ -50,34 +51,16 @@ const columns = [
     editor: {
       placeholder: 'expenses:Shopping:Food:Restaurants',
     },
-    formatter: cell => {
-      if (!cell) {
+    formatter: category => {
+      if (!category) {
         return null
       }
 
-      let accountType, category;
-      if (cell.includes(':')) {
-        accountType = cell.slice(0, cell.indexOf(':'))
-        category = cleanCategory(cell)
-      } else {
-        accountType = cell
-        category = ""
+      let accountClass;
+      if (category === 'uncategorized' || category.endsWith('uncategorized')) {
+        accountClass = 'account-uncategorized'
       }
-
-      let variant = 'secondary';
-      if (accountType === 'expenses') {
-        variant = 'info'
-      } else if (accountType === 'revenues') {
-        variant = 'success'
-      }
-
-      let accountClass = category === 'uncategorized' ? 'account-uncategorized' : null
-      return (
-        <div className="categories-category">
-          <Badge pill variant={variant}>{accountType}</Badge>
-          <span className={accountClass}>{category}</span>
-        </div>
-      )
+      return <Category value={category} className={accountClass} />
     },
   },
 ];

@@ -112,8 +112,9 @@ export function CategoryPicker({ category, setCategory, filter, disabled }) {
 
 export default CategoryPicker;
 
-function Category({
+export function Category({
   value: category,
+  className,
 }) {
   if (! category) {
     return null
@@ -121,6 +122,9 @@ function Category({
   const { base, parent } = splitCategory(category)
   const trimmedParent = parent.replace(/^(expenses|revenues):/, "")
   const classNames = ["category"]
+  if (className) {
+    classNames.push(className)
+  }
   return (
     <div className={classNames.join(" ")}>
       <div className="category-name">{base}</div>
