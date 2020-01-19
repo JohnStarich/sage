@@ -10,7 +10,6 @@ import Row from 'react-bootstrap/Row';
 import API from './API';
 import './Categories.css';
 import cellEditFactory, { Type } from 'react-bootstrap-table2-editor';
-import { cleanCategory } from './CategoryPicker';
 
 
 const columns = [
