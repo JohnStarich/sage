@@ -1,12 +1,13 @@
 import React from 'react';
 
 import Amount from './Amount';
+import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Table from 'react-bootstrap/Table';
 import { CategoryPicker } from './CategoryPicker';
 
 
-export default function Transaction(updateTransaction, accountIDMap) {
+export default function Transaction(updateTransaction, accountIDMap, editRule) {
   return txn => {
     let postings = txn.Postings.map((p, i) => {
       if (i === 0) {
@@ -54,6 +55,10 @@ export default function Transaction(updateTransaction, accountIDMap) {
                 </td>
               </tr>
             )}
+            <tr>
+              <td><Button onClick={() => editRule(txn)}>Add rule</Button></td>
+              <td></td>
+            </tr>
           </tbody>
         </Table>
       </Form>

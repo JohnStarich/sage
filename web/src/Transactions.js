@@ -1,12 +1,14 @@
 import 'react-bootstrap-table-next/dist/react-bootstrap-table2.min.css';
 import './Transactions.css';
 
+import API from './API';
 import Amount from './Amount';
 import BootstrapTable from 'react-bootstrap-table-next';
+import Modal from 'react-bootstrap/Modal';
 import React from 'react';
+import RuleEditor from './RuleEditor';
 import ToolkitProvider, { Search } from 'react-bootstrap-table2-toolkit';
 import Transaction from './Transaction';
-import API from './API';
 import paginationFactory from 'react-bootstrap-table2-paginator';
 import { cleanCategory } from './CategoryPicker';
 
@@ -80,6 +82,7 @@ export default function Transactions(props) {
   const [page, setPage] = React.useState(1)
   const [search, setSearch] = React.useState("")
   const [accountIDMap, setAccountIDMap] = React.useState(null)
+  const [activeRule, setActiveRule] = React.useState(null)
 
   const handleTableChange = (_, { page, sizePerPage = 10, searchText = search }) => {
     if (search !== searchText) {
@@ -118,6 +121,10 @@ export default function Transactions(props) {
       })
   }
 
+  const editRule = (txn, posting) => {
+    setActiveRule({ transaction: txn }) // TODO fetch existing rule details
+  }
+
   return (
     <div className="transactions">
       <ToolkitProvider
@@ -138,7 +145,7 @@ export default function Transactions(props) {
               {...toolkitprops.baseProps}
               bootstrap4
               bordered={false}
-              expandRow={{ renderer: Transaction(updateTransaction, accountIDMap) }}
+              expandRow={{ renderer: Transaction(updateTransaction, accountIDMap, editRule) }}
               noDataIndication="No transactions found"
               onTableChange={handleTableChange}
               pagination={paginationFactory({
@@ -151,6 +158,9 @@ export default function Transactions(props) {
           </div>
         }
       </ToolkitProvider>
+      <Modal show={activeRule !== null}>
+        <RuleEditor onClose={() => setActiveRule(null)} {...activeRule} />
+      </Modal>
     </div>
   )
 }
