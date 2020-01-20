@@ -155,7 +155,10 @@ func setupAPI(
 	router.POST("/updateTransaction", updateTransaction(ledgerFile, ldg))
 
 	router.GET("/getRules", getRules(rulesStore))
+	router.GET("/getRule", getRule(rulesStore))
 	router.POST("/updateRules", updateRules(rulesFile, rulesStore))
+	router.POST("/updateRule", updateRule(rulesFile, rulesStore))
+	router.POST("/addRule", addRule(rulesFile, rulesStore))
 
 	router.GET("/getBudgets", getBudgets(db, ldg))
 	router.GET("/getBudget", getBudget(db, ldg))
