@@ -79,3 +79,84 @@ func TestStoreAccounts(t *testing.T) {
 	store := NewStore(rules)
 	assert.Equal(t, []string{"expenses:burgers"}, store.Accounts())
 }
+
+func TestUpdate(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		store := NewStore(Rules{
+			csvRule{
+				Conditions: []string{"some condition"},
+				Account2:   "some account",
+			},
+		})
+		someRule := csvRule{
+			Conditions: []string{"some other condition"},
+			Account2:   "some other account",
+		}
+		err := store.Update(0, someRule)
+		require.NoError(t, err)
+		assert.Equal(t, store.rules[0], someRule)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		store := NewStore(Rules{})
+		err := store.Update(0, csvRule{})
+		require.Error(t, err)
+		assert.Equal(t, "Rule not found", err.Error())
+	})
+}
+
+func TestRemove(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		store := NewStore(Rules{
+			csvRule{Conditions: []string{"some condition"}, Account2: "some account"},
+			csvRule{Conditions: []string{"some second condition"}, Account2: "some second account"},
+			csvRule{Conditions: []string{"some third condition"}, Account2: "some third account"},
+		})
+		err := store.Remove(1)
+		require.NoError(t, err)
+		assert.Equal(t, Rules{
+			csvRule{Conditions: []string{"some condition"}, Account2: "some account"},
+			csvRule{Conditions: []string{"some third condition"}, Account2: "some third account"},
+		}, store.rules)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		store := NewStore(Rules{})
+		err := store.Remove(0)
+		require.Error(t, err)
+		assert.Equal(t, "Rule not found", err.Error())
+	})
+}
+
+func TestAdd(t *testing.T) {
+	store := NewStore(Rules{
+		csvRule{Conditions: []string{"some condition"}, Account2: "some account"},
+	})
+	someRule := csvRule{
+		Conditions: []string{"some other condition"},
+		Account2:   "some other account",
+	}
+	ix := store.Add(someRule)
+	assert.Equal(t, 1, ix)
+	assert.Equal(t, Rules{
+		csvRule{Conditions: []string{"some condition"}, Account2: "some account"},
+		csvRule{Conditions: []string{"some other condition"}, Account2: "some other account"},
+	}, store.rules)
+}
+
+func TestGet(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		someRule := csvRule{Conditions: []string{"some other condition"}, Account2: "some other account"}
+		store := NewStore(Rules{someRule})
+		rule, err := store.Get(0)
+		require.NoError(t, err)
+		assert.Equal(t, someRule, rule)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		store := NewStore(nil)
+		_, err := store.Get(0)
+		require.Error(t, err)
+		assert.Equal(t, "Rule not found", err.Error())
+	})
+}

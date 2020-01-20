@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/johnstarich/sage/ledger"
+	"github.com/pkg/errors"
 )
 
 // Store enables manipulation of rules in memory
@@ -69,4 +70,47 @@ func (s *Store) Accounts() []string {
 		}
 	}
 	return accounts
+}
+
+// Get returns the rule at 'index'
+func (s *Store) Get(index int) (Rule, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if index < 0 || index >= len(s.rules) {
+		return nil, errors.New("Rule not found")
+	}
+	return s.rules[index], nil
+}
+
+// Update updates the rule at 'index' with 'rule'
+func (s *Store) Update(index int, rule Rule) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if index >= len(s.rules) {
+		return errors.New("Rule not found")
+	}
+	s.rules[index] = rule
+	return nil
+}
+
+// Remove removes the rule at 'index'
+func (s *Store) Remove(index int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if index >= len(s.rules) {
+		return errors.New("Rule not found")
+	}
+	newRules := make(Rules, 0, len(s.rules)-1)
+	newRules = append(newRules, s.rules[:index]...)
+	newRules = append(newRules, s.rules[index+1:]...)
+	s.rules = newRules
+	return nil
+}
+
+// Add appends a new rule
+func (s *Store) Add(rule Rule) (newRuleIndex int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rules = append(s.rules, rule)
+	return len(s.rules) - 1
 }

@@ -11,10 +11,36 @@ import (
 	"github.com/pkg/errors"
 )
 
+// CSVRule is the request model for changing a single rule
+type CSVRule struct {
+	Conditions []string
+	Account2   string
+}
+
 func getRules(rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]interface{}{
 			"Rules": rulesStore,
+		})
+	}
+}
+
+func getRule(rulesStore *rules.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var options struct {
+			ID int
+		}
+		if err := c.BindQuery(&options); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		rule, err := rulesStore.Get(options.ID)
+		if err != nil {
+			abortWithClientError(c, http.StatusNotFound, err)
+			return
+		}
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"Rule": rule,
 		})
 	}
 }
@@ -30,6 +56,59 @@ func updateRules(rulesFile vcs.File, rulesStore *rules.Store) gin.HandlerFunc {
 			return
 		}
 		rulesStore.Replace(newRules)
+		if err := sync.Rules(rulesFile, rulesStore); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func updateRule(rulesFile vcs.File, rulesStore *rules.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var bodyRule struct {
+			CSVRule
+			Index *int
+		}
+		if err := c.BindJSON(&bodyRule); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		if bodyRule.Index == nil {
+			abortWithClientError(c, http.StatusBadRequest, errors.New("Rule index is required"))
+			return
+		}
+		rule, err := rules.NewCSVRule("", bodyRule.Account2, "", bodyRule.Conditions...)
+		if err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		err = rulesStore.Update(*bodyRule.Index, rule)
+		if err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		if err := sync.Rules(rulesFile, rulesStore); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func addRule(rulesFile vcs.File, rulesStore *rules.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var bodyRule CSVRule
+		if err := c.BindJSON(&bodyRule); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		rule, err := rules.NewCSVRule("", bodyRule.Account2, "", bodyRule.Conditions...)
+		if err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		rulesStore.Add(rule)
 		if err := sync.Rules(rulesFile, rulesStore); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
