@@ -4,9 +4,7 @@ import './Transactions.css';
 import API from './API';
 import Amount from './Amount';
 import BootstrapTable from 'react-bootstrap-table-next';
-import Modal from 'react-bootstrap/Modal';
 import React from 'react';
-import RuleEditor from './RuleEditor';
 import ToolkitProvider, { Search } from 'react-bootstrap-table2-toolkit';
 import Transaction from './Transaction';
 import paginationFactory from 'react-bootstrap-table2-paginator';
@@ -82,7 +80,6 @@ export default function Transactions(props) {
   const [page, setPage] = React.useState(1)
   const [search, setSearch] = React.useState("")
   const [accountIDMap, setAccountIDMap] = React.useState(null)
-  const [activeRule, setActiveRule] = React.useState(null)
 
   const handleTableChange = (_, { page, sizePerPage = 10, searchText = search }) => {
     if (search !== searchText) {
@@ -115,14 +112,10 @@ export default function Transactions(props) {
     }
     let { Postings } = txn
     API.post('/v1/updateTransaction', { ID: txn.ID, Postings })
-      .then(res => {
+      .then(() => {
         newTransactions[txnIndex] = Object.assign({}, newTransactions[txnIndex], txn)
         setTransactions(newTransactions)
       })
-  }
-
-  const editRule = (txn, posting) => {
-    setActiveRule({ transaction: txn }) // TODO fetch existing rule details
   }
 
   return (
@@ -145,7 +138,7 @@ export default function Transactions(props) {
               {...toolkitprops.baseProps}
               bootstrap4
               bordered={false}
-              expandRow={{ renderer: Transaction(updateTransaction, accountIDMap, editRule) }}
+              expandRow={{ renderer: Transaction(updateTransaction, accountIDMap) }}
               noDataIndication="No transactions found"
               onTableChange={handleTableChange}
               pagination={paginationFactory({
@@ -158,9 +151,6 @@ export default function Transactions(props) {
           </div>
         }
       </ToolkitProvider>
-      <Modal show={activeRule !== null}>
-        <RuleEditor onClose={() => setActiveRule(null)} {...activeRule} />
-      </Modal>
     </div>
   )
 }

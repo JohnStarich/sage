@@ -121,6 +121,14 @@ func duplicateTransactionError(id string) error {
 	return errors.Errorf("Duplicate transaction IDs found: %s", id)
 }
 
+func (l *Ledger) Transaction(id string) (txn Transaction, found bool) {
+	txnPtr, found := l.idSet[id]
+	if found {
+		return *txnPtr, found
+	}
+	return Transaction{}, found
+}
+
 // FirstTransactionTime returns the first transaction's Date field. Returns 0 if there are no transactions
 func (l *Ledger) FirstTransactionTime() time.Time {
 	l.mu.RLock()

@@ -114,3 +114,10 @@ func (s *Store) Add(rule Rule) (newRuleIndex int) {
 	s.rules = append(s.rules, rule)
 	return len(s.rules) - 1
 }
+
+// Matches returns matching rules
+func (s *Store) Matches(txn *ledger.Transaction) map[int]Rule {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.rules.Matches(txn)
+}

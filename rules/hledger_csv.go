@@ -25,13 +25,17 @@ func NewCSVRule(account1, account2, comment string, conditions ...string) (Rule,
 	if err != nil {
 		return csvRule{}, err
 	}
-	return csvRule{
+	rule := csvRule{
 		Conditions: conditions,
 		matchLine:  pattern,
 		account1:   strings.TrimSpace(account1),
 		Account2:   strings.TrimSpace(account2),
 		comment:    strings.TrimSpace(comment),
-	}, nil
+	}
+	if rule.account1 == "" && rule.Account2 == "" && rule.comment == "" {
+		return nil, errors.New("Invalid rule: No category selected")
+	}
+	return rule, nil
 }
 
 func validateConditions(conditions []string) (cleanedConditions []string, re *regexp.Regexp, err error) {

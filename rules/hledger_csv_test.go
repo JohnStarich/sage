@@ -34,6 +34,9 @@ func TestNewCSVRule(t *testing.T) {
 
 	_, err = NewCSVRule(someAccount1, someAccount2, someComment, ".**")
 	assert.Error(t, err, "Invalid regex expected")
+
+	_, err = NewCSVRule("", "", "", "hi")
+	assert.Error(t, err, "At least one field should update if the rule matches")
 }
 
 func TestLedgerMatchLine(t *testing.T) {
@@ -119,7 +122,7 @@ func TestCSVRuleMatch(t *testing.T) {
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			rule, err := NewCSVRule("", "", "", tc.conditions...)
+			rule, err := NewCSVRule("", "some category", "", tc.conditions...)
 			require.NoError(t, err)
 
 			if tc.shouldMatch {

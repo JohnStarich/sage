@@ -132,11 +132,6 @@ hey there
 }
 
 func TestUnmarshalJSON(t *testing.T) {
-	require := func(r Rule, err error) Rule {
-		require.NoError(t, err)
-		return r
-	}
-
 	var r Rules
 	err := r.UnmarshalJSON([]byte("not JSON"))
 	assert.Error(t, err)
@@ -148,6 +143,22 @@ func TestUnmarshalJSON(t *testing.T) {
 	`), &r)
 	assert.NoError(t, err)
 	assert.Equal(t, Rules{
-		require(NewCSVRule("", "some expenses", "", "burgers")),
+		requireRule(NewCSVRule("", "some expenses", "", "burgers")),
 	}, r)
+}
+
+func TestMatches(t *testing.T) {
+	r := Rules{
+		requireRule(NewCSVRule("", "some expenses", "", "burgers")),
+		requireRule(NewCSVRule("", "some sandwich expenses", "", "sandwiches")),
+		requireRule(NewCSVRule("", "some expenses", "", "more burgers")),
+	}
+	results := r.Matches(&ledger.Transaction{
+		Payee:    "more burgers",
+		Postings: []ledger.Posting{{}, {}},
+	})
+	assert.Equal(t, map[int]Rule{
+		0: r[0],
+		2: r[2],
+	}, results)
 }
