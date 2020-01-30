@@ -884,3 +884,22 @@ func TestLeftOverAccountBalances(t *testing.T) {
 		}, balances)
 	})
 }
+
+func TestTransaction(t *testing.T) {
+	someTxn := Transaction{
+		Postings: []Posting{
+			{Account: "some account", Amount: *decFloat(1)},
+			{Account: "expenses", Amount: *decFloat(1), Tags: makeIDTag("some-id")},
+		},
+	}
+	ldg, err := New([]Transaction{
+		someTxn,
+	})
+	require.NoError(t, err)
+	_, found := ldg.Transaction("non-existent txn")
+	assert.False(t, found)
+
+	txn, found := ldg.Transaction("some-id")
+	assert.True(t, found)
+	assert.Equal(t, someTxn, txn)
+}

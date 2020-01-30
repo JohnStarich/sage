@@ -58,7 +58,7 @@ func Run(
 		"/static/",
 	))
 
-	engine.GET("/api/v1/getVersion", getVersion(http.DefaultClient, "api.github.com", "JohnStarich/sage")) // add version route without auth
+	engine.GET("/api/v1/getVersion", getVersion(http.DefaultClient, "api.github.com", "JohnStarich/sage", logger)) // add version route without auth
 
 	api := engine.Group("/api/v1")
 	if len(options.Password) > 0 {
@@ -154,11 +154,12 @@ func setupAPI(
 	router.GET("/getTransactions", getTransactions(ldg, accountStore))
 	router.POST("/updateTransaction", updateTransaction(ledgerFile, ldg))
 
-	router.GET("/getRules", getRules(rulesStore))
+	router.GET("/getRules", getRules(rulesStore, ldg))
 	router.GET("/getRule", getRule(rulesStore))
 	router.POST("/updateRules", updateRules(rulesFile, rulesStore))
 	router.POST("/updateRule", updateRule(rulesFile, rulesStore))
 	router.POST("/addRule", addRule(rulesFile, rulesStore))
+	router.POST("/deleteRule", deleteRule(rulesFile, rulesStore))
 
 	router.GET("/getBudgets", getBudgets(db, ldg))
 	router.GET("/getBudget", getBudget(db, ldg))

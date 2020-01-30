@@ -17,3 +17,10 @@
   color: white;
   background-color: #6c757d;
 }
+
+.radio-group input:disabled + label {
+  cursor: not-allowed;
+  border-color: #ced4da;
+  color: #495057;
+  background-color: #e9ecef;
+}

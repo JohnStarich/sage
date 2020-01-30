@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/sync"
 	"github.com/johnstarich/sage/vcs"
@@ -17,10 +18,26 @@ type CSVRule struct {
 	Account2   string
 }
 
-func getRules(rulesStore *rules.Store) gin.HandlerFunc {
+func getRules(rulesStore *rules.Store, ldg *ledger.Ledger) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var options struct {
+			Transaction string `form:"transaction"`
+		}
+		if err := c.BindQuery(&options); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		var result interface{} = rulesStore
+		if options.Transaction != "" {
+			txn, found := ldg.Transaction(options.Transaction)
+			if !found {
+				abortWithClientError(c, http.StatusNotFound, errors.New("Transaction not found"))
+				return
+			}
+			result = rulesStore.Matches(&txn)
+		}
 		c.JSON(http.StatusOK, map[string]interface{}{
-			"Rules": rulesStore,
+			"Rules": result,
 		})
 	}
 }
@@ -108,7 +125,34 @@ func addRule(rulesFile vcs.File, rulesStore *rules.Store) gin.HandlerFunc {
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
-		rulesStore.Add(rule)
+		newIndex := rulesStore.Add(rule)
+		if err := sync.Rules(rulesFile, rulesStore); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"Index": newIndex,
+		})
+	}
+}
+
+func deleteRule(rulesFile vcs.File, rulesStore *rules.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var bodyRule struct {
+			Index *int
+		}
+		if err := c.BindJSON(&bodyRule); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		if bodyRule.Index == nil {
+			abortWithClientError(c, http.StatusBadRequest, errors.New("Index is required"))
+			return
+		}
+		if err := rulesStore.Remove(*bodyRule.Index); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
 		if err := sync.Rules(rulesFile, rulesStore); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return

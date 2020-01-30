@@ -1,9 +1,26 @@
 .rule-editor {
-  margin: 2em;
+  margin: 1.5em 1.8em;
 }
 
 .rule-editor .rule-controls {
   display: flex;
   justify-content: space-between;
   margin-top: 1em;
+}
+
+.rule-editor .rule-close {
+  font-size: 0.7em;
+  font-weight: 800;
+  border: none;
+  padding: 0;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1.7em;
+  height: 1.7em;
+  margin: 0.75em 0.9em;
+}
+
+.rule-editor .rule-close:hover {
+  border: unset;
 }

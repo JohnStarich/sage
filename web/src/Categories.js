@@ -72,7 +72,7 @@ export default function Categories({ match }) {
       let newRules = res.data.Rules || []
       newRules = newRules.map((rule, i) => {
         rule.ID = i + 1
-        rule.Conditions = rule.Conditions.join('\n')
+        rule.Conditions = rule.Conditions ? rule.Conditions.join('\n') : ""
         return rule
       })
       setRules(newRules)

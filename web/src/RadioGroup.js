@@ -10,6 +10,7 @@ export default function RadioGroup(props) {
   const {
     choices,
     defaultChoice,
+    disabledChoices = [],
     label,
     name,
     onSelect,
@@ -26,6 +27,7 @@ export default function RadioGroup(props) {
   const [id] = React.useState(name || `radio-group-${Math.random().toString()}`)
 
   const ColTag = smColumns ? Col : 'div'
+  const disabledSet = new Set(disabledChoices)
 
   return (
     <Form.Group className="radio-group" as={smColumns ? Row : undefined}>
@@ -39,6 +41,7 @@ export default function RadioGroup(props) {
           <Form.Check key={choice} inline id={`${id}-${choice}`}>
             <Form.Check.Input
               defaultChecked={defaultChoice && defaultChoice.toUpperCase() === choice.toUpperCase()}
+              disabled={disabledSet.has(choice)}
               name={id}
               onChange={e => onSelect && onSelect(e.target.value)}
               type="radio"

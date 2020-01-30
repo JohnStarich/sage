@@ -160,3 +160,16 @@ func TestGet(t *testing.T) {
 		assert.Equal(t, "Rule not found", err.Error())
 	})
 }
+
+func TestStoreMatches(t *testing.T) {
+	rule, err := NewCSVRule("", "burgers", "", "some condition")
+	require.NoError(t, err)
+	store := NewStore(Rules{rule})
+	results := store.Matches(&ledger.Transaction{
+		Payee:    "some condition and extra text",
+		Postings: []ledger.Posting{{}, {}},
+	})
+	assert.Equal(t, map[int]Rule{
+		0: rule,
+	}, results)
+}

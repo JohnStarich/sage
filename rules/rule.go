@@ -26,6 +26,17 @@ func (r Rules) Apply(txn *ledger.Transaction) {
 	}
 }
 
+// Matches returns matching rules
+func (r Rules) Matches(txn *ledger.Transaction) map[int]Rule {
+	matchingRules := make(map[int]Rule)
+	for ix, rule := range r {
+		if rule.Match(*txn) {
+			matchingRules[ix] = rule
+		}
+	}
+	return matchingRules
+}
+
 // UnmarshalJSON parses the given bytes into rules
 func (r *Rules) UnmarshalJSON(b []byte) error {
 	var rules []csvRule
