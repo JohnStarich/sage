@@ -12,13 +12,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/consts"
 	"github.com/patrickmn/go-cache"
+	"go.uber.org/zap"
 )
 
 type githubRelease struct {
 	TagName string `json:"tag_name"`
 }
 
-func getVersion(client *http.Client, githubEndpoint, repo string) gin.HandlerFunc {
+func getVersion(client *http.Client, githubEndpoint, repo string, logger *zap.Logger) gin.HandlerFunc {
 	const cacheDuration = 4 * time.Hour
 	versionCache := cache.New(cacheDuration, cacheDuration*2)
 	return func(c *gin.Context) {
@@ -30,16 +31,16 @@ func getVersion(client *http.Client, githubEndpoint, repo string) gin.HandlerFun
 			var err error
 			latestVersion, err = fetchUpstreamVersion(c, client, githubEndpoint, repo)
 			if err != nil {
-				abortWithClientError(c, http.StatusInternalServerError, err)
-				return
+				logger.Warn("Error fetching newest version info", zap.Error(err))
+			} else {
+				versionCache.SetDefault("", latestVersion)
 			}
-			versionCache.SetDefault("", latestVersion)
 		}
 
 		c.Header("Cache-Control", fmt.Sprintf("max-age=%d", int(cacheDuration.Seconds())))
 		c.JSON(http.StatusOK, map[string]interface{}{
 			"Version":         consts.Version,
-			"UpdateAvailable": latestVersion != consts.Version,
+			"UpdateAvailable": latestVersion != "" && latestVersion != consts.Version,
 		})
 	}
 }
