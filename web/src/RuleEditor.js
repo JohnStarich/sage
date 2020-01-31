@@ -54,12 +54,15 @@ const choiceRevenues = 'Revenues'
 const choiceExact = 'Exact'
 const choiceFuzzy = 'Fuzzy'
 
-export default function ({ transaction, onClose, rule, setRule }) {
+export default function ({ transaction, onClose, rule, setRule, removeRule }) {
   if (!onClose) {
     throw Error("onClose is required")
   }
   if (!setRule) {
     throw Error("setRule is required")
+  }
+  if (!removeRule) {
+    throw Error("removeRule is required")
   }
 
   const ruleString = React.useMemo(() => [
@@ -131,11 +134,11 @@ export default function ({ transaction, onClose, rule, setRule }) {
     onClose()
   }
 
-  const removeRule = async () => {
+  const deleteRule = async () => {
     let newConditions = rule.Conditions.slice()
     if (condition && newConditions.length === 1) {
       await API.post('/v1/deleteRule', { Index: rule.Index })
-      setRule(null)
+      removeRule()
       onClose()
       return
     }
@@ -147,14 +150,14 @@ export default function ({ transaction, onClose, rule, setRule }) {
       Index: rule.Index,
     })
     await API.post('/v1/updateRule', newRule)
-    setRule(null)
+    removeRule()
     onClose()
   }
 
   return (
     <div className="rule-editor">
       <Button variant="outline-secondary" onClick={onClose} className="rule-close">X</Button>
-      <p>For new transactions, always categorize "{transaction.Payee}" as <strong>{cleanCategory(transaction.Postings[1].Account)}</strong>.</p>
+      <p>For new transactions, always categorize "{transaction.Payee}" as <strong>{cleanCategory(rule.Account2 || transaction.Postings[1].Account)}</strong>.</p>
 
       <div>
         {customPattern
@@ -214,7 +217,7 @@ export default function ({ transaction, onClose, rule, setRule }) {
         {condition ?
           <Button variant="danger" onClick={() => {
             if (window.confirm(`Remove automatic category for ${transaction.Payee}?`)) {
-              removeRule()
+              deleteRule()
             }
           }}>Remove</Button>
         : null}

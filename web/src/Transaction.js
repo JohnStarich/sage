@@ -61,7 +61,10 @@ export default function Transaction(updateTransaction, accountIDMap) {
             )}
             <tr>
               <td>
-                <TransactionRules transaction={txn} />
+                <TransactionRules
+                  transaction={txn}
+                  setCategory={category => updatePosting(postings.length-1, { Account: category })}
+                  />
               </td>
             </tr>
           </tbody>
@@ -71,8 +74,13 @@ export default function Transaction(updateTransaction, accountIDMap) {
   }
 }
 
-function TransactionRules({ transaction }) {
+function TransactionRules({ transaction, setCategory }) {
+  if (!setCategory) {
+    throw Error("setCategory is required")
+  }
+
   const [editing, setEditing] = React.useState(null)
+  const [rules, setRules] = React.useState([])
   const [rule, setRule] = React.useState(null)
   React.useEffect(() => {
     if (!transaction) {
@@ -82,42 +90,62 @@ function TransactionRules({ transaction }) {
       .then(res => {
         const rules = Object.entries(res.data.Rules)
           .map(([key, value]) =>
-            Object.assign({ Index: key }, value)
+            Object.assign({ Index: Number(key) }, value)
           )
           .filter(r => r.Conditions && r.Conditions.length > 0)
           .sort((a, b) => a.Index - b.Index)
         if (rules && rules.length > 0) {
-          const newRule = rules[rules.length - 1]
-          newRule.Index = Number(newRule.Index)
-          setRule(newRule)
+          setRules(rules)
+          setRule(rules[rules.length - 1])
+        } else {
+          setRule(null)
         }
       })
   }, [transaction])
+
+  const removeRule = () => {
+    const newRules = rules.slice(0, -1)
+    setRules(newRules)
+    setRule(newRules.length > 0 ? newRules[newRules.length - 1] : null)
+  }
 
   const account2 = transaction.Postings[1].Account
   const isUncategorized = account2 === 'uncategorized' || account2 === 'expenses:uncategorized'
 
   return (
     <>
-      {!isUncategorized ?
-        <Button
-          className="edit-rule-btn"
-          onClick={() => setEditing(rule || {Conditions: [], Account2: account2})}
-          variant={rule ? "secondary" : "link"}
-          >
-          {rule
-            ? "Edit rule"
-            : <>Always categorize "{transaction.Payee}" as <strong>{cleanCategory(transaction.Postings[1].Account)}</strong>?</>
-          }
-        </Button>
-      : null}
+      {!isUncategorized ? (
+        <>
+          <Button
+            className="edit-rule-btn"
+            onClick={() => setEditing(rule || {Conditions: [], Account2: account2})}
+            variant={rule ? "secondary" : "link"}
+            >
+            {rule
+              ? "Edit rule"
+              : <>Always categorize "{transaction.Payee}" as <strong>{cleanCategory(account2)}</strong>?</>
+            }
+          </Button>
+          {rule && rule.Account2 && rule.Account2 !== account2 ?
+            <Button variant="link" onClick={() => setCategory(rule.Account2)}>
+              Use default category <strong>{cleanCategory(rule.Account2)}</strong>?
+            </Button>
+          : null}
+        </>
+      ) : null}
       <Modal show={editing !== null} onHide={() => setEditing(null)}>
         {editing !== null ? (
         <RuleEditor
           onClose={() => setEditing(null)}
           transaction={transaction}
           rule={editing}
-          setRule={setRule}
+          setRule={rule => {
+            setRule(rule)
+            if (rules.length > 0 && rules[rules.length - 1].Index !== rule.Index) {
+              setRules(rules.concat(rule))
+            }
+          }}
+          removeRule={removeRule}
           />
         ) : null}
       </Modal>
