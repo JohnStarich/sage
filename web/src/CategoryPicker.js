@@ -39,7 +39,7 @@ function clearCategoryCache() {
   categoriesPromise = null
 }
 
-export function CategoryPicker({ category, setCategory, filter, disabled }) {
+export function CategoryPicker({ id, category, setCategory, filter, disabled }) {
   if (!setCategory) {
     throw Error("setCategory is required")
   }
@@ -74,7 +74,7 @@ export function CategoryPicker({ category, setCategory, filter, disabled }) {
       className="category-picker"
       onSelect={(_, e) => setCategory(e.currentTarget.getAttribute('value'))}
       >
-      <Dropdown.Toggle variant="outline-secondary">
+      <Dropdown.Toggle variant="outline-secondary" id={id}>
         <Category value={category} />
       </Dropdown.Toggle>
       <Dropdown.Menu>

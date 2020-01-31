@@ -21,3 +21,17 @@
 .rename-button {
   text-align: right;
 }
+
+.reprocess-uncategorized-submit {
+  display: flex;
+  align-items: baseline;
+  min-width: 60%;
+}
+
+.reprocess-uncategorized-submit .btn {
+  margin-right: 1em;
+}
+
+.reprocess-uncategorized-selected {
+  font-size: 0.9em;
+}

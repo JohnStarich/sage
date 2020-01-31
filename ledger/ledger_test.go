@@ -903,3 +903,12 @@ func TestTransaction(t *testing.T) {
 	assert.True(t, found)
 	assert.Equal(t, someTxn, txn)
 }
+
+func TestSize(t *testing.T) {
+	txns := []Transaction{
+		{}, {}, {},
+	}
+	l, err := New(txns)
+	require.NoError(t, err)
+	assert.Equal(t, len(txns), l.Size())
+}

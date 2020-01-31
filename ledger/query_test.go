@@ -12,7 +12,7 @@ func TestQuery(t *testing.T) {
 	for _, tc := range []struct {
 		description   string
 		txns          []Transaction
-		search        string
+		options       QueryOptions
 		page, results int
 		expect        QueryResult
 	}{
@@ -32,7 +32,7 @@ func TestQuery(t *testing.T) {
 				{Payee: "hello there"},
 				{Payee: "hi there"},
 			},
-			search:  "hello",
+			options: QueryOptions{Search: "hello"},
 			page:    1,
 			results: 10,
 			expect: QueryResult{
@@ -54,7 +54,7 @@ func TestQuery(t *testing.T) {
 				{Payee: "hello there"},
 				{Payee: "hi there"},
 			},
-			search:  "there",
+			options: QueryOptions{Search: "there"},
 			page:    1,
 			results: 1,
 			expect: QueryResult{
@@ -66,11 +66,57 @@ func TestQuery(t *testing.T) {
 				},
 			},
 		},
+		{
+			description: "filter dates",
+			txns: []Transaction{
+				{Date: parseDate(t, "2020/01/01"), Payee: "hello there"},
+				{Date: parseDate(t, "2020/01/02"), Payee: "hi there"},
+				{Date: parseDate(t, "2020/01/03"), Payee: "goodbye"},
+				{Date: parseDate(t, "2020/01/04"), Payee: "see ya later"},
+			},
+			options: QueryOptions{
+				Start: parseDate(t, "2020/01/02"),
+				End:   parseDate(t, "2020/01/03"),
+			},
+			page:    1,
+			results: 10,
+			expect: QueryResult{
+				Count:   2,
+				Page:    1,
+				Results: 10,
+				Transactions: []Transaction{
+					{Date: parseDate(t, "2020/01/02"), Payee: "hi there"},
+					{Date: parseDate(t, "2020/01/03"), Payee: "goodbye"},
+				},
+			},
+		},
+		{
+			description: "filter accounts",
+			txns: []Transaction{
+				{Postings: []Posting{{}, {Account: "uncategorized"}}},
+				{Postings: []Posting{{}, {Account: "expenses:uncategorized"}}},
+				{Postings: []Posting{{}, {Account: "some real category"}}},
+			},
+			options: QueryOptions{
+				Accounts: []string{"uncategorized", "expenses:uncategorized"},
+			},
+			page:    1,
+			results: 10,
+			expect: QueryResult{
+				Count:   2,
+				Page:    1,
+				Results: 10,
+				Transactions: []Transaction{
+					{Postings: []Posting{{}, {Account: "uncategorized"}}},
+					{Postings: []Posting{{}, {Account: "expenses:uncategorized"}}},
+				},
+			},
+		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			ldg, err := New(tc.txns)
 			require.NoError(t, err)
-			assert.Equal(t, tc.expect, ldg.Query(tc.search, tc.page, tc.results))
+			assert.Equal(t, tc.expect, ldg.Query(tc.options, tc.page, tc.results))
 		})
 	}
 }

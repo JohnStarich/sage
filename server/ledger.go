@@ -76,8 +76,15 @@ func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.
 			abortWithClientError(c, http.StatusBadRequest, errs.ErrOrNil())
 			return
 		}
+
+		var options ledger.QueryOptions
+		if err := c.BindQuery(&options); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+
 		result := transactionsResponse{
-			QueryResult:  ldg.Query(c.Query("search"), page, results),
+			QueryResult:  ldg.Query(options, page, results),
 			AccountIDMap: make(map[string]string),
 		}
 		// attempt to make asset and liability accounts more descriptive
@@ -357,7 +364,7 @@ func updateTransaction(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc 
 		}
 
 		var txnJSON struct {
-			ID string
+			ID string // the original transaction's ID
 		}
 		if err := json.Unmarshal(body, &txnJSON); err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
@@ -382,6 +389,44 @@ func updateTransaction(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc 
 
 		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func updateTransactions(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var txns []struct {
+			ID string `binding:"required"` // the original transaction's ID
+			ledger.Transaction
+		}
+		if err := c.BindJSON(&txns); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		var clientErrs, serverErrs sErrors.Errors
+		for _, txn := range txns {
+			switch err := ldg.UpdateTransaction(txn.ID, txn.Transaction).(type) {
+			case ledger.Error:
+				clientErrs.AddErr(err)
+			case nil: // skip
+			default:
+				serverErrs.AddErr(err)
+			}
+		}
+
+		if err := serverErrs.ErrOrNil(); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		if err := clientErrs.ErrOrNil(); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
 
@@ -455,6 +500,38 @@ func importOFXFile(ledgerFile vcs.File, ldg *ledger.Ledger, accountStore *client
 			}
 		}
 		c.Status(http.StatusNoContent)
+	}
+}
+
+func reimportTransactions(ledgerFile vcs.File, ldg *ledger.Ledger, rulesStore *rules.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			Start, End string
+		}
+		if err := c.BindJSON(&body); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		start, end, err := getStartEndTimes(body.Start, body.End, endOfMonth)
+		if err != nil {
+			abortWithClientError(c, http.StatusOK, err)
+			return
+		}
+		result := ldg.Query(ledger.QueryOptions{
+			Start: start,
+			End:   end,
+			// currently accounts are fixed to "uncategorized" and "expenses:uncategorized"
+			Accounts: []string{model.Uncategorized, model.ExpenseAccount + ":" + model.Uncategorized},
+		}, 1, ldg.Size())
+		rulesStore.ApplyAll(result.Transactions)
+
+		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
+			abortWithClientError(c, http.StatusInternalServerError, err)
+			return
+		}
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"Count": result.Count,
+		})
 	}
 }
 
