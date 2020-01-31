@@ -435,3 +435,7 @@ func isOpeningTransaction(txn Transaction) bool {
 	}
 	return false
 }
+
+func (l *Ledger) Size() int {
+	return len(l.transactions)
+}

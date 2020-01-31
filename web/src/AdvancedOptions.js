@@ -2,18 +2,21 @@ import React from 'react';
 import API from './API';
 import './AdvancedOptions.css';
 
+import * as DateUtils from './DateUtils';
 import Button from 'react-bootstrap/Button';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
+import UTCDatePicker from './UTCDatePicker';
 import { Crumb } from './Breadcrumb';
+import { Link } from 'react-router-dom';
 
 
 const labelWidth = 4
 const inputWidth = 8
 
-export default function({ match }) {
+export default function ({ match }) {
   return (
     <>
       <Crumb title="Advanced Options" match={match} />
@@ -21,6 +24,16 @@ export default function({ match }) {
         <Row>
           <h2>Advanced Options</h2>
           <p>These features are dangerous and can corrupt your data. Use wisely.</p>
+        </Row>
+        <Row>
+          <Container>
+            <Row>
+              <h3>Categorize Transactions</h3>
+              <p>Reprocess all uncategorized transactions in the given date period to automatically set their category.</p>
+              <p>The category is determined by a transaction's matching <Link to="/categories">category rules</Link>.</p>
+            </Row>
+            <Row><ReprocessUncategorized /></Row>
+          </Container>
         </Row>
         <Row>
           <Container>
@@ -69,7 +82,7 @@ function RenameAccount() {
               OldID: document.getElementById("old-account-id").value,
               NewID: document.getElementById("new-account-id").value,
             }
-            if (! window.confirm(`Are you sure you want to rename "${renameParams.Old}*" to "${renameParams.New}*"?`)) {
+            if (!window.confirm(`Are you sure you want to rename "${renameParams.Old}*" to "${renameParams.New}*"?`)) {
               return
             }
             API.post('/v1/renameLedgerAccount', renameParams)
@@ -82,7 +95,7 @@ function RenameAccount() {
               .catch(err => {
                 const errorMessage = err.response && err.response.data && err.response.data.Error
                 setFeedback(errorMessage || "An internal server error occurred")
-                if (! errorMessage) {
+                if (!errorMessage) {
                   console.error(err)
                   throw err
                 }
@@ -90,7 +103,7 @@ function RenameAccount() {
           }
           setValidated(true)
         }}
-        >
+      >
         <Form.Group controlId="old-account" as={Row}>
           <Form.Label column sm={labelWidth}>Old posting prefix</Form.Label>
           <Col sm={inputWidth}>
@@ -126,23 +139,119 @@ function RenameAccount() {
             </Row>
             <Row>
               <Container className="rename-suggestions">
-              {renameSuggestions.map((r, i) =>
-                <Row key={i}>
-                  <Col sm="4">{r.Old}<br />{r.OldID}</Col>
-                  <Col sm="1" className="rename-symbol">&#187;</Col>
-                  <Col sm="4">{r.New}<br />{r.NewID}</Col>
-                  <Col sm="3" className="rename-button"><Button variant="secondary" onClick={e => {
-                    document.getElementById("old-account").value = r.Old
-                    document.getElementById("new-account").value = r.New
-                    document.getElementById("old-account-id").value = r.OldID
-                    document.getElementById("new-account-id").value = r.NewID
-                  }}>Rename</Button></Col>
-                </Row>
-              )}
+                {renameSuggestions.map((r, i) =>
+                  <Row key={i}>
+                    <Col sm="4">{r.Old}<br />{r.OldID}</Col>
+                    <Col sm="1" className="rename-symbol">&#187;</Col>
+                    <Col sm="4">{r.New}<br />{r.NewID}</Col>
+                    <Col sm="3" className="rename-button"><Button variant="secondary" onClick={() => {
+                      document.getElementById("old-account").value = r.Old
+                      document.getElementById("new-account").value = r.New
+                      document.getElementById("old-account-id").value = r.OldID
+                      document.getElementById("new-account-id").value = r.NewID
+                    }}>Rename</Button></Col>
+                  </Row>
+                )}
               </Container>
             </Row>
           </>
-        : null}
+          : null}
+      </Form>
+    </Container>
+  )
+}
+
+function ReprocessUncategorized() {
+  const [validated, setValidated] = React.useState(false)
+  const [start, setStart] = React.useState(DateUtils.firstOfMonth(new Date()))
+  const [end, setEnd] = React.useState(start)
+  const [txnCount, setTxnCount] = React.useState(null)
+  const [feedback, setFeedback] = React.useState(null)
+
+  React.useEffect(() => {
+    API.get('/v1/getTransactions', {params: {
+      results: 1,
+      accounts: ["uncategorized", "expenses:uncategorized"],
+      end,
+      start,
+    }}).then(res => setTxnCount(res.data.Count))
+  }, [start, end])
+
+  return (
+    <Container>
+      <Form
+        id="reprocess-uncategorized"
+        noValidate
+        validated={validated}
+        onSubmit={e => {
+          e.preventDefault()
+          e.stopPropagation()
+          const form = e.currentTarget
+          if (form.checkValidity() !== false) {
+            if (!window.confirm(`Automatically recategorize ${txnCount} transaction${txnCount === 1 ? "" : "s"}?`)) {
+              return
+            }
+            API.post('/v1/reimportTransactions', { Start: start, End: end })
+              .then(res => {
+                setFeedback(`Success! Auto-categorized ${res.data.Count} transactions.`)
+                form.reset()
+                const thisMonth = DateUtils.firstOfMonth(new Date())
+                setStart(thisMonth)
+                setEnd(thisMonth)
+                setValidated(false)
+              })
+              .catch(err => {
+                const errorMessage = err.response && err.response.data && err.response.data.Error
+                setFeedback(errorMessage || "An internal server error occurred")
+                if (!errorMessage) {
+                  console.error(err)
+                  throw err
+                }
+              })
+          }
+          setValidated(true)
+        }}
+      >
+        <Form.Group controlId="reprocess-start" as={Row}>
+          <Form.Label column sm={labelWidth}>Start date</Form.Label>
+          <Col sm={inputWidth}>
+            <UTCDatePicker
+              id="reprocess-start"
+              selected={start}
+              selectsStart
+              startDate={start}
+              endDate={end}
+              onChange={v => {
+                setStart(v)
+                document.getElementById('reprocess-end').focus()
+              }}
+              maxDate={DateUtils.lastOfMonth(new Date())}
+            />
+          </Col>
+        </Form.Group>
+        <Form.Group controlId="reprocess-end" as={Row}>
+          <Form.Label column sm={labelWidth}>End date</Form.Label>
+          <Col sm={inputWidth}>
+            <UTCDatePicker
+              id="reprocess-end"
+              selected={end}
+              selectsEnd
+              startDate={start}
+              endDate={end}
+              onChange={v => setEnd(v)}
+              maxDate={DateUtils.lastOfMonth(new Date())}
+            />
+          </Col>
+        </Form.Group>
+        <Row>
+          <Col className="reprocess-uncategorized-submit">
+            <Button type="submit" disabled={txnCount === 0}>Submit</Button>
+            {txnCount !== null ?
+              <div className="reprocess-uncategorized-selected"><em>{txnCount} transaction{txnCount === 1 ? "" : "s"} selected</em></div>
+            : null}
+          </Col>
+          <Col>{feedback}</Col>
+        </Row>
       </Form>
     </Container>
   )

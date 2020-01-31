@@ -1,11 +1,12 @@
 import './Budgets.css';
+import * as DateUtils from './DateUtils';
+import API from './API';
 import Amount from './Amount';
 import BudgetsHistory from './BudgetsHistory';
 import Button from 'react-bootstrap/Button';
 import Crumb from './Breadcrumb';
 import React from 'react';
 import UTCDatePicker from './UTCDatePicker';
-import API from './API';
 import { cleanCategory, CategoryPicker } from './CategoryPicker';
 
 
@@ -55,18 +56,6 @@ function sortBudgets(a, b) {
   return compare
 }
 
-function firstOfMonth(date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
-}
-
-function lastOfMonth(date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0))
-}
-
-function someMonthsAgo(date, months = 12) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - (months - 1), 1))
-}
-
 function fetchEverythingElseDetails(start, end) {
   return API.get('/v1/getEverythingElseBudget', { params: { start, end } })
     .then(res => {
@@ -90,8 +79,8 @@ export default function Budgets({ match }) {
   const [allBudgets, setAllBudgets] = React.useState(null)
   const [budgets, setBudgets] = React.useState(null)
   const [timeProgress, setTimeProgress] = React.useState(null)
-  const [start, setStart] = React.useState(firstOfMonth(new Date()))
-  const [end, setEnd] = React.useState(lastOfMonth(new Date()))
+  const [start, setStart] = React.useState(DateUtils.firstOfMonth(new Date()))
+  const [end, setEnd] = React.useState(DateUtils.lastOfMonth(new Date()))
   const [everythingElse, setEverythingElse] = React.useState(null)
   const [controlsEnabled, setControlsEnabled] = React.useState(false)
 
@@ -109,13 +98,13 @@ export default function Budgets({ match }) {
       const progress = (now.getTime() - start.getTime()) / (end.getTime() - start.getTime())
       setTimeProgress(Math.min(1, progress))
       setEverythingElse(everythingElseDetails)
-      setControlsEnabled(firstOfMonth(now).getTime() === start.getTime() && lastOfMonth(now).getTime() === end.getTime())
+      setControlsEnabled(DateUtils.firstOfMonth(now).getTime() === start.getTime() && DateUtils.lastOfMonth(now).getTime() === end.getTime())
     })
   }, [start, end])
 
   React.useEffect(() => {
     const now = new Date()
-    const start = someMonthsAgo(now, 12), end = lastOfMonth(now)
+    const start = DateUtils.someMonthsAgo(now, 12), end = DateUtils.lastOfMonth(now)
     API.get('/v1/getBudgets', { params: { start, end } })
       .then(res => {
         setAllBudgets(Object.assign(
@@ -196,7 +185,7 @@ export default function Budgets({ match }) {
           date={start}
           setMonth={start => {
             setStart(start)
-            setEnd(lastOfMonth(start))
+            setEnd(DateUtils.lastOfMonth(start))
           }}
           />
       <h2>
@@ -204,10 +193,10 @@ export default function Budgets({ match }) {
           dateFormat="MMM yyyy"
           selected={start}
           onChange={v => {
-            setStart(firstOfMonth(v))
-            setEnd(lastOfMonth(v))
+            setStart(DateUtils.firstOfMonth(v))
+            setEnd(DateUtils.lastOfMonth(v))
           }}
-          maxDate={lastOfMonth(new Date())}
+          maxDate={DateUtils.lastOfMonth(new Date())}
           showMonthYearPicker
         />
       </h2>

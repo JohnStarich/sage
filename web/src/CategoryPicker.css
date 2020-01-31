@@ -11,6 +11,8 @@
 
 .category-picker .dropdown-menu {
   padding-top: 0;
+  max-height: 40vh;
+  overflow-y: scroll;
 }
 
 .category-picker input[type="search"] {
