@@ -33,6 +33,7 @@ export default function Transaction(updateTransaction, accountIDMap) {
       let { ID, Postings } = txn
       Postings = Array.from(Postings)
       Postings[index] = Object.assign({}, Postings[index], newPosting)
+      Postings = balancePostings(Postings, index)
       updateTransaction({ ID, Postings })
     }
 
@@ -72,6 +73,33 @@ export default function Transaction(updateTransaction, accountIDMap) {
       </Form>
     )
   }
+}
+
+function balancePostings(postings, updatedIndex) {
+  if (postings.length < 2) {
+    // invalid transaction: must have at least 2 postings
+    return postings
+  }
+  const delta =
+    postings
+      .map(p => p.Amount)
+      .reduce((a, b) => a + b)
+  if (delta === 0) {
+    // transaction is balanced
+    return postings
+  }
+
+  let leftOverIndex = updatedIndex + 1
+  if (leftOverIndex === postings.length) {
+    leftOverIndex = 1
+  }
+  postings[leftOverIndex].Amount = roundToHundredths(postings[leftOverIndex].Amount - delta)
+  return postings
+}
+
+function roundToHundredths(x) {
+  // espilon idea lifted from https://stackoverflow.com/a/11832950/1530494
+  return Math.round((x + Number.EPSILON) * 100) / 100
 }
 
 function TransactionRules({ transaction, setCategory }) {
