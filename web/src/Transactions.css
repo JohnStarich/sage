@@ -6,32 +6,6 @@
   font-weight: 300;
 }
 
-.transactions .category .uncategorized {
-  font-style: italic;
-}
-
-.transactions .postings {
-  margin: 0 2em;
-  width: 40em;
-}
-
-.transactions .postings tr {
-  vertical-align: top;
-}
-
-.transactions .postings td:nth-child(1) {
-  width: 30em;
-}
-
-.transactions .postings th:nth-child(2) {
-  text-align: right;
-}
-
-.transactions .postings td:nth-child(2) {
-  text-align: right;
-  padding-left: 2em;
-}
-
 .transactions .transaction.amount.amount-positive {
   color: #009900;
 }

@@ -1,3 +1,34 @@
 .edit-rule-btn.btn-link {
   font-size: 0.8em;
 }
+
+.transaction .category .uncategorized {
+  font-style: italic;
+}
+
+.transaction .postings {
+  box-sizing: border-box;
+  padding: 0 2em;
+  table-layout: fixed;
+}
+
+.transaction .postings tr {
+  vertical-align: top;
+}
+
+.transaction .postings-name {
+  width: 50%;
+}
+
+.transaction .postings-amount {
+  text-align: right;
+}
+
+.transaction .postings td:not(:first-child) {
+  margin-left: 2em;
+}
+
+.transaction .postings-controls .btn {
+  margin-right: 1em;
+  margin-bottom: 0.5em;
+}
