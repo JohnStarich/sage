@@ -137,12 +137,12 @@ function TransactionRules({ transaction, setCategory }) {
     setRule(newRules.length > 0 ? newRules[newRules.length - 1] : null)
   }
 
-  const account2 = transaction.Postings[1].Account
+  const account2 = transaction.Postings[transaction.Postings.length - 1].Account
   const isUncategorized = account2 === 'uncategorized' || account2 === 'expenses:uncategorized'
 
   return (
     <>
-      {!isUncategorized ? (
+      {!isUncategorized && transaction.Postings.length === 2 ? (
         <>
           <Button
             className="edit-rule-btn"
