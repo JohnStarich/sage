@@ -37,19 +37,34 @@ export default function Transaction(updateTransaction, accountIDMap) {
       updateTransaction({ ID, Postings })
     }
 
+    const removePosting = index => {
+      let { ID, Postings } = txn
+      Postings = Array.from(Postings)
+      Postings.splice(index, 1)
+      Postings = balancePostings(Postings, index, 0)
+      updateTransaction({ ID, Postings })
+    }
+
+    const addPosting = () => {
+      let { ID, Postings } = txn
+      Postings = Array.from(Postings)
+      Postings.push(Object.assign({}, Postings[Postings.length-1], { Amount: 0 }))
+      updateTransaction({ ID, Postings })
+    }
+
     return (
-      <Form>
-        <Table className="postings" responsive borderless>
+      <Form className="transaction">
+        <Table className="postings" borderless>
           <tbody>
             {postings.map((posting, i) =>
-              <tr key={posting.Account}>
-                <td>
+              <tr key={i}>
+                <td className="postings-name">
                   {i === 0
                     ? <Form.Control type="text" value={posting.AccountName} disabled />
                     : <CategoryPicker category={posting.Account} setCategory={c => updatePosting(i, { Account: c })} />
                   }
                 </td>
-                <td>
+                <td className="postings-amount">
                   <Amount
                     amount={posting.Amount}
                     disabled={i === 0 || postings.length === 2}
@@ -57,6 +72,14 @@ export default function Transaction(updateTransaction, accountIDMap) {
                     onChange={a => updatePosting(i, { Amount: a })}
                     prefix={posting.Currency}
                   />
+                </td>
+                <td className="postings-controls">
+                  {i >= 1 && i !== postings.length - 1 ?
+                    <Button variant="outline-danger" onClick={() => removePosting(i)}>X</Button>
+                  : null}
+                  {i === postings.length - 1 ?
+                    <Button variant="outline-primary" onClick={() => addPosting()}>Split</Button>
+                  : null}
                 </td>
               </tr>
             )}
@@ -75,7 +98,7 @@ export default function Transaction(updateTransaction, accountIDMap) {
   }
 }
 
-function balancePostings(postings, updatedIndex) {
+function balancePostings(postings, updatedIndex, leftOverOffset = 1) {
   if (postings.length < 2) {
     // invalid transaction: must have at least 2 postings
     return postings
@@ -89,7 +112,7 @@ function balancePostings(postings, updatedIndex) {
     return postings
   }
 
-  let leftOverIndex = updatedIndex + 1
+  let leftOverIndex = updatedIndex + leftOverOffset
   if (leftOverIndex === postings.length) {
     leftOverIndex = 1
   }
