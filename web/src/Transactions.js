@@ -6,7 +6,7 @@ import Amount from './Amount';
 import BootstrapTable from 'react-bootstrap-table-next';
 import React from 'react';
 import ToolkitProvider, { Search } from 'react-bootstrap-table2-toolkit';
-import Transaction from './Transaction';
+import { MakeTransaction } from './Transaction';
 import paginationFactory from 'react-bootstrap-table2-paginator';
 import { cleanCategory } from './CategoryPicker';
 
@@ -138,7 +138,7 @@ export default function Transactions(props) {
               {...toolkitprops.baseProps}
               bootstrap4
               bordered={false}
-              expandRow={{ renderer: Transaction(updateTransaction, accountIDMap) }}
+              expandRow={{ renderer: MakeTransaction(updateTransaction, accountIDMap) }}
               noDataIndication="No transactions found"
               onTableChange={handleTableChange}
               pagination={paginationFactory({
