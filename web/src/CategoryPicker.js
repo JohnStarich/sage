@@ -73,6 +73,7 @@ export function CategoryPicker({ id, category, setCategory, filter, disabled }) 
       disabled={disabled}
       className="category-picker"
       onSelect={(_, e) => setCategory(e.currentTarget.getAttribute('value'))}
+      data-boundary="viewport"
       >
       <Dropdown.Toggle variant="outline-secondary" id={id}>
         <Category value={category} />
