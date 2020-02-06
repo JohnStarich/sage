@@ -507,6 +507,7 @@ func reimportTransactions(ledgerFile vcs.File, ldg *ledger.Ledger, rulesStore *r
 	return func(c *gin.Context) {
 		var body struct {
 			Start, End string
+			Accounts   []string
 		}
 		if err := c.BindJSON(&body); err != nil {
 			abortWithClientError(c, http.StatusBadRequest, err)
@@ -517,11 +518,14 @@ func reimportTransactions(ledgerFile vcs.File, ldg *ledger.Ledger, rulesStore *r
 			abortWithClientError(c, http.StatusOK, err)
 			return
 		}
+		if len(body.Accounts) == 0 {
+			body.Accounts = []string{model.Uncategorized}
+		}
 		result := ldg.Query(ledger.QueryOptions{
 			Start: start,
 			End:   end,
 			// currently accounts are fixed to "uncategorized" and "expenses:uncategorized"
-			Accounts: []string{model.Uncategorized, model.ExpenseAccount + ":" + model.Uncategorized},
+			Accounts: body.Accounts,
 		}, 1, ldg.Size())
 		rulesStore.ApplyAll(result.Transactions)
 
