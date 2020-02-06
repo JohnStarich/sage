@@ -44,6 +44,7 @@ export function CategoryPicker({ id, category, setCategory, filter, disabled }) 
     throw Error("setCategory is required")
   }
   const [search, setSearch] = React.useState("")
+  const [show, setShow] = React.useState(false)
 
   const [categories, setCategories] = React.useState([])
   React.useEffect(() => {
@@ -74,29 +75,32 @@ export function CategoryPicker({ id, category, setCategory, filter, disabled }) 
       className="category-picker"
       onSelect={(_, e) => setCategory(e.currentTarget.getAttribute('value'))}
       data-boundary="viewport"
-      >
+      show={show}
+      onToggle={() => setShow(!show)}
+    >
       <Dropdown.Toggle variant="outline-secondary" id={id}>
         <Category value={category} />
       </Dropdown.Toggle>
-      <Dropdown.Menu>
-          <Form.Control
-            type="search"
-            placeholder="Search..."
-            autoFocus
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => {
-              if (e.key !== 'Enter') {
-                return
-              }
-              if (displayCategories.length !== 0) {
-                setCategory(displayCategories[0])
-              } else if (newCategory !== "") {
-                setCategory(newCategory)
-                clearCategoryCache()
-              }
-            }}
-            />
+      <Dropdown.Menu show={show}>
+        <Form.Control
+          type="search"
+          placeholder="Search..."
+          autoFocus
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          onKeyDown={e => {
+            if (e.key !== 'Enter') {
+              return
+            }
+            if (displayCategories.length !== 0) {
+              setCategory(displayCategories[0])
+            } else if (newCategory !== "") {
+              setCategory(newCategory)
+              clearCategoryCache()
+            }
+            setShow(false)
+          }}
+        />
         {displayCategories.map(c =>
           <Dropdown.Item key={c} value={c}><Category value={c} /></Dropdown.Item>
         )}
@@ -105,7 +109,7 @@ export function CategoryPicker({ id, category, setCategory, filter, disabled }) 
             <div className="new-category-prompt"><em>Create new:</em></div>
             <Dropdown.Item key={newCategory} value={newCategory}><Category value={newCategory} /></Dropdown.Item>
           </div>
-        : null}
+          : null}
       </Dropdown.Menu>
     </Dropdown>
   )
@@ -117,7 +121,7 @@ export function Category({
   value: category,
   className,
 }) {
-  if (! category) {
+  if (!category) {
     return null
   }
   const { base, parent } = splitCategory(category)
