@@ -161,6 +161,12 @@ function RenameAccount() {
   )
 }
 
+const uncategorizedAccountNames = [
+  "expenses:uncategorized",
+  "revenues:uncategorized",
+  "uncategorized",
+]
+
 function ReprocessUncategorized() {
   const [validated, setValidated] = React.useState(false)
   const [start, setStart] = React.useState(DateUtils.firstOfMonth(new Date()))
@@ -171,7 +177,7 @@ function ReprocessUncategorized() {
   React.useEffect(() => {
     API.get('/v1/getTransactions', {params: {
       results: 1,
-      accounts: ["uncategorized", "expenses:uncategorized"],
+      accounts: uncategorizedAccountNames,
       end,
       start,
     }}).then(res => setTxnCount(res.data.Count))
@@ -191,7 +197,7 @@ function ReprocessUncategorized() {
             if (!window.confirm(`Automatically recategorize ${txnCount} transaction${txnCount === 1 ? "" : "s"}?`)) {
               return
             }
-            API.post('/v1/reimportTransactions', { Start: start, End: end })
+            API.post('/v1/reimportTransactions', { Start: start, End: end, Accounts: uncategorizedAccountNames })
               .then(res => {
                 setFeedback(`Success! Auto-categorized ${res.data.Count} transactions.`)
                 form.reset()
