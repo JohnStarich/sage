@@ -46,7 +46,7 @@
   margin: 1em;
 }
 
-.budget-add button {
+.budget-add > * {
   margin-left: 1em;
   min-width: 7em;
 }
