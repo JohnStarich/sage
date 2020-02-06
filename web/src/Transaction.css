@@ -24,11 +24,6 @@
   text-align: right;
 }
 
-.transaction .postings td:not(:first-child) {
-  margin-left: 2em;
-}
-
-.transaction .postings-controls .btn {
-  margin-right: 1em;
-  margin-bottom: 0.5em;
+.transaction .postings td {
+  padding: 0.3em 0.5em;
 }
