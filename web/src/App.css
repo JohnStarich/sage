@@ -3,6 +3,7 @@
 }
 
 .sage-nav {
+  user-select: none;
   -webkit-app-region: drag;
 }
 
