@@ -287,7 +287,7 @@ func (l *Ledger) AccountBalance(account string, start, end time.Time) decimal.De
 		if !txn.Date.Before(start) && !txn.Date.After(end) {
 			for _, p := range txn.Postings {
 				if strings.HasPrefix(p.Account, account) {
-					sum = sum.Add(txn.Postings[len(txn.Postings)-1].Amount)
+					sum = sum.Add(p.Amount)
 				}
 			}
 		}
