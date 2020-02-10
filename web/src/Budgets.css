@@ -171,6 +171,6 @@ ul.budget-details .amount {
   opacity: 0.7;
 }
 
-.budget-revenues .amount-positive {
+.budget-details .budget-revenues .amount-positive {
   color: #009900;
 }
