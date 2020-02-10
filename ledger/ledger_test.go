@@ -807,8 +807,9 @@ func TestAccountBalance(t *testing.T) {
 			Date:  date,
 			Payee: "some payee",
 			Postings: []Posting{
-				{Account: "assets:some bank", Amount: *decFloat(-num)},
+				{Account: "assets:some bank", Amount: *decFloat(-num - 1)},
 				{Account: account, Amount: *decFloat(num)},
+				{Account: "some other account", Amount: *decFloat(1)}, // supports multiple postings
 			},
 		}
 	}
