@@ -120,6 +120,7 @@ export default CategoryPicker;
 export function Category({
   value: category,
   className,
+  titleFormat = false,
 }) {
   if (!category) {
     return null
@@ -129,6 +130,9 @@ export function Category({
   const classNames = ["category"]
   if (className) {
     classNames.push(className)
+  }
+  if (titleFormat) {
+    classNames.push("category-title")
   }
   return (
     <div className={classNames.join(" ")}>

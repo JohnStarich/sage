@@ -7,12 +7,11 @@ import Button from 'react-bootstrap/Button';
 import Crumb from './Breadcrumb';
 import React from 'react';
 import UTCDatePicker from './UTCDatePicker';
-import { cleanCategory, CategoryPicker } from './CategoryPicker';
+import { cleanCategory, Category, CategoryPicker } from './CategoryPicker';
 
 
 function parseBudget(budget) {
   return Object.assign({}, budget, {
-    Description: cleanCategory(budget.Account),
     Balance: Number(budget.Balance),
     Budget: Number(budget.Budget),
   })
@@ -43,14 +42,10 @@ function sortBudgets(a, b) {
     // sort other prefixes normally
     return prefixCompare
   }
-  const compare = a.Description.localeCompare(b.Description)
+  const compare = cleanCategory(a.Account).localeCompare(cleanCategory(b.Account))
   if (compare === 0) {
     // sort by full account name if descriptions are equal
     return a.Account.localeCompare(b.Account)
-  }
-  if (a.Account === a.Description || b.Account === b.Description) {
-    // sort "Revenues" or "Expenses" above the other accounts with those prefixes
-    return a.Account === a.Description ? -1 : 1
   }
   // otherwise sort by account short name
   return compare
@@ -61,7 +56,7 @@ function fetchEverythingElseDetails(start, end) {
     .then(res => {
       const accounts = Object.entries(res.data.Accounts)
         .map(([Account, balance]) => {
-          return { Account, Balance: Number(balance), Description: cleanCategory(Account) }
+          return { Account, Balance: Number(balance) }
         })
         .sort(sortBudgets)
       return {
@@ -120,7 +115,6 @@ export default function Budgets({ match }) {
 
   const addBudget = (account, budget) => {
     const b = {
-      Description: cleanCategory(account),
       Account: account,
       Budget: budget,
     }
@@ -188,7 +182,7 @@ export default function Budgets({ match }) {
             setEnd(DateUtils.lastOfMonth(start))
           }}
           />
-      <h2>
+      <h2 className="budget-datepicker">
         <UTCDatePicker
           dateFormat="MMM yyyy"
           selected={start}
@@ -214,7 +208,6 @@ export default function Budgets({ match }) {
       {budgets.map(budget =>
         <Budget
           key={budget.Account}
-          name={budget.Description}
           account={budget.Account}
           balance={budget.Account === "builtin:everything else" && everythingElse ? everythingElse.Balance : budget.Balance}
           budget={budget.Budget}
@@ -232,7 +225,6 @@ export default function Budgets({ match }) {
 }
 
 function Budget({
-  name,
   account,
   balance: externalBalance,
   budget: externalBudget,
@@ -271,16 +263,14 @@ function Budget({
   }
 
   let budgetClass = "budget"
-  if (account.startsWith("revenues:") || account === 'revenues') {
+  const isRevenue = a => a.startsWith("revenues:") || a === 'revenues'
+  if (isRevenue(account)) {
     budgetClass += " budget-revenues"
   }
   return (
     <div className={budgetClass}>
       <div className="budget-header">
-        <div className="budget-name">
-          <h5>{name}</h5>
-          <h6>{account}</h6>
-        </div>
+        <Category value={account} className="budget-name" titleFormat />
         <div className="budget-controls">
           <div className="budget-amount">
             <Button className="budget-decrease" variant="outline-secondary" disabled={disabled} onClick={() => setExternalBudget(budget - deltaForIncrement(budget - 1))}>–</Button>
@@ -303,8 +293,8 @@ function Budget({
         <ul className="budget-details">
           {details.map(budget =>
             <li key={budget.Account}>
-              {budget.Description}
-              <div>
+              <Category value={budget.Account} />
+              <div className={isRevenue(budget.Account) ? "budget-revenues" : null}>
                 <Amount prefix="$" amount={budget.Balance} />
                 <Button
                   variant="outline-secondary"
