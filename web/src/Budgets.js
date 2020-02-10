@@ -291,7 +291,7 @@ function Budget({
       </div>
       {details ?
         <ul className="budget-details">
-          {details.map(budget =>
+          {details.filter(budget => budget.Balance !== 0).map(budget =>
             <li key={budget.Account}>
               <Category value={budget.Account} />
               <div className={isRevenue(budget.Account) ? "budget-revenues" : null}>
