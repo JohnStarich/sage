@@ -65,9 +65,15 @@ export function CategoryPicker({ id, category, setCategory, filter, disabled }) 
     displayCategories = displayCategories.filter(c => c.includes(search)).sort()
   }
 
-  let newCategory = search ? search.toLocaleLowerCase().replace(/\s+/g, " ") : ""
-  if (!newCategory.startsWith("expenses:") && !newCategory.startsWith("revenues:")) {
-    newCategory = "expenses:" + newCategory
+  let newCategories = []
+  if (search) {
+    const searchCategory = search.toLocaleLowerCase().replace(/\s+/g, " ")
+    if (searchCategory.startsWith("expenses:") || searchCategory.startsWith("revenues:")) {
+      newCategories.push(searchCategory)
+    } else {
+      newCategories.push("expenses:" + searchCategory)
+      newCategories.push("revenues:" + searchCategory)
+    }
   }
   return (
     <Dropdown
@@ -94,8 +100,8 @@ export function CategoryPicker({ id, category, setCategory, filter, disabled }) 
             }
             if (displayCategories.length !== 0) {
               setCategory(displayCategories[0])
-            } else if (newCategory !== "") {
-              setCategory(newCategory)
+            } else if (newCategories.length !== 0) {
+              setCategory(newCategories[0])
               clearCategoryCache()
             }
             setShow(false)
@@ -107,7 +113,9 @@ export function CategoryPicker({ id, category, setCategory, filter, disabled }) 
         {search ?
           <div className="new-category">
             <div className="new-category-prompt"><em>Create new:</em></div>
-            <Dropdown.Item key={newCategory} value={newCategory}><Category value={newCategory} /></Dropdown.Item>
+            {newCategories.map(c =>
+              <Dropdown.Item key={c} value={c}><Category value={c} /></Dropdown.Item>
+            )}
           </div>
           : null}
       </Dropdown.Menu>
