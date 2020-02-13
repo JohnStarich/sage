@@ -5,6 +5,9 @@ Be your own accountant, without the stress.
 Examine your finances with ease.
 Automatically download transactions from your banks and credit cards, then run the numbers.
 
+<!-- Matomo Image Tracker-->
+<img src="https://analytics.johnstarich.com/matomo.php?idsite=2&amp;rec=1" style="border:0" alt="" />
+
 Get the latest release [here](#install), then [let us know what you think][feedback]!
 
 [feedback]: https://github.com/JohnStarich/sage/issues/new
