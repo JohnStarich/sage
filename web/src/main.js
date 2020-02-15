@@ -23,15 +23,6 @@ function main() {
     return;
   }
 
-  if (process.platform === 'darwin' && ! app.isInApplicationsFolder() && ! isDevelopmentMode) {
-    if (app.moveToApplicationsFolder()) {
-      // triggers a restart too
-      app.quit();
-      return;
-    }
-    dialog.showErrorBox("Failed to move Sage.app to /Applications");
-  }
-
   // All user data is stored here
   const DataDirectory = path.join(app.getPath('userData'), "data")
   const LedgerFile = path.join(DataDirectory, "ledger.journal")
