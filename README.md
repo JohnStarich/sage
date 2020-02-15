@@ -6,7 +6,7 @@ Examine your finances with ease.
 Automatically download transactions from your banks and credit cards, then run the numbers.
 
 <!-- Matomo Image Tracker-->
-<img src="https://analytics.johnstarich.com/matomo.php?idsite=2&amp;rec=1" style="border:0" alt="" />
+<img src="https://analytics.johnstarich.com/matomo.php?idsite=2&amp;rec=1&amp;action_name=README.md" style="border:0" alt="" />
 
 Get the latest release [here](#install), then [let us know what you think][feedback]!
 
@@ -33,7 +33,7 @@ Get the latest release [here](#install), then [let us know what you think][feedb
 
 Choose **_one_** of the following options:
 
-* Download the app for [Windows][], [Mac][], or [Linux][]
+* Download the app for [Windows, Mac, or Linux](.github/docs/download-app.md)
 * Run the container image from [Docker Hub](https://hub.docker.com/r/johnstarich/sage):
 ```bash
 DATA_DIR=$HOME/sage
@@ -53,10 +53,6 @@ chmod +x sage
 ./sage -help  # Optionally move sage into your PATH
 ```
 * OR download the source and build it: `go get github.com/johnstarich/sage`
-
-[Windows]: https://github.com/JohnStarich/sage/releases/latest/download/Sage-for-Windows.exe
-[Mac]: https://github.com/JohnStarich/sage/releases/latest/download/Sage-for-Mac.zip
-[Linux]: https://github.com/JohnStarich/sage/releases/latest/download/Sage-for-Linux.deb
 
 
 ## Usage
