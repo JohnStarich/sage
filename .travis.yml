@@ -2,9 +2,6 @@ language: go
 go:
   - 1.12.x
 
-services:
-  - docker
-
 before_install:
   - npm i -g npm@^6
 
@@ -16,10 +13,61 @@ jobs:
       script: make test
     - name: Build Docker image
       script: make docker
-    - stage: GitHub Release
-      script: make release
+      services:
+        - docker
+    - name: Linux test release
+      if: (NOT (branch = master) OR type = pull_request) AND tag IS blank
+      services:
+        - docker
+      script: make poke-travis release-linux
+    - name: Linux app, Windows app, and server binaries
+      stage: GitHub Release
+      if: (branch = master OR tag IS present) AND NOT (type = pull_request)
+      services:
+        - docker
+      script: make poke-travis release-servers release-linux release-windows
       deploy:
         # generated with `travis setup releases --com`
+        - provider: releases
+          api_key:
+            secure: Tp7rwUVjuH0hdt776QIE1YhBIXxWsHGpm0OJ/duQIfw0u9AZpiASW8RZPLggnxpCn6J2nhly+KB/y5evbPxv/61MPd/DZApodRatvipWO45DUQZ+6zhdWlboI6uo+lKAoSZ13CRJDSq1rjEsARrJAI2eGXFfqjde8xy2gtImEBI2v79DcJ87D0A3FU8EhSsFZQNQsum7aHfmANmeaExA2XbBs4PRlt9S2b/0j2z+ZRujig0jcY/7zt2FAgYKCjNBXCvW8fXQ098fB4370Ls8Hh0J0IbsidsUS1dqYg54qEeRwMBiTTXSl+qj35SR7BkDknH3ePIADxTKgTRhCqa3gtDtlmGNS2a3btP9ldsHl1cLp8I+SN+NVmxKWCK2gf5jzDK4fSacx6bvxlS12MLn9fNMd3mHHMiEyckfrble/lGSmyqqgQ/XYC+mPixruR5wokHu3MoHHC/u6SI143op9di05MF/rtWc4ErRsPCEEoWYuX2eSGEN+9QbH7NZ5Oe8+kI2YqD1IK64hmATpn7dZOm6Oddtb9eYA900oqmUIe95eh2L7cUp1JqEmu4BUWR/GzGwpnaek7Vb8IpfKBRXy30a+EKF4TBiJDERtOlvaKUP/lr3Qmc5kG70GCMPaA0KXlxphW0m77ISOfdZb/QyPTQAia3rJZXzRhCcO8wVPn0=
+          file: "out/*"
+          file_glob: true
+          skip_cleanup: true
+          draft: true
+    - name: macOS app
+      stage: GitHub Release
+      if: (branch = master OR tag IS present) AND NOT (type = pull_request)
+      os: osx
+      osx_image: xcode11.3
+      env:
+        - secure: "AOxV9qSPVSHVZIhUEwmBAKe3FjELl8E3004WmPD5ETkfsZZh1ZLH118MO5wlLqIe9sCZQFKmXmPuSBmzQAPNBsJzlwUG8qkBIzZjC/+4gPXIcvlwuWxDLd+LhC2pLFLjo/CiLWpud1/4rdaHAMJviL1X5lVEwdbnRk6cxBsXCejbFWCBs49hBy4OHjnijHaXJY/Asr1hEHVH+R+cWqgoQjz0uTn0KfFoVnd8ABLFbrPFPLofqHl2skfznYl0UTxVDhn4b4RLGiT3AdQdGjNe/Kq630wmv0nfphjKHLXu27dKfaWcKT5xafl15gi14+prunMI4XggJP3JifZfZ3sKdXhnPQMKAoMp06iaMak/lx9rDXZdkNVjB6f4707IdEUF2T0P1gjroOJqSM2/FmNTimpS/6d4oxU25BdoQG7Zfoks1W+JqgW5fnSEmnL4kThr4ykvY+2GlgHp1UCl+SmQSmksIn6sfuBPK0Ehy1/gs3OoE7DedHOa1yggSBUYJk2UMSwp7cczrh3e2cYyH4AcymEWo10W/itykdUvsN44/D/YcJRZyV/U0O4ijJzov9Z2wqK9Eo49kN8iZZkBojhT1pBzbxmh1UW50LDN/oNagzDx/N0DxprjKoMOOju3haCkX9Avhjpd5wM1XjTJH2MF2hAb8Y6zcSrJKDnRrxM912o="
+      script:
+        - |
+          set -ev
+          trap 'echo Failed code signing cert setup, exiting...' ERR
+          # Install API key
+          mkdir -p ~/.appstoreconnect/private_keys && openssl aes-256-cbc -K $encrypted_3a283303e5ea_key -iv $encrypted_3a283303e5ea_iv -d \
+            -in .github/encrypt/AuthKey_5X4Z73338X.p8.enc \
+            -out ~/.appstoreconnect/private_keys/AuthKey_5X4Z73338X.p8
+          # Install code signing cert and key
+          security create-keychain -p travis build.keychain
+          security default-keychain -s build.keychain
+          security set-keychain-settings -t 3600 -u
+          security unlock-keychain -p travis
+          openssl aes-256-cbc -K $encrypted_3a283303e5ea_key -iv $encrypted_3a283303e5ea_iv -d \
+            -in .github/encrypt/developerID_application.cer.enc \
+            -out .github/encrypt/developerID_application.cer
+          security add-certificates .github/encrypt/developerID_application.cer
+          openssl aes-256-cbc -K $encrypted_3a283303e5ea_key -iv $encrypted_3a283303e5ea_iv -d \
+            -in .github/encrypt/developerID_key.p12.enc \
+            -out .github/encrypt/developerID_key.p12
+          security import .github/encrypt/developerID_key.p12 -P "$MACOS_DEVID_KEY" -T /usr/bin/codesign
+          security find-identity | grep '1 valid identities found'  # require identity
+          rm -rf .github/encrypt
+          security set-key-partition-list -S 'apple-tool:,apple:' -s -k travis
+        - make poke-travis release-mac
+      deploy:
         - provider: releases
           api_key:
             secure: Tp7rwUVjuH0hdt776QIE1YhBIXxWsHGpm0OJ/duQIfw0u9AZpiASW8RZPLggnxpCn6J2nhly+KB/y5evbPxv/61MPd/DZApodRatvipWO45DUQZ+6zhdWlboI6uo+lKAoSZ13CRJDSq1rjEsARrJAI2eGXFfqjde8xy2gtImEBI2v79DcJ87D0A3FU8EhSsFZQNQsum7aHfmANmeaExA2XbBs4PRlt9S2b/0j2z+ZRujig0jcY/7zt2FAgYKCjNBXCvW8fXQ098fB4370Ls8Hh0J0IbsidsUS1dqYg54qEeRwMBiTTXSl+qj35SR7BkDknH3ePIADxTKgTRhCqa3gtDtlmGNS2a3btP9ldsHl1cLp8I+SN+NVmxKWCK2gf5jzDK4fSacx6bvxlS12MLn9fNMd3mHHMiEyckfrble/lGSmyqqgQ/XYC+mPixruR5wokHu3MoHHC/u6SI143op9di05MF/rtWc4ErRsPCEEoWYuX2eSGEN+9QbH7NZ5Oe8+kI2YqD1IK64hmATpn7dZOm6Oddtb9eYA900oqmUIe95eh2L7cUp1JqEmu4BUWR/GzGwpnaek7Vb8IpfKBRXy30a+EKF4TBiJDERtOlvaKUP/lr3Qmc5kG70GCMPaA0KXlxphW0m77ISOfdZb/QyPTQAia3rJZXzRhCcO8wVPn0=
@@ -30,15 +78,3 @@ jobs:
           on:
             repo: JohnStarich/sage
             tags: true
-            condition: "$TRAVIS_TAG != untagged-*"
-        - provider: releases
-          script: make release
-          api_key:
-            secure: Tp7rwUVjuH0hdt776QIE1YhBIXxWsHGpm0OJ/duQIfw0u9AZpiASW8RZPLggnxpCn6J2nhly+KB/y5evbPxv/61MPd/DZApodRatvipWO45DUQZ+6zhdWlboI6uo+lKAoSZ13CRJDSq1rjEsARrJAI2eGXFfqjde8xy2gtImEBI2v79DcJ87D0A3FU8EhSsFZQNQsum7aHfmANmeaExA2XbBs4PRlt9S2b/0j2z+ZRujig0jcY/7zt2FAgYKCjNBXCvW8fXQ098fB4370Ls8Hh0J0IbsidsUS1dqYg54qEeRwMBiTTXSl+qj35SR7BkDknH3ePIADxTKgTRhCqa3gtDtlmGNS2a3btP9ldsHl1cLp8I+SN+NVmxKWCK2gf5jzDK4fSacx6bvxlS12MLn9fNMd3mHHMiEyckfrble/lGSmyqqgQ/XYC+mPixruR5wokHu3MoHHC/u6SI143op9di05MF/rtWc4ErRsPCEEoWYuX2eSGEN+9QbH7NZ5Oe8+kI2YqD1IK64hmATpn7dZOm6Oddtb9eYA900oqmUIe95eh2L7cUp1JqEmu4BUWR/GzGwpnaek7Vb8IpfKBRXy30a+EKF4TBiJDERtOlvaKUP/lr3Qmc5kG70GCMPaA0KXlxphW0m77ISOfdZb/QyPTQAia3rJZXzRhCcO8wVPn0=
-          file: "out/*"
-          file_glob: true
-          skip_cleanup: true
-          draft: true
-          on:
-            repo: JohnStarich/sage
-            branch: master

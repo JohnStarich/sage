@@ -62,7 +62,7 @@ docker:
 
 .PHONY: clean
 clean: cache out
-	rm -rf cache/ out/
+	rm -rf cache/ out/ web/out/
 
 cache:
 	mkdir cache
@@ -77,11 +77,6 @@ cache/ofxhome.xml: cache
 	else \
 		touch cache/ofxhome.xml; \
 	fi
-
-.PHONY: release
-release: clean
-	$(MAKE) -j4 dist
-	$(MAKE) apps
 
 # Try to create easily-scripted file names for download
 $(SUPPORTED_ARCH): GOOS = $(@D)
@@ -129,24 +124,41 @@ start-pass:
 	npm --prefix=web run start-api-pass & \
 	npm --prefix=web start
 
-.PHONY: apps
-apps: out
+.PHONY: poke-travis
+poke-travis:
+	# Print something out every minute for an hour to keep Travis from terminating the build early.
+	(for i in {1..60}; do sleep 60; echo "Keeping Travis CI happy $$i"; done &)
+
+.PHONY: release-servers
+release-servers: clean
+	$(MAKE) -j4 dist
+
+.PHONY: release-mac
+release-mac:
+	@if [[ $$(uname) != Darwin ]]; then \
+		echo '"release-mac" can only be run on macOS'; \
+		exit 1; \
+	fi
+	$(MAKE) darwin/amd64
+	F=web/node_modules/electron-packager/src/mac.js && \
+	NEW_F=$$(sed '/if (!notarizeOpts.appleId) {/ { N;N;N;N;N;N;N;N;N; d; }' "$$F") && \
+	  cat <<<"$$NEW_F" > "$$F"  # Temporary hack to enable API key notarization
+	source .github/ci/utils.sh && \
+		retry npm run --prefix=web mac
+	mv -f web/out/make/Sage-1.0.0.dmg out/Sage-for-Mac.dmg
+
+.PHONY: release-windows
+release-windows: out windows/amd64
 	docker run \
-		--name sage-apps-builder \
+		--name sage-windows-builder \
 		--rm -it \
 		--env DEBUG='electron-windows-installer:*' \
 		--env-file <(env | grep -iE 'DEBUG|NODE_|ELECTRON_|YARN_|NPM_|CI') \
 		-v "${PWD}:/project:delegated" \
-		electronuserland/builder:wine-mono make docker-apps && \
-		ls -Rlh out/ && \
-		find out -type f -mindepth 2 | xargs -I{} mv -f {} out/ && \
-		rm -f out/RELEASES out/*.nupkg && \
-		mv -f "out/Sage-1.0.0 Setup.exe" out/Sage-for-Windows.exe && \
-		mv -f out/Sage-darwin-x64-1.0.0.zip out/Sage-for-Mac.zip && \
-		mv -f out/sage_1.0.0_amd64.deb out/Sage-for-Linux.deb
+		electronuserland/builder:wine-mono make docker-windows
 
-.PHONY: docker-apps
-docker-apps:
+.PHONY: docker-windows
+docker-windows:
 	apt update
 	apt install -y --no-install-recommends \
 		fakeroot \
@@ -160,8 +172,24 @@ docker-apps:
 	cp /tmp/7z-files/7za.dll ./web/node_modules/electron-winstaller/vendor/7z.dll
 	cp /tmp/7z-files/7za.exe ./web/node_modules/electron-winstaller/vendor/7z.exe
 	npm config set loglevel verbose
-	(for i in {1..60}; do sleep 60; echo "Keeping Travis CI happy $$i"; done &) && \
-		npm run --prefix=web windows && cp -fr web/out/make/* out/ && \
-		npm run --prefix=web mac     && cp -fr web/out/make/* out/ && \
-		npm run --prefix=web linux   && cp -fr web/out/make/* out/ && \
-		chmod -R 777 out/
+	npm run --prefix=web windows
+	chmod -R 777 web/out/make
+	mv -f "web/out/make/squirrel.windows/x64/Sage-1.0.0 Setup.exe" out/Sage-for-Windows.exe
+
+.PHONY: release-linux
+release-linux: out linux/amd64
+	docker run \
+		--name sage-linux-builder \
+		--rm -it \
+		-v "${PWD}:/project:delegated" \
+		--workdir /project \
+		node:lts-buster make docker-linux
+
+.PHONY: docker-linux
+docker-linux:
+	apt update
+	apt install -y --no-install-recommends \
+		fakeroot
+	fakeroot $(MAKE) static-deps
+	npm run --prefix=web linux
+	mv web/out/make/deb/x64/sage_1.0.0_amd64.deb out/Sage-for-Linux.deb

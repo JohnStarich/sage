@@ -47,24 +47,29 @@
         "icon": "src/logo/sage-app",
         "afterCopy": [
           "src/build-scripts/afterCopy.js"
-        ]
+        ],
+        "osxNotarize": {
+          "appleApiKey": "5X4Z73338X",
+          "appleApiIssuer": "69a6de7e-06a7-47e3-e053-5b8c7c11a4d1"
+        },
+        "osxSign": {
+          "hardenedRuntime": true,
+          "entitlements": "./entitlements.plist",
+          "entitlements-inherit": "./entitlements.plist"
+        }
       },
       "makers": [
         {
-          "name": "@electron-forge/maker-squirrel",
+          "name": "@electron-forge/maker-squirrel"
+        },
+        {
+          "name": "@electron-forge/maker-dmg",
           "config": {
-            "name": "electron_forge"
+            "format": "ULFO"
           }
         },
         {
-          "name": "@electron-forge/maker-zip",
-          "platforms": [
-            "darwin"
-          ]
-        },
-        {
-          "name": "@electron-forge/maker-deb",
-          "config": {}
+          "name": "@electron-forge/maker-deb"
         }
       ]
     }
