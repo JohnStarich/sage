@@ -66,7 +66,7 @@ function AppContent({ match }) {
                     // 2) and correctly open a new window in Electron
                     e.preventDefault()
                     let elem = document.createElement('a')
-                    elem.setAttribute('href', 'https://github.com/JohnStarich/sage/releases/latest')
+                    elem.setAttribute('href', 'https://github.com/JohnStarich/sage/blob/master/.github/docs/download-app.md')
                     elem.setAttribute('target', '_blank')
                     elem.click()
                   }}>
