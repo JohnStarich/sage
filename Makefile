@@ -101,6 +101,13 @@ static: cache/ofxhome.xml static-deps
 	# Unset vars from upcoming targets
 	GOOS= GOARCH= go generate ./server ./client/direct/drivers
 
+.PHONY: changelog
+changelog:
+	@if ! which conventional-changelog >/dev/null; then \
+		npm install -g conventional-changelog-cli >&2; \
+	fi
+	conventional-changelog
+
 .PHONY: start
 start:
 	trap 'jobs -p | xargs kill' EXIT; \
