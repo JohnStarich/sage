@@ -31,7 +31,7 @@ jobs:
         - provider: releases
           api_key:
             secure: Tp7rwUVjuH0hdt776QIE1YhBIXxWsHGpm0OJ/duQIfw0u9AZpiASW8RZPLggnxpCn6J2nhly+KB/y5evbPxv/61MPd/DZApodRatvipWO45DUQZ+6zhdWlboI6uo+lKAoSZ13CRJDSq1rjEsARrJAI2eGXFfqjde8xy2gtImEBI2v79DcJ87D0A3FU8EhSsFZQNQsum7aHfmANmeaExA2XbBs4PRlt9S2b/0j2z+ZRujig0jcY/7zt2FAgYKCjNBXCvW8fXQ098fB4370Ls8Hh0J0IbsidsUS1dqYg54qEeRwMBiTTXSl+qj35SR7BkDknH3ePIADxTKgTRhCqa3gtDtlmGNS2a3btP9ldsHl1cLp8I+SN+NVmxKWCK2gf5jzDK4fSacx6bvxlS12MLn9fNMd3mHHMiEyckfrble/lGSmyqqgQ/XYC+mPixruR5wokHu3MoHHC/u6SI143op9di05MF/rtWc4ErRsPCEEoWYuX2eSGEN+9QbH7NZ5Oe8+kI2YqD1IK64hmATpn7dZOm6Oddtb9eYA900oqmUIe95eh2L7cUp1JqEmu4BUWR/GzGwpnaek7Vb8IpfKBRXy30a+EKF4TBiJDERtOlvaKUP/lr3Qmc5kG70GCMPaA0KXlxphW0m77ISOfdZb/QyPTQAia3rJZXzRhCcO8wVPn0=
-          body: "$(make changelog)"
+          body: "$(make changelog || true)"
           file: "out/*"
           file_glob: true
           skip_cleanup: true
