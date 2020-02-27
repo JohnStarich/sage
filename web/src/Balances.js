@@ -66,7 +66,7 @@ export default function Balances({ syncTime }) {
     <div className="balances">
           {accounts.length === 0 ?
             <div className="no-balances">
-              <Link to="/accounts" className="btn btn-outline-primary">Add your first account</Link>
+              <Link to="/settings/accounts" className="btn btn-outline-primary">Add your first account</Link>
             </div>
           : balanceSections}
           {remainingAccountMessages.map(msgs =>
@@ -91,7 +91,7 @@ function WarningTooltip({ messages }) {
           {messages.map((m, i) =>
             <li key={i}>
               {m === "Missing opening balance"
-                ? <Link to="/balances">{m}</Link>
+                ? <Link to="/settings/balances">{m}</Link>
                 : m
               }
             </li>

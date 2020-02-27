@@ -123,7 +123,7 @@ export default function({ driver, created }) {
               </Card.Header>
               <Accordion.Collapse eventKey="0">
                 <Card.Body>
-                  <p>If you're an advanced user, and have all of your connection details already, then enter them manually <Link to="/accounts/advanced-direct-connect">here</Link>.</p>
+                  <p>If you're an advanced user, and have all of your connection details already, then enter them manually <Link to="/settings/accounts/advanced-direct-connect">here</Link>.</p>
                   <Form.Group controlId="clientID" as={Row}>
                     <Form.Label column sm={labelWidth}>Client ID</Form.Label>
                     <Col sm={inputWidth}>
@@ -250,7 +250,7 @@ export default function({ driver, created }) {
           </Form.Row>
         </Form>
       }
-      <Link id="return-to-accounts" to="/accounts" style={{display:"none"}}>Back to accounts</Link>
+        <Link id="return-to-accounts" to="/settings/accounts" style={{display:"none"}}>Back to accounts</Link>
     </Container>
   )
 }

@@ -77,7 +77,7 @@ export default function ({ account, editable, updated }) {
             const newAccount = accountFromForm(id)
             updateAccount(account ? account.AccountID : null, newAccount)
               .then(() => {
-                setRedirect(<Redirect to="/accounts" />)
+                setRedirect(<Redirect to="/settings/accounts" />)
                 if (updated) {
                   updated(id, newAccount)
                 }

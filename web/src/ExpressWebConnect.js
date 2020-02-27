@@ -57,7 +57,7 @@ export default function ({ driver, created }) {
             const newAccount = accountFromForm(driver)
             API.post('/v1/addAccount', newAccount)
               .then(() => {
-                setRedirect(<Redirect to="/accounts" />)
+                setRedirect(<Redirect to="/settings/accounts" />)
                 if (created) {
                   created(newAccount)
                 }
