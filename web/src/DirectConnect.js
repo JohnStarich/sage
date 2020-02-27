@@ -145,7 +145,7 @@ export default function(props) {
             const newAccount = accountFromForm(id, { directConnectEnabled })
             updateAccount(account ? account.AccountID : null, newAccount)
               .then(() => {
-                setRedirect(<Redirect to="/accounts" />)
+                setRedirect(<Redirect to="/settings/accounts" />)
                 if (updated) {
                   updated(id, newAccount)
                 }

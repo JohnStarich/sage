@@ -61,34 +61,32 @@ export default function Accounts({ match }) {
     <>
       <Crumb title="Accounts" match={match} />
       <Route exact path={match.path} render={() =>
-        <>
-          <Container className="accounts">
-            <Row>
-              <Col><h2>Accounts</h2></Col>
-            </Row>
-            <Row>
-              <Col>
-                <p>Add a new account to automatically download transactions directly from your institution.</p>
-                <p>Alternatively, import an OFX or QFX file downloaded from your institution.</p>
+        <Container className="accounts">
+          <Row>
+            <Col><h2>Accounts</h2></Col>
+          </Row>
+          <Row>
+            <Col>
+              <p>Add a new account to automatically download transactions directly from your institution.</p>
+              <p>Alternatively, import an OFX or QFX file downloaded from your institution.</p>
+            </Col>
+          </Row>
+          {accounts.map(a =>
+            <Row key={a.AccountID}>
+              <Col>{a.AccountDescription}</Col>
+              <Col className="account-buttons">
+                <Link to={`${match.url}/edit/${a.AccountID}`} className="btn btn-outline-secondary">Edit</Link>
+                <Button variant="outline-danger" onClick={() => deleteAccount(a.AccountID)}>Delete</Button>
               </Col>
             </Row>
-            {accounts.map(a =>
-              <Row key={a.AccountID}>
-                <Col>{a.AccountDescription}</Col>
-                <Col className="account-buttons">
-                  <Link to={`${match.url}/edit/${a.AccountID}`} className="btn btn-outline-secondary">Edit</Link>
-                  <Button variant="outline-danger" onClick={() => deleteAccount(a.AccountID)}>Delete</Button>
-                </Col>
-              </Row>
-            )}
-            <Row>
-              <Col className="account-actions">
-                <Link to={`${match.url}/new`} className="btn btn-primary new">Add New</Link>
-                <Link to={`${match.url}/import`} className="btn btn-secondary import">Import OFX/QFX</Link>
-              </Col>
-            </Row>
-          </Container>
-        </>
+          )}
+          <Row>
+            <Col className="account-actions">
+              <Link to={`${match.url}/new`} className="btn btn-primary new">Add New</Link>
+              <Link to={`${match.url}/import`} className="btn btn-secondary import">Import OFX/QFX</Link>
+            </Col>
+          </Row>
+        </Container>
       } />
       <Route path={`${match.path}/edit/:id`} component={props => <AccountEditor updated={accountUpdated} {...props} />} />
       <Route path={`${match.path}/new`} component={props => <NewAccount created={accountCreated} {...props} />} />
@@ -106,7 +104,7 @@ function NewAccount({ created, match }) {
         <Row><Col><h2>New Account</h2></Col></Row>
         <Row>
           <Col>
-            <p><em>Advanced users can enter all direct connect details <Link to={`/accounts/advanced-direct-connect`}>here</Link>.</em></p>
+            <p><em>Advanced users can enter all direct connect details <Link to={`/settings/accounts/advanced-direct-connect`}>here</Link>.</em></p>
           </Col>
         </Row>
         <Row>
@@ -133,7 +131,7 @@ function NewDirectConnect({ created, match }) {
             <p>For advanced users only. Input known direct connect details to add an account.</p>
             <p>Sometimes the password is a PIN rather than the sign-in password, and the username could be an ID only provided in their instructions.</p>
             &nbsp;
-            <p>If you're <strong>not</strong> an advanced user, then use the new account page <Link to="/accounts/new">here</Link>.</p>
+            <p>If you're <strong>not</strong> an advanced user, then use the new account page <Link to="/settings/accounts/new">here</Link>.</p>
           </Col>
         </Row>
         <Row>

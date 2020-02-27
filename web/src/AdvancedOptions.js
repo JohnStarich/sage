@@ -30,7 +30,7 @@ export default function ({ match }) {
             <Row>
               <h3>Categorize Transactions</h3>
               <p>Reprocess all uncategorized transactions in the given date period to automatically set their category.</p>
-              <p>The category is determined by a transaction's matching <Link to="/categories">category rules</Link>.</p>
+              <p>The category is determined by a transaction's matching <Link to="/settings/categories">category rules</Link>.</p>
             </Row>
             <Row><ReprocessUncategorized /></Row>
           </Container>

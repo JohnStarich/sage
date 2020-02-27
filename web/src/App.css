@@ -80,3 +80,7 @@
   background-color: #A00;
   color: white;
 }
+
+.settings-icon {
+  transform: scale(2);
+}

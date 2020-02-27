@@ -1,23 +1,18 @@
 import React from 'react';
 import API from './API';
-import { BrowserRouter as Router, Route, Switch, Link, NavLink } from "react-router-dom";
+import { BrowserRouter as Router, Route, Switch, NavLink } from "react-router-dom";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './common.css';
 import './App.css';
 
-import Accounts from './Accounts';
 import Activity from './Activity';
-import AdvancedOptions from './AdvancedOptions';
-import BalanceSettings from './BalanceSettings';
-import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Budgets from './Budgets';
-import Categories from './Categories';
-import Dropdown from 'react-bootstrap/Dropdown';
 import Login from './Login';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
+import Settings from './Settings';
 import Sync from './Sync';
-import { Crumb, Breadcrumbs } from './Breadcrumb';
+import { Crumb } from './Breadcrumb';
 import { ReactComponent as Logo } from './logo/sage.svg';
 
 function App() {
@@ -84,18 +79,10 @@ function AppContent({ match }) {
             <NavLink exact to="/" className="nav-link">Activity</NavLink>
             <NavLink exact to="/budgets" className="nav-link">Budgets</NavLink>
           </Nav>
-          <Sync className="mr-2" onSync={() => setSyncTime(new Date())} />
-          <Dropdown bg="dark" alignRight>
-            <Dropdown.Toggle>
-              Settings
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              <Link to="/accounts"><Dropdown.Item as="button">Accounts</Dropdown.Item></Link>
-              <Link to="/balances"><Dropdown.Item as="button">Balances</Dropdown.Item></Link>
-              <Link to="/categories"><Dropdown.Item as="button">Categories</Dropdown.Item></Link>
-              <Link to="/advanced" className="advanced-settings"><Dropdown.Item as="button">Advanced</Dropdown.Item></Link>
-            </Dropdown.Menu>
-          </Dropdown>
+          <Nav>
+            <Sync className="mr-2" onSync={() => setSyncTime(new Date())} />
+            <NavLink to="/settings" aria-label="Settings" className="nav-link settings-icon">⚙</NavLink>
+          </Nav>
         </Navbar.Collapse>
       </Navbar>
 
@@ -104,16 +91,7 @@ function AppContent({ match }) {
           <Route path="/" exact component={() => <Activity syncTime={syncTime} />} />
           <Route path="/login" component={Login} />
           <Route path="/budgets" component={Budgets} />
-          <Route>
-            <Breadcrumbs as={Breadcrumb} skip={1} render={({ title, match }) =>
-              <NavLink className="breadcrumb-item" to={match.url} exact>{title}</NavLink>
-            }>
-              <Route path="/accounts" component={Accounts} />
-              <Route path="/balances" component={BalanceSettings} />
-              <Route path="/categories" component={Categories} />
-              <Route path="/advanced" component={AdvancedOptions} />
-            </Breadcrumbs>
-          </Route>
+          <Route path="/settings" component={Settings} />
         </Switch>
       </div>
     </div>
