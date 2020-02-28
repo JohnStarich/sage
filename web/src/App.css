@@ -68,19 +68,6 @@
   margin: 0 auto;
 }
 
-.advanced-settings:hover {
-  text-decoration: none;
-}
-
-.advanced-settings button {
-  color: #A00;
-}
-
-.advanced-settings:hover button {
-  background-color: #A00;
-  color: white;
-}
-
 .settings-icon {
   transform: scale(2);
 }

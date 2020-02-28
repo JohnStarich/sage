@@ -1,0 +1,54 @@
+.settings-tiles {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  list-style: none;
+  padding: 0;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.settings-tiles li {
+  flex: 1 1 0;
+  min-width: 15em;
+  max-width: 18em;
+}
+
+.settings-tiles li a {
+  box-sizing: border-box;
+  height: calc(100% - 2em);
+  display: block;
+  padding: 1.5em;
+  margin: 1em;
+  border: 1px solid #DDD;
+  border-radius: 0.5em;
+}
+
+.settings-tiles li a h2 {
+  font-size: 1.2em;
+  text-align: center;
+  margin-bottom: 1em;
+}
+
+.settings-tiles li a p {
+  color: #000;
+  text-decoration: none;
+}
+
+.settings-tiles li a:hover {
+  text-decoration: none;
+  background-color: #EEE;
+}
+
+.advanced-settings:hover {
+  text-decoration: none;
+}
+
+.advanced-settings {
+  color: #A00;
+}
+
+.advanced-settings:hover {
+  color: #600;
+}
+
