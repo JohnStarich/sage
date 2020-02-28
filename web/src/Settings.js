@@ -1,4 +1,5 @@
 import React from 'react';
+import './Settings.css';
 
 import Accounts from './Accounts';
 import AdvancedOptions from './AdvancedOptions';
@@ -14,17 +15,39 @@ export default function ({ match }) {
     <Breadcrumbs as={Breadcrumb} skip={1} render={({ title, match }) =>
       <NavLink className="breadcrumb-item" to={match.url} exact>{title}</NavLink>
     }>
-      <Crumb title="Settings" match={match} /> 
+      <Crumb title="Settings" match={match} />
       <Switch>
         <Route path={`${match.path}/accounts`} component={Accounts} />
         <Route path={`${match.path}/balances`} component={BalanceSettings} />
         <Route path={`${match.path}/categories`} component={Categories} />
         <Route path={`${match.path}/advanced`} component={AdvancedOptions} />
         <Route exact path={match.path}>
-          <Link to={`${match.url}/accounts`}>Accounts</Link>
-          <Link to={`${match.url}/balances`}>Balances</Link>
-          <Link to={`${match.url}/categories`}>Categories</Link>
-          <Link to={`${match.url}/advanced`} className="advanced-settings">Advanced</Link>
+          <ul className="settings-tiles">
+            <li>
+              <Link to={`${match.url}/accounts`}>
+                <h2>Accounts</h2>
+                <p>Add and update bank or credit card accounts.</p>
+              </Link>
+            </li>
+            <li>
+              <Link to={`${match.url}/balances`}>
+                <h2>Balances</h2>
+                <p>Edit starting balances for accounts.</p>
+              </Link>
+            </li>
+            <li>
+              <Link to={`${match.url}/categories`}>
+                <h2>Categories</h2>
+                <p>Add and edit transaction categories.</p>
+              </Link>
+            </li>
+            <li>
+              <Link to={`${match.url}/advanced`} className="advanced-settings">
+                <h2>Advanced</h2>
+                <p>Power user tools.</p>
+              </Link>
+            </li>
+          </ul>
         </Route>
       </Switch>
     </Breadcrumbs>
