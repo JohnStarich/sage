@@ -17,8 +17,8 @@ export default function RadioGroup(props) {
     smColumns,
     ...remainingProps
   } = props;
-  if (!choices) {
-    throw new Error("Choices prop must be provided")
+  if (!choices || ! Array.isArray(choices)) {
+    throw new Error("Choices array must be provided")
   }
   if (smColumns && smColumns.length !== 2) {
     throw new Error("smColumns prop must be an array of 2 column widths")
