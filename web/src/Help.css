@@ -1,0 +1,26 @@
+.feedback-tiles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.feedback-tiles > * {
+  box-sizing: border-box;
+  max-width: 20em;
+  width: 100%;
+  margin: 2em;
+}
+
+.feedback-tiles button {
+  text-align: center;
+  padding: 1em 2em;
+  width: 100%;
+}
+
+.feedback-tiles button p {
+  margin-top: 0.8em;
+}
+
+.feedback-tiles button h3 {
+  font-size: 0.8em;
+}

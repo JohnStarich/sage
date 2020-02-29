@@ -6,6 +6,7 @@ import AdvancedOptions from './AdvancedOptions';
 import BalanceSettings from './BalanceSettings';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 import Categories from './Categories';
+import Help from './Help';
 import { Breadcrumbs, Crumb } from './Breadcrumb';
 import { Link, NavLink, Route, Switch } from "react-router-dom";
 
@@ -21,6 +22,7 @@ export default function ({ match }) {
         <Route path={`${match.path}/balances`} component={BalanceSettings} />
         <Route path={`${match.path}/categories`} component={Categories} />
         <Route path={`${match.path}/advanced`} component={AdvancedOptions} />
+        <Route path={`${match.path}/help`} component={Help} />
         <Route exact path={match.path}>
           <ul className="settings-tiles">
             <li>
@@ -45,6 +47,12 @@ export default function ({ match }) {
               <Link to={`${match.url}/advanced`} className="advanced-settings">
                 <h2>Advanced</h2>
                 <p>Power user tools.</p>
+              </Link>
+            </li>
+            <li>
+              <Link to={`${match.url}/help`}>
+                <h2>Help &amp; Feedback</h2>
+                <p>Send suggestions, request features, or ask questions.</p>
               </Link>
             </li>
           </ul>

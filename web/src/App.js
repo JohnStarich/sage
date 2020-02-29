@@ -81,7 +81,8 @@ function AppContent({ match }) {
           </Nav>
           <Nav>
             <Sync className="mr-2" onSync={() => setSyncTime(new Date())} />
-            <NavLink to="/settings" aria-label="Settings" className="nav-link settings-icon">⚙</NavLink>
+            <NavLink to="/settings/help" aria-label="Help" className="nav-link help-icon"><span>?</span></NavLink>
+            <NavLink exact to="/settings" aria-label="Settings" className="nav-link settings-icon">⚙</NavLink>
           </Nav>
         </Navbar.Collapse>
       </Navbar>
