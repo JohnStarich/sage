@@ -63,7 +63,14 @@ function main() {
       mainWindow = null;
     });
 
-    mainWindow.webContents.on('new-window', (_, __, ___, ____, options) => {
+    mainWindow.webContents.on('new-window', (e, urlString, ___, ____, options) => {
+      const url = new URL(urlString)
+      if (['github.com', 'forms.gle'].includes(url.hostname)) {
+        e.preventDefault()
+        shell.openExternal(url.toString())
+        return
+      }
+
       const [x, y] = mainWindow.getPosition()
       const offset = 20
       Object.assign(options, {
