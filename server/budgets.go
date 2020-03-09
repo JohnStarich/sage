@@ -65,8 +65,8 @@ func addMonths(t time.Time, months int) time.Time {
 	return time.Date(t.Year(), t.Month()+time.Month(months), 1, 0, 0, 0, 0, time.UTC)
 }
 
-func getEverythingElseSum(accounts budget.Accounts, ldg *ledger.Ledger, start, end time.Time) decimal.Decimal {
-	leftOverAccounts := ldg.LeftOverAccountBalances(start, end, everythingElseAccounts(accounts)...)
+func getEverythingElseSum(accounts budget.Accounts, ldgStore *ledger.Store, start, end time.Time) decimal.Decimal {
+	leftOverAccounts := ldgStore.LeftOverAccountBalances(start, end, everythingElseAccounts(accounts)...)
 	var balance decimal.Decimal
 	for _, amount := range leftOverAccounts {
 		balance = balance.Add(amount.Abs()) // flip sign of revenues so nothing cancels out
@@ -74,7 +74,7 @@ func getEverythingElseSum(accounts budget.Accounts, ldg *ledger.Ledger, start, e
 	return balance
 }
 
-func getBudgets(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
+func getBudgets(db plaindb.DB, ldgStore *ledger.Store) gin.HandlerFunc {
 	store, err := budget.NewStore(db)
 	if err != nil {
 		panic(err)
@@ -99,7 +99,7 @@ func getBudgets(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
 			}
 			allMonthlyBudgets = append(allMonthlyBudgets, month)
 		}
-		budgetResults, err := calculateBudgetBalances(allMonthlyBudgets, ldg, start, end)
+		budgetResults, err := calculateBudgetBalances(allMonthlyBudgets, ldgStore, start, end)
 		if err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
@@ -116,7 +116,7 @@ func getBudgets(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
 	}
 }
 
-func calculateBudgetBalances(allMonthlyBudgets []budget.Accounts, ldg *ledger.Ledger, start, end time.Time) ([][]monthlyBudget, error) {
+func calculateBudgetBalances(allMonthlyBudgets []budget.Accounts, ldgStore *ledger.Store, start, end time.Time) ([][]monthlyBudget, error) {
 	budgetResults := make([][]monthlyBudget, 0, 12)
 	for monthOffset, accounts := range allMonthlyBudgets {
 		monthStart := addMonths(start, monthOffset)
@@ -129,12 +129,12 @@ func calculateBudgetBalances(allMonthlyBudgets []budget.Accounts, ldg *ledger.Le
 				switch strings.ToLower(account) {
 				case everythingElseBudget:
 					foundEverythingElse = true
-					balance = getEverythingElseSum(accounts, ldg, monthStart, monthEnd)
+					balance = getEverythingElseSum(accounts, ldgStore, monthStart, monthEnd)
 				default:
 					return nil, errors.Errorf("Invalid builtin account: %s", account)
 				}
 			} else {
-				balance = ldg.AccountBalance(account, monthStart, monthEnd)
+				balance = ldgStore.AccountBalance(account, monthStart, monthEnd)
 			}
 			if strings.HasPrefix(account, model.RevenueAccount+":") || account == model.RevenueAccount {
 				balance = balance.Neg()
@@ -149,7 +149,7 @@ func calculateBudgetBalances(allMonthlyBudgets []budget.Accounts, ldg *ledger.Le
 		if !foundEverythingElse {
 			monthResults = append(monthResults, monthlyBudget{
 				Account: everythingElseBudget,
-				Balance: getEverythingElseSum(accounts, ldg, monthStart, monthEnd),
+				Balance: getEverythingElseSum(accounts, ldgStore, monthStart, monthEnd),
 			})
 		}
 		budgetResults = append(budgetResults, monthResults)
@@ -157,7 +157,7 @@ func calculateBudgetBalances(allMonthlyBudgets []budget.Accounts, ldg *ledger.Le
 	return budgetResults, nil
 }
 
-func getBudget(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
+func getBudget(db plaindb.DB, ldgStore *ledger.Store) gin.HandlerFunc {
 	store, err := budget.NewStore(db)
 	if err != nil {
 		panic(err)
@@ -201,7 +201,7 @@ func getBudget(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
 			return
 		}
 
-		balance := ldg.AccountBalance(account, start, end)
+		balance := ldgStore.AccountBalance(account, start, end)
 		if strings.HasPrefix(account, model.RevenueAccount+":") {
 			balance = balance.Neg()
 		}
@@ -297,7 +297,7 @@ func everythingElseAccounts(accounts budget.Accounts) []string {
 	return accountNames
 }
 
-func getEverythingElseBudgetDetails(db plaindb.DB, ldg *ledger.Ledger) gin.HandlerFunc {
+func getEverythingElseBudgetDetails(db plaindb.DB, ldgStore *ledger.Store) gin.HandlerFunc {
 	store, err := budget.NewStore(db)
 	if err != nil {
 		panic(err)
@@ -318,7 +318,7 @@ func getEverythingElseBudgetDetails(db plaindb.DB, ldg *ledger.Ledger) gin.Handl
 			return
 		}
 
-		leftOverAccounts := ldg.LeftOverAccountBalances(start, end, everythingElseAccounts(accounts)...)
+		leftOverAccounts := ldgStore.LeftOverAccountBalances(start, end, everythingElseAccounts(accounts)...)
 		var sum decimal.Decimal
 		for account, balance := range leftOverAccounts {
 			if strings.HasPrefix(account, model.RevenueAccount+":") {

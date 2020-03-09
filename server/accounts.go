@@ -13,8 +13,6 @@ import (
 	"github.com/johnstarich/sage/client/model"
 	"github.com/johnstarich/sage/client/web"
 	"github.com/johnstarich/sage/ledger"
-	"github.com/johnstarich/sage/sync"
-	"github.com/johnstarich/sage/vcs"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -133,7 +131,7 @@ func getAccounts(accountStore *client.AccountStore) gin.HandlerFunc {
 	}
 }
 
-func updateAccount(accountStore *client.AccountStore, ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc {
+func updateAccount(accountStore *client.AccountStore, ldgStore *ledger.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID, account, err := readAndValidateAccount(c.Request.Body, accountStore)
 		if err != nil {
@@ -161,11 +159,7 @@ func updateAccount(accountStore *client.AccountStore, ledgerFile vcs.File, ldg *
 		newAccountName := model.LedgerAccountName(account)
 		// TODO handle condition where account store was updated but ledger rename failed?
 		if oldAccountName != newAccountName {
-			if err := ldg.UpdateAccount(oldAccountName, newAccountName); err != nil {
-				abortWithClientError(c, http.StatusInternalServerError, err)
-				return
-			}
-			if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
+			if err := ldgStore.UpdateAccount(oldAccountName, newAccountName); err != nil {
 				abortWithClientError(c, http.StatusInternalServerError, err)
 				return
 			}

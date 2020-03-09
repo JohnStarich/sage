@@ -35,7 +35,7 @@ type Options struct {
 // Run starts the server
 func Run(
 	db plaindb.DB,
-	ledgerFile vcs.File, ldg *ledger.Ledger,
+	ldgStore *ledger.Store,
 	accountStore *client.AccountStore,
 	rulesFile vcs.File, rulesStore *rules.Store,
 	logger *zap.Logger,
@@ -66,7 +66,7 @@ func Run(
 		engine.POST("/api/authz", signIn(auth))
 		api.Use(requireAuth(auth))
 	}
-	setupAPI(api, db, ledgerFile, ldg, accountStore, rulesFile, rulesStore)
+	setupAPI(api, db, ldgStore, accountStore, rulesFile, rulesStore)
 
 	done := make(chan bool, 1)
 	errs := make(chan error, 2)
@@ -79,16 +79,10 @@ func Run(
 	go func() {
 		// give gin server time to start running. don't perform unnecessary requests if gin fails to boot
 		time.Sleep(2 * time.Second)
-		runSync := func() error {
-			return sync.Sync(logger, ledgerFile, ldg, accountStore, rulesStore, false)
+		runSync := func() {
+			sync.Sync(ldgStore, accountStore, rulesStore, false)
 		}
-		if err := runSync(); err != nil {
-			if _, ok := err.(ledger.Error); !ok {
-				// only stop sync loop if NOT a partial error
-				errs <- err
-				return
-			}
-		}
+		runSync()
 		ticker := time.NewTicker(syncInterval)
 		defer ticker.Stop()
 		for {
@@ -96,9 +90,10 @@ func Run(
 			case <-done:
 				return
 			case <-ticker.C:
-				if err := runSync(); err != nil {
-					errs <- err
-					return
+				_, err := ldgStore.SyncStatus()
+				if err == nil {
+					// only auto-sync if last sync succeeded
+					runSync()
 				}
 			}
 		}
@@ -124,24 +119,23 @@ func Run(
 func setupAPI(
 	router gin.IRouter,
 	db plaindb.DB,
-	ledgerFile vcs.File,
-	ldg *ledger.Ledger,
+	ldgStore *ledger.Store,
 	accountStore *client.AccountStore,
 	rulesFile vcs.File,
 	rulesStore *rules.Store,
 ) {
-	router.POST("/syncLedger", syncLedger(ledgerFile, ldg, accountStore, rulesStore))
-	router.POST("/importOFX", importOFXFile(ledgerFile, ldg, accountStore, rulesStore))
-	router.POST("/renameLedgerAccount", renameLedgerAccount(ledgerFile, ldg))
-	router.GET("/renameSuggestions", renameSuggestions(ldg, accountStore))
+	router.POST("/syncLedger", syncLedger(ldgStore, accountStore, rulesStore))
+	router.POST("/importOFX", importOFXFile(ldgStore, accountStore, rulesStore))
+	router.POST("/renameLedgerAccount", renameLedgerAccount(ldgStore))
+	router.GET("/renameSuggestions", renameSuggestions(accountStore))
 
-	router.GET("/getBalances", getBalances(ldg, accountStore))
-	router.POST("/updateOpeningBalance", updateOpeningBalance(ledgerFile, ldg, accountStore))
-	router.GET("/getCategories", getExpenseAndRevenueAccounts(ldg, rulesStore))
+	router.GET("/getBalances", getBalances(ldgStore, accountStore))
+	router.POST("/updateOpeningBalance", updateOpeningBalance(ldgStore, accountStore))
+	router.GET("/getCategories", getExpenseAndRevenueAccounts(ldgStore, rulesStore))
 
 	router.GET("/getAccounts", getAccounts(accountStore))
 	router.GET("/getAccount", getAccount(accountStore))
-	router.POST("/updateAccount", updateAccount(accountStore, ledgerFile, ldg))
+	router.POST("/updateAccount", updateAccount(accountStore, ldgStore))
 	router.POST("/addAccount", addAccount(accountStore))
 	router.GET("/deleteAccount", removeAccount(accountStore))
 
@@ -151,21 +145,21 @@ func setupAPI(
 	router.POST("/direct/verifyAccount", verifyAccount(accountStore))
 	router.POST("/direct/fetchAccounts", fetchDirectConnectAccounts())
 
-	router.GET("/getTransactions", getTransactions(ldg, accountStore))
-	router.POST("/updateTransaction", updateTransaction(ledgerFile, ldg))
-	router.POST("/updateTransactions", updateTransactions(ledgerFile, ldg))
-	router.POST("/reimportTransactions", reimportTransactions(ledgerFile, ldg, rulesStore))
+	router.GET("/getTransactions", getTransactions(ldgStore, accountStore))
+	router.POST("/updateTransaction", updateTransaction(ldgStore))
+	router.POST("/updateTransactions", updateTransactions(ldgStore))
+	router.POST("/reimportTransactions", reimportTransactions(ldgStore, rulesStore))
 
-	router.GET("/getRules", getRules(rulesStore, ldg))
+	router.GET("/getRules", getRules(rulesStore, ldgStore))
 	router.GET("/getRule", getRule(rulesStore))
 	router.POST("/updateRules", updateRules(rulesFile, rulesStore))
 	router.POST("/updateRule", updateRule(rulesFile, rulesStore))
 	router.POST("/addRule", addRule(rulesFile, rulesStore))
 	router.POST("/deleteRule", deleteRule(rulesFile, rulesStore))
 
-	router.GET("/getBudgets", getBudgets(db, ldg))
-	router.GET("/getBudget", getBudget(db, ldg))
+	router.GET("/getBudgets", getBudgets(db, ldgStore))
+	router.GET("/getBudget", getBudget(db, ldgStore))
 	router.POST("/updateBudget", updateBudget(db))
 	router.GET("/deleteBudget", deleteBudget(db))
-	router.GET("/getEverythingElseBudget", getEverythingElseBudgetDetails(db, ldg))
+	router.GET("/getEverythingElseBudget", getEverythingElseBudgetDetails(db, ldgStore))
 }
