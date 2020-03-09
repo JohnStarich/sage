@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
@@ -24,19 +25,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func loadLedger(fileName string) (*ledger.Ledger, error) {
-	ledgerFile, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0600)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error opening '%s'", fileName)
-	}
-	defer ledgerFile.Close()
-	ldg, err := ledger.NewFromReader(ledgerFile)
-	if err != nil {
-		return nil, err
-	}
-	return ldg, nil
-}
-
 func loadRules(fileName string) (rules.Rules, error) {
 	rulesFile, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
@@ -47,27 +35,34 @@ func loadRules(fileName string) (rules.Rules, error) {
 	return r, errors.Wrapf(err, "Error reading rules from file '%s'", fileName)
 }
 
+func getLogger() (*zap.Logger, error) {
+	if os.Getenv("DEVELOPMENT") == "true" {
+		return zap.NewDevelopment()
+	}
+	return zap.NewProduction()
+}
+
 func start(
 	isServer bool,
 	db plaindb.DB,
-	ledgerFile vcs.File, ldg *ledger.Ledger,
+	ldgStore *ledger.Store,
 	accountStore *client.AccountStore,
 	rulesFile vcs.File, rulesStore *rules.Store,
+	logger *zap.Logger,
 	options server.Options,
 ) error {
-	logger, err := zap.NewProduction()
-	if os.Getenv("DEVELOPMENT") == "true" {
-		logger, err = zap.NewDevelopment()
-	}
-	if err != nil {
-		return err
-	}
-
 	if !isServer {
-		return sync.Sync(logger, ledgerFile, ldg, accountStore, rulesStore, false)
+		sync.Sync(ldgStore, accountStore, rulesStore, false)
+		for {
+			syncing, err := ldgStore.SyncStatus()
+			if !syncing {
+				return err
+			}
+			time.Sleep(time.Second)
+		}
 	}
 	gin.SetMode(gin.ReleaseMode)
-	err = server.Run(db, ledgerFile, ldg, accountStore, rulesFile, rulesStore, logger, options)
+	err := server.Run(db, ldgStore, accountStore, rulesFile, rulesStore, logger, options)
 	if err != nil {
 		logger.Error("Server run failed", zap.Error(err))
 	}
@@ -145,11 +140,15 @@ func handleErrors(db *plaindb.DB) (usageErr bool, err error) {
 		return false, err
 	}
 
-	ldg, err := loadLedger(*ledgerFileName)
+	logger, err := getLogger()
 	if err != nil {
 		return false, err
 	}
-	ldgFile := repo.File(*ledgerFileName)
+
+	ldgStore, err := ledger.NewStore(repo.File(*ledgerFileName), logger)
+	if err != nil {
+		return false, err
+	}
 
 	r, err := loadRules(*rulesFileName)
 	if err != nil {
@@ -158,7 +157,7 @@ func handleErrors(db *plaindb.DB) (usageErr bool, err error) {
 	rulesStore := rules.NewStore(r)
 	rulesFile := repo.File(*rulesFileName)
 
-	return false, start(*isServer, *db, ldgFile, ldg, accountStore, rulesFile, rulesStore, server.Options{
+	return false, start(*isServer, *db, ldgStore, accountStore, rulesFile, rulesStore, logger, server.Options{
 		Address:  fmt.Sprintf("0.0.0.0:%d", port),
 		AutoSync: !*noSyncLoop,
 		Password: redactor.String(*serverPassword),

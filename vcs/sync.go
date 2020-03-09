@@ -2,10 +2,12 @@ package vcs
 
 import (
 	"io/ioutil"
+	"os"
 )
 
 type File interface {
 	Write(b []byte) error
+	Read() ([]byte, error)
 }
 
 type file struct {
@@ -22,6 +24,14 @@ func (repo *syncRepo) File(path string) File {
 
 func (f *file) Write(b []byte) error {
 	return f.repo.CommitFiles(diskWriter(f.path, b), "Update "+f.path, f.path)
+}
+
+func (f *file) Read() ([]byte, error) {
+	buf, err := ioutil.ReadFile(f.path)
+	if os.IsNotExist(err) {
+		err = nil
+	}
+	return buf, err
 }
 
 func diskWriter(path string, b []byte) func() error {

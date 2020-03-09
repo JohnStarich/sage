@@ -16,7 +16,6 @@ import (
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/sync"
-	"github.com/johnstarich/sage/vcs"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
@@ -28,16 +27,11 @@ const (
 	MaxResults = 50
 )
 
-func syncLedger(ledgerFile vcs.File, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
+func syncLedger(ldgStore *ledger.Store, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		logger := c.MustGet(loggerKey).(*zap.Logger)
 		_, syncFromStart := c.GetQuery("fromLedgerStart")
-		err := sync.Sync(logger, ledgerFile, ldg, accountStore, rulesStore, syncFromStart)
-		if err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
-			return
-		}
-		c.Status(http.StatusOK)
+		sync.Sync(ldgStore, accountStore, rulesStore, syncFromStart)
+		c.Status(http.StatusAccepted)
 	}
 }
 
@@ -46,7 +40,7 @@ type transactionsResponse struct {
 	AccountIDMap map[string]string
 }
 
-func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
+func getTransactions(ldgStore *ledger.Store, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var errs sErrors.Errors
 		var page, results int = 1, 10
@@ -84,7 +78,7 @@ func getTransactions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.
 		}
 
 		result := transactionsResponse{
-			QueryResult:  ldg.Query(options, page, results),
+			QueryResult:  ldgStore.Query(options, page, results),
 			AccountIDMap: make(map[string]string),
 		}
 		// attempt to make asset and liability accounts more descriptive
@@ -175,9 +169,9 @@ func (t txnToAccountMap) Find(accountName string) (account model.Account, found 
 	return clientAccount, found
 }
 
-func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
+func getBalances(ldgStore *ledger.Store, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		resp, err := getBalancesResponse(ldg, accountStore, c.QueryArray(accountTypesQuery))
+		resp, err := getBalancesResponse(ldgStore, accountStore, c.QueryArray(accountTypesQuery))
 		if err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
@@ -186,8 +180,8 @@ func getBalances(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.Hand
 	}
 }
 
-func getBalancesResponse(ldg *ledger.Ledger, accountStore *client.AccountStore, accountTypesQueryArray []string) (interface{}, error) {
-	start, end, balanceMap := ldg.Balances()
+func getBalancesResponse(ldgStore *ledger.Store, accountStore *client.AccountStore, accountTypesQueryArray []string) (interface{}, error) {
+	start, end, balanceMap := ldgStore.Balances()
 	resp := BalanceResponse{
 		Start: start,
 		End:   end,
@@ -211,7 +205,7 @@ func getBalancesResponse(ldg *ledger.Ledger, accountStore *client.AccountStore, 
 	}
 
 	var openingBalances ledger.Transaction
-	if balances, found := ldg.OpeningBalances(); found {
+	if balances, found := ldgStore.OpeningBalances(); found {
 		resp.OpeningBalanceDate = &balances.Date
 		openingBalances = balances
 	}
@@ -263,7 +257,7 @@ func getBalancesResponse(ldg *ledger.Ledger, accountStore *client.AccountStore, 
 		return resp.Accounts[a].ID < resp.Accounts[b].ID
 	})
 
-	resp.Messages = append(resp.Messages, getOpeningBalanceMessages(ldg, accounts)...)
+	resp.Messages = append(resp.Messages, getOpeningBalanceMessages(ldgStore, accounts)...)
 	sort.Slice(resp.Messages, func(a, b int) bool {
 		return resp.Messages[a].AccountID < resp.Messages[b].AccountID
 	})
@@ -295,10 +289,10 @@ func extractAccount(account *AccountResponse, accountName string, filterAccountT
 	return true
 }
 
-func getOpeningBalanceMessages(ldg *ledger.Ledger, accounts []model.Account) []AccountMessage {
+func getOpeningBalanceMessages(ldgStore *ledger.Store, accounts []model.Account) []AccountMessage {
 	var messages []AccountMessage
 	var openingPostings []ledger.Posting
-	if openingBalances, ok := ldg.OpeningBalances(); ok {
+	if openingBalances, ok := ldgStore.OpeningBalances(); ok {
 		openingPostings = openingBalances.Postings
 	}
 	openingBalAccounts := make(map[string]bool)
@@ -320,9 +314,9 @@ func getOpeningBalanceMessages(ldg *ledger.Ledger, accounts []model.Account) []A
 	return messages
 }
 
-func getExpenseAndRevenueAccounts(ldg *ledger.Ledger, rulesStore *rules.Store) gin.HandlerFunc {
+func getExpenseAndRevenueAccounts(ldgStore *ledger.Store, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_, _, balanceMap := ldg.Balances()
+		_, _, balanceMap := ldgStore.Balances()
 		accounts := make(map[string]bool, len(balanceMap)+1)
 		accounts[model.Uncategorized] = true
 		for account := range balanceMap {
@@ -355,7 +349,7 @@ func getExpenseAndRevenueAccounts(ldg *ledger.Ledger, rulesStore *rules.Store) g
 	}
 }
 
-func updateTransaction(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc {
+func updateTransaction(ldgStore *ledger.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body, err := ioutil.ReadAll(c.Request.Body)
 		if err != nil {
@@ -377,7 +371,7 @@ func updateTransaction(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc 
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
-		switch err := ldg.UpdateTransaction(id, txn).(type) {
+		switch err := ldgStore.UpdateTransaction(id, txn).(type) {
 		case ledger.Error:
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
@@ -387,16 +381,11 @@ func updateTransaction(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc 
 			return
 		}
 
-		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
-			return
-		}
-
 		c.Status(http.StatusNoContent)
 	}
 }
 
-func updateTransactions(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc {
+func updateTransactions(ldgStore *ledger.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var txns []struct {
 			ID string `binding:"required"` // the original transaction's ID
@@ -406,27 +395,18 @@ func updateTransactions(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
-		var clientErrs, serverErrs sErrors.Errors
+		newTxns := make(map[string]ledger.Transaction, len(txns))
 		for _, txn := range txns {
-			switch err := ldg.UpdateTransaction(txn.ID, txn.Transaction).(type) {
-			case ledger.Error:
-				clientErrs.AddErr(err)
-			case nil: // skip
-			default:
-				serverErrs.AddErr(err)
-			}
+			newTxns[txn.ID] = txn.Transaction
 		}
 
-		if err := serverErrs.ErrOrNil(); err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
-			return
-		}
-		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
-			return
-		}
-		if err := clientErrs.ErrOrNil(); err != nil {
+		switch err := ldgStore.UpdateTransactions(newTxns).(type) {
+		case ledger.Error:
 			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		case nil: // skip
+		default:
+			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -434,7 +414,7 @@ func updateTransactions(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc
 	}
 }
 
-func updateOpeningBalance(ledgerFile vcs.File, ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
+func updateOpeningBalance(ldgStore *ledger.Store, accountStore *client.AccountStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var opening ledger.Transaction
 		if err := c.ShouldBindJSON(&opening); err != nil {
@@ -460,20 +440,21 @@ func updateOpeningBalance(ledgerFile vcs.File, ldg *ledger.Ledger, accountStore 
 			Tags:     map[string]string{"id": ledger.OpeningBalanceID},
 		})
 
-		if err := ldg.UpdateOpeningBalance(opening); err != nil {
+		switch err := ldgStore.UpdateOpeningBalance(opening).(type) {
+		case ledger.Error:
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
-		}
-
-		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
+		case nil: // skip
+		default:
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
+
 		c.Status(http.StatusNoContent)
 	}
 }
 
-func importOFXFile(ledgerFile vcs.File, ldg *ledger.Ledger, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
+func importOFXFile(ldgStore *ledger.Store, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger := c.MustGet(loggerKey).(*zap.Logger)
 		skeletonAccounts, txns, err := client.ReadOFX(c.Request.Body)
@@ -482,11 +463,12 @@ func importOFXFile(ledgerFile vcs.File, ldg *ledger.Ledger, accountStore *client
 			return
 		}
 		rulesStore.ApplyAll(txns)
-		if err := ldg.AddTransactions(txns); err != nil {
+		switch err := ldgStore.AddTransactions(txns).(type) {
+		case ledger.Error:
 			abortWithClientError(c, http.StatusBadRequest, err)
 			return
-		}
-		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
+		case nil: // skip
+		default:
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
@@ -503,7 +485,7 @@ func importOFXFile(ledgerFile vcs.File, ldg *ledger.Ledger, accountStore *client
 	}
 }
 
-func reimportTransactions(ledgerFile vcs.File, ldg *ledger.Ledger, rulesStore *rules.Store) gin.HandlerFunc {
+func reimportTransactions(ldgStore *ledger.Store, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body struct {
 			Start, End string
@@ -521,18 +503,23 @@ func reimportTransactions(ledgerFile vcs.File, ldg *ledger.Ledger, rulesStore *r
 		if len(body.Accounts) == 0 {
 			body.Accounts = []string{model.Uncategorized}
 		}
-		result := ldg.Query(ledger.QueryOptions{
+		result := ldgStore.Query(ledger.QueryOptions{
 			Start: start,
 			End:   end,
 			// currently accounts are fixed to "uncategorized" and "expenses:uncategorized"
 			Accounts: body.Accounts,
-		}, 1, ldg.Size())
+		}, 1, ldgStore.Size())
 		rulesStore.ApplyAll(result.Transactions)
+		updatedTxns := make(map[string]ledger.Transaction, len(result.Transactions))
+		for _, txn := range result.Transactions {
+			updatedTxns[txn.ID()] = txn
+		}
 
-		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
-			abortWithClientError(c, http.StatusInternalServerError, err)
+		if err := ldgStore.UpdateTransactions(updatedTxns); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
 			return
 		}
+
 		c.JSON(http.StatusOK, map[string]interface{}{
 			"Count": result.Count,
 		})
@@ -546,7 +533,7 @@ type renameParams struct {
 	NewID string
 }
 
-func renameLedgerAccount(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFunc {
+func renameLedgerAccount(ldgStore *ledger.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var params renameParams
 		if err := c.BindJSON(&params); err != nil {
@@ -558,8 +545,8 @@ func renameLedgerAccount(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFun
 			return
 		}
 
-		renameCount := ldg.RenameAccount(params.Old, params.New, params.OldID, params.NewID)
-		if err := sync.LedgerFile(ldg, ledgerFile); err != nil {
+		renameCount, err := ldgStore.RenameAccount(params.Old, params.New, params.OldID, params.NewID)
+		if err != nil {
 			abortWithClientError(c, http.StatusInternalServerError, err)
 			return
 		}
@@ -570,7 +557,7 @@ func renameLedgerAccount(ledgerFile vcs.File, ldg *ledger.Ledger) gin.HandlerFun
 	}
 }
 
-func renameSuggestions(ldg *ledger.Ledger, accountStore *client.AccountStore) gin.HandlerFunc {
+func renameSuggestions(accountStore *client.AccountStore) gin.HandlerFunc {
 	const DiscoverOldOrg = "Discover Financial Services"
 	return func(c *gin.Context) {
 		var suggestions []renameParams

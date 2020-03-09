@@ -18,7 +18,7 @@ type CSVRule struct {
 	Account2   string
 }
 
-func getRules(rulesStore *rules.Store, ldg *ledger.Ledger) gin.HandlerFunc {
+func getRules(rulesStore *rules.Store, ldgStore *ledger.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var options struct {
 			Transaction string `form:"transaction"`
@@ -29,7 +29,7 @@ func getRules(rulesStore *rules.Store, ldg *ledger.Ledger) gin.HandlerFunc {
 		}
 		var result interface{} = rulesStore
 		if options.Transaction != "" {
-			txn, found := ldg.Transaction(options.Transaction)
+			txn, found := ldgStore.Transaction(options.Transaction)
 			if !found {
 				abortWithClientError(c, http.StatusNotFound, errors.New("Transaction not found"))
 				return

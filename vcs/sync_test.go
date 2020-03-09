@@ -21,8 +21,16 @@ func TestFile(t *testing.T) {
 	repo := repoInt.(*syncRepo)
 
 	f := repo.File("./testdb/bucket.json")
+	buf, err := f.Read()
+	assert.Empty(t, buf)
+	assert.NoError(t, err)
+
 	err = f.Write([]byte("hi there"))
 	assert.NoError(t, err)
+
+	buf, err = f.Read()
+	require.NoError(t, err)
+	assert.Equal(t, "hi there", string(buf))
 
 	commits, err := repo.repo.Log(&git.LogOptions{})
 	require.NoError(t, err)
