@@ -27,6 +27,20 @@ const (
 	MaxResults = 50
 )
 
+func getLedgerSyncStatus(ldgStore *ledger.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		syncing, err := ldgStore.SyncStatus()
+		var errStr string
+		if err != nil {
+			errStr = err.Error()
+		}
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"Syncing": syncing,
+			"Error":   errStr,
+		})
+	}
+}
+
 func syncLedger(ldgStore *ledger.Store, accountStore *client.AccountStore, rulesStore *rules.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		_, syncFromStart := c.GetQuery("fromLedgerStart")

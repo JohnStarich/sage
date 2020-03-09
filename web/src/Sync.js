@@ -5,35 +5,30 @@ import Spinner from 'react-bootstrap/Spinner';
 
 import './Sync.css';
 
-function runSync() {
-  return API.post('/v1/syncLedger')
-    .then(res => res.data)
-}
-
 export default function Sync(props) {
   const [isSyncing, setSyncing] = React.useState(false)
-  const [failed, setFailed] = React.useState(false)
+  const [error, setError] = React.useState(null)
+
+  React.useEffect(() => {
+    setInterval(() => {
+      API.get('/v1/getLedgerSyncStatus')
+        .then(res => {
+          setSyncing(res.data.Syncing)
+          setError(res.data.Error)
+        })
+    }, 10000)
+  }, [])
 
   const clickSync = () => {
+    API.post('/v1/syncLedger')
     setSyncing(true)
-    runSync().then(() => {
-      setFailed(false)
-    }).catch(e => {
-      console.error(e)
-      setFailed(true)
-    }).finally(() => {
-      setSyncing(false)
-      if (props.onSync) {
-        props.onSync()
-      }
-    })
   }
 
   let className = "sync"
   if (props.className) {
     className += " " + props.className
   }
-  if (failed) {
+  if (error) {
     className += " sync-failed"
   }
 
@@ -46,7 +41,7 @@ export default function Sync(props) {
     >
       {isSyncing
         ? <Spinner animation="border" size="sm" />
-        : (failed ? 'Sync Failed' : 'Sync')
+        : (error ? 'Sync Failed' : 'Sync')
       }
     </Button>
   )

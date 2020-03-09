@@ -124,6 +124,7 @@ func setupAPI(
 	rulesFile vcs.File,
 	rulesStore *rules.Store,
 ) {
+	router.GET("/getLedgerSyncStatus", getLedgerSyncStatus(ldgStore))
 	router.POST("/syncLedger", syncLedger(ldgStore, accountStore, rulesStore))
 	router.POST("/importOFX", importOFXFile(ldgStore, accountStore, rulesStore))
 	router.POST("/renameLedgerAccount", renameLedgerAccount(ldgStore))
