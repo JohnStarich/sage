@@ -913,3 +913,27 @@ func TestSize(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, len(txns), l.Size())
 }
+
+func TestOpeningBalances(t *testing.T) {
+	l, err := New(nil)
+	require.NoError(t, err)
+	_, ok := l.OpeningBalances()
+	assert.False(t, ok, "No opening balance expected")
+
+	txns := []Transaction{
+		{
+			Date:  parseDate(t, "2020/01/01"),
+			Payee: "some payee",
+			Postings: []Posting{
+				{Account: "assets", Amount: *decFloat(10)},
+				{Account: "liabilities", Amount: *decFloat(32)},
+				{Account: "*Opening-Balances", Tags: map[string]string{idTag: OpeningBalanceID}},
+			},
+		},
+	}
+	l, err = New(txns)
+	require.NoError(t, err)
+	opening, ok := l.OpeningBalances()
+	require.True(t, ok)
+	assert.Equal(t, txns[0], opening)
+}
