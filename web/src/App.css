@@ -68,21 +68,6 @@
   margin: 0 auto;
 }
 
-.settings-icon {
-  transform: translate(0, -5%) scale(2);
-}
-
-.help-icon {
-  border: 2px solid currentcolor;
-  border-radius: 1em;
-  height: 1.5em;
-  width: 1.5em;
-  transform: translate(0, 35%) scale(0.8);
-  margin-right: 0.75em;
-}
-
-.help-icon span {
-  display: block;
-  font-weight: 600;
-  transform: translate(-50%,-42%);
+.sage-nav .nav-link > .fa {
+  transform: scale(1.1);
 }

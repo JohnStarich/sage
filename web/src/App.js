@@ -2,11 +2,13 @@ import React from 'react';
 import API from './API';
 import { BrowserRouter as Router, Route, Switch, NavLink } from "react-router-dom";
 import 'bootstrap/dist/css/bootstrap.min.css';
+import 'font-awesome/css/font-awesome.css';
 import './common.css';
 import './App.css';
 
 import Activity from './Activity';
 import Budgets from './Budgets';
+import FontAwesome from 'react-fontawesome';
 import Login from './Login';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
@@ -80,9 +82,9 @@ function AppContent({ match }) {
             <NavLink exact to="/budgets" className="nav-link">Budgets</NavLink>
           </Nav>
           <Nav>
-            <Sync className="mr-2" onSync={() => setSyncTime(new Date())} />
-            <NavLink to="/settings/help" aria-label="Help" className="nav-link help-icon"><span>?</span></NavLink>
-            <NavLink exact to="/settings" aria-label="Settings" className="nav-link settings-icon">⚙</NavLink>
+            <Sync onSync={() => setSyncTime(new Date())} />
+            <NavLink to="/settings/help" aria-label="Help" className="nav-link"><FontAwesome name="question-circle-o" /></NavLink>
+            <NavLink exact to="/settings" aria-label="Settings" className="nav-link"><FontAwesome name="cog" /></NavLink>
           </Nav>
         </Navbar.Collapse>
       </Navbar>

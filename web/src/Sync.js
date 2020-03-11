@@ -2,6 +2,7 @@ import API from './API';
 import React from 'react';
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
+import FontAwesome from 'react-fontawesome';
 import Modal from 'react-bootstrap/Modal';
 import Spinner from 'react-bootstrap/Spinner';
 
@@ -80,9 +81,7 @@ export default function Sync({ className, onSync }) {
             className="sync-info"
             onClick={() => setShowError(true)}
           >
-            <span className="sync-info-wrapper">
-              <span className="sync-info-text">ℹ</span>
-            </span>
+            <FontAwesome name="exclamation-triangle" />
           </Button>
           : null}
       </ButtonGroup>
