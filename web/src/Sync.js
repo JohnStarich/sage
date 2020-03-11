@@ -13,7 +13,7 @@ async function getStatus() {
     return (await API.get('/v1/getLedgerSyncStatus')).data
   } catch (e) {
     console.error(e)
-    return
+    return {Syncing: false, Error: e.message}
   }
 }
 
@@ -46,6 +46,10 @@ export default function Sync({ className, onSync }) {
     setSyncing(true)
     setError(null)
     API.post('/v1/syncLedger')
+      .catch(e => {
+        setSyncing(false)
+        setError(e.message)
+      })
   }
 
   let classNames = ["sync"]
