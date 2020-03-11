@@ -1,24 +1,13 @@
+.sync {
+  margin: 0 0.25em;
+}
+
 .sync.sync-failed .sync-title {
   padding-right: 0.3em;
 }
 
 .sync .sync-info {
-  padding: 0;
-}
-
-.sync-info .sync-info-wrapper {
-  display: block;
-  border: 2px solid currentcolor;
-  border-radius: 1em;
-  height: 1.5em;
-  width: 1.5em;
-  transform: translate(20%, 3%) scale(0.8);
-  margin-right: 0.75em;
-}
-
-.sync-info .sync-info-text {
-  display: block;
-  transform: translate(0, -10%);
+  padding-left: 0.5em;
 }
 
 .sync-error {
