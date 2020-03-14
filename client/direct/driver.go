@@ -1,7 +1,7 @@
 package direct
 
 import (
-	"strings"
+	"github.com/johnstarich/sage/search"
 )
 
 type Driver interface {
@@ -45,12 +45,17 @@ func supportedDriver(d Driver) bool {
 }
 
 func Search(query string) []Driver {
-	query = strings.ToLower(query)
-	results := make([]Driver, 0)
+	driverNames := make([]string, 0, len(directConnectInstitutions))
+	drivers := make([]Driver, 0, len(directConnectInstitutions))
 	for _, driver := range directConnectInstitutions {
-		if strings.Contains(strings.ToLower(driver.Description()), query) {
-			results = append(results, driver)
-		}
+		drivers = append(drivers, driver)
+		driverNames = append(driverNames, driver.Description())
+	}
+	resultIndexes := search.QueryIndexes(driverNames, query)
+
+	results := make([]Driver, 0, len(resultIndexes))
+	for _, ix := range resultIndexes {
+		results = append(results, drivers[ix])
 	}
 	return results
 }

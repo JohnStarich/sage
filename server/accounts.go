@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnstarich/sage/client"
@@ -279,23 +278,16 @@ func fetchDirectConnectAccounts() gin.HandlerFunc {
 
 func getWebConnectDrivers() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		results := web.Drivers()
-		response := make([]string, 0, len(results))
-		search := strings.ToLower(c.Query("search"))
-		for _, result := range results {
-			if strings.Contains(strings.ToLower(result), search) {
-				response = append(response, result)
-			}
-		}
+		drivers := web.Search(c.Query("search"))
 		c.JSON(http.StatusOK, map[string]interface{}{
-			"DriverNames": response,
+			"DriverNames": drivers,
 		})
 	}
 }
 
 func getDirectConnectDrivers() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		results := direct.Search(c.Query("search"))
+		drivers := direct.Search(c.Query("search"))
 
 		type driverResult struct {
 			ID          string
@@ -306,16 +298,16 @@ func getDirectConnectDrivers() gin.HandlerFunc {
 			Bank        bool
 			CreditCard  bool
 		}
-		response := make([]driverResult, 0, len(results))
-		for _, result := range results {
+		results := make([]driverResult, 0, len(drivers))
+		for _, driver := range drivers {
 			d := driverResult{
-				ID:          result.ID(),
-				Description: result.Description(),
-				FID:         result.FID(),
-				Org:         result.Org(),
-				URL:         result.URL(),
+				ID:          driver.ID(),
+				Description: driver.Description(),
+				FID:         driver.FID(),
+				Org:         driver.Org(),
+				URL:         driver.URL(),
 			}
-			for _, support := range result.MessageSupport() {
+			for _, support := range driver.MessageSupport() {
 				switch support {
 				case direct.MessageCreditCard:
 					d.CreditCard = true
@@ -323,10 +315,10 @@ func getDirectConnectDrivers() gin.HandlerFunc {
 					d.Bank = true
 				}
 			}
-			response = append(response, d)
+			results = append(results, d)
 		}
 		c.JSON(http.StatusOK, map[string]interface{}{
-			"Drivers": response,
+			"Drivers": results,
 		})
 	}
 }
