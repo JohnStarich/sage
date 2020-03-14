@@ -3,6 +3,7 @@ package web
 import (
 	"strings"
 
+	"github.com/johnstarich/sage/search"
 	"github.com/pkg/errors"
 )
 
@@ -29,10 +30,10 @@ func Register(name string, driver Driver) {
 	driverFuncs[name] = driver
 }
 
-func Drivers() []string {
+func Search(query string) []string {
 	driverNames := make([]string, 0, len(driverFuncs))
 	for driver := range driverFuncs {
 		driverNames = append(driverNames, strings.Title(driver))
 	}
-	return driverNames
+	return search.Query(driverNames, query)
 }
