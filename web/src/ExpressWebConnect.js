@@ -19,11 +19,8 @@ export default function ({ driver, created }) {
   const [isBank, setIsBank] = React.useState(null)
 
   if (isBank === null) {
-    if (driver.CreditCard || driver.Description.toLowerCase().includes('card')) {
-      setIsBank(false)
-    } else if (driver.Bank) {
-      setIsBank(true)
-    }
+    // TODO add better credit card / bank detection
+    setIsBank(!driver.Description.toLowerCase().includes('card'))
     return null
   }
 
