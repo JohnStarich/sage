@@ -27,8 +27,10 @@ export default function({ created }) {
         .then(res => res.data.Drivers),
     ]).then(([webDrivers, directDrivers]) => {
       setSuggestions(
-        webDrivers.map(d => ({ ID: d, Description: d, DisplayName: `${d} (beta)` }))
-          .concat(directDrivers))
+        directDrivers.concat(
+          webDrivers.map(d => ({ ID: d, Description: d, DisplayName: `${d} (beta)` }))
+        )
+      )
     })
   }, [name])
 
