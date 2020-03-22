@@ -40,6 +40,11 @@ type PasswordConnector interface {
 	SetPassword(redactor.String)
 }
 
+// ConnectorValidator performs validation on an account / credential pair, returns any errors
+type ConnectorValidator interface {
+	Validate(accountID string) error
+}
+
 /*
 // ideas for future connector types:
 
@@ -77,6 +82,9 @@ func Validate(account Account) error {
 	connector, ok := inst.(Connector)
 	if !ok {
 		return errs.ErrOrNil()
+	}
+	if validator, ok := connector.(ConnectorValidator); ok {
+		errs.AddErr(validator.Validate(account.ID()))
 	}
 	if passConnector, ok := connector.(PasswordConnector); ok {
 		errs.ErrIf(passConnector.Username() == "", "Institution username must not be empty")

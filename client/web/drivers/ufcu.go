@@ -41,16 +41,28 @@ func (c *connectorUFCU) Org() string {
 	return "UFCU"
 }
 
-func (c *connectorUFCU) Statement(browser web.Browser, start, end time.Time, accountID string) (*ofxgo.Response, error) {
+func (c *connectorUFCU) Validate(accountID string) error {
+	_, err := ufcuShareFromAccountID(accountID)
+	return err
+}
+
+func ufcuShareFromAccountID(accountID string) (string, error) {
 	hyphenIndex := strings.IndexByte(accountID, '-')
 	if hyphenIndex == -1 {
-		return nil, errors.New("Invalid UFCU account ID: Must contain the bank account number followed by the share number, e.g. 123456-S0000")
+		return "", errors.New("Invalid UFCU account ID: Must contain the bank account number followed by the share number, e.g. 123456-S0000")
 	}
-	share := accountID[hyphenIndex+1:]
+	return accountID[hyphenIndex+1:], nil
+}
+
+func (c *connectorUFCU) Statement(browser web.Browser, start, end time.Time, accountID string) (*ofxgo.Response, error) {
+	share, err := ufcuShareFromAccountID(accountID)
+	if err != nil {
+		return nil, err
+	}
 
 	ctx := context.Background()
 
-	err := browser.Run(ctx,
+	err = browser.Run(ctx,
 		network.ClearBrowserCookies(),
 
 		// login
