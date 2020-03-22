@@ -37,16 +37,16 @@ func (d *DownloadRequest) Fetch(ctx context.Context) ([]byte, error) {
 func (d *DownloadRequest) fetch(ctx context.Context, client *http.Client) ([]byte, error) {
 	req, err := d.HTTPRequest(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to create download request")
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to request download")
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to fetch download")
 	}
 	if resp.StatusCode/100 != 2 {
 		return nil, errors.Errorf("Bad response code [%d]: %s\n%s", resp.StatusCode, d.URL, string(body))
