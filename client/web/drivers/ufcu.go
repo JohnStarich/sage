@@ -3,7 +3,6 @@ package drivers
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -77,7 +76,6 @@ func (c *connectorUFCU) Statement(browser web.Browser, start, end time.Time, acc
 	browser.Download(func(ctx context.Context, download web.DownloadRequest) error {
 		downloadCtx, downloadCancel := context.WithTimeout(ctx, downloadTimeout)
 		defer downloadCancel()
-		fmt.Println("Downloading!!!", download.URL)
 		data, err := download.Fetch(downloadCtx)
 		if err != nil {
 			return err
@@ -87,7 +85,6 @@ func (c *connectorUFCU) Statement(browser web.Browser, start, end time.Time, acc
 	})
 
 	const dateFormat = "01/02/2006"
-	var accountOptionNodes []*cdp.Node
 	err = browser.Run(ctx,
 		chromedp.WaitReady(`document`),
 		chromedp.WaitVisible(`a[aria-label="History Export"]`, chromedp.ByQuery),
@@ -95,28 +92,8 @@ func (c *connectorUFCU) Statement(browser web.Browser, start, end time.Time, acc
 		chromedp.WaitVisible(`#qtip-someid-content img[alt="Quicken"]`),
 		chromedp.Click(`#qtip-someid-content img[alt="Quicken"]`),
 		chromedp.WaitVisible(`#shrd_hecrd_srch_ah_accountsInput`, chromedp.ByID),
-		chromedp.Nodes(`#shrd_hecrd_srch_ah_accountsInput option`, &accountOptionNodes),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			nodeContents := make(map[string]string, len(accountOptionNodes))
-			for _, option := range accountOptionNodes {
-				if len(option.Children) >= 1 {
-					id := option.AttributeValue("value")
-					content := option.Children[0].NodeValue
-					nodeContents[id] = content
-				}
-			}
-			var shareID string
-			for id, value := range nodeContents {
-				if strings.Contains(value, share) {
-					shareID = id
-				}
-			}
-			if shareID == "" {
-				return errors.Errorf("Unable to find account: %q in options %v", accountID, nodeContents)
-			}
-
-			err := chromedp.SetValue(`#shrd_hecrd_srch_ah_accountsInput`, shareID).Do(ctx)
-			return errors.Wrap(err, "Error setting account share")
+		selectOption(`#shrd_hecrd_srch_ah_accountsInput`, func(ctx context.Context, id, content string) bool {
+			return strings.Contains(content, share)
 		}),
 		// this piece works even though the UI elements do not update, the download URL is correct
 		chromedp.SetValue(`#shrd_hecrd_mainForm #srch_ah_searchCriteriaInput`, "DateRange"),
@@ -142,6 +119,38 @@ func (c *connectorUFCU) Statement(browser web.Browser, start, end time.Time, acc
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case file := <-downloadedFiles:
-		return ofxgo.ParseResponse(bytes.NewReader(file))
+		resp, err := ofxgo.ParseResponse(bytes.NewReader(file))
+		return resp, errors.Wrap(err, "Failed to parse response")
+	}
+}
+
+func selectOption(
+	selector interface{},
+	shouldSelect func(ctx context.Context, id, content string) bool,
+	opts ...chromedp.QueryOption,
+) chromedp.Tasks {
+	var selectNodes []*cdp.Node
+	return []chromedp.Action{
+		chromedp.Nodes(selector, &selectNodes, opts...),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			var allOptionNodes []*cdp.Node
+			for _, selectNode := range selectNodes {
+				allOptionNodes = append(allOptionNodes, selectNode.Children...)
+			}
+			if len(allOptionNodes) == 0 {
+				return errors.Errorf("No options matched selector: %q", selector)
+			}
+
+			for _, option := range allOptionNodes {
+				if option.NodeName == "OPTION" && len(option.Children) >= 1 {
+					id := option.AttributeValue("value")
+					content := option.Children[0].NodeValue
+					if shouldSelect(ctx, id, content) {
+						return chromedp.SetValue(selector, id).Do(ctx)
+					}
+				}
+			}
+			return errors.New("No option selected")
+		}),
 	}
 }
