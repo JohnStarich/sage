@@ -14,7 +14,7 @@ import (
 )
 
 func importTransactions(
-	resp *ofxgo.Response,
+	resp ofxgo.Response,
 	parseTransaction transactionParser,
 ) (skeletonAccounts []model.Account, allTxns []ledger.Transaction, importErr error) {
 	messages := append(resp.Bank, resp.CreditCard...)
@@ -82,7 +82,10 @@ func ReadOFX(r io.Reader) ([]model.Account, []ledger.Transaction, error) {
 
 // ParseOFX parses the OFX response for its transactions
 func ParseOFX(resp *ofxgo.Response) ([]model.Account, []ledger.Transaction, error) {
-	return importTransactions(resp, parseTransaction)
+	if resp == nil {
+		return nil, nil, nil
+	}
+	return importTransactions(*resp, parseTransaction)
 }
 
 type transactionParser func(txn ofxgo.Transaction, currency, accountName string, makeTxnID func(string) string) ledger.Transaction

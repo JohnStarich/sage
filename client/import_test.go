@@ -214,7 +214,7 @@ func TestImportTransactions(t *testing.T) {
 			parser := func(txn ofxgo.Transaction, currency, accountName string, makeTxnID func(string) string) ledger.Transaction {
 				return someTxn
 			}
-			accounts, txns, err := importTransactions(&tc.resp, parser)
+			accounts, txns, err := importTransactions(tc.resp, parser)
 			if tc.expectErr != "" {
 				require.Error(t, err)
 				assert.Equal(t, tc.expectErr, err.Error())
