@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/aclindsa/ofxgo"
-	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
@@ -112,13 +111,6 @@ func (c *connectorUFCU) Statement(browser web.Browser, start, end time.Time, acc
 		// enter start and end dates
 		chromedp.SetValue(`#shrd_hecrd_mainForm #shrd_hecrd_srch_ah_filterStartDateInput_datepicker`, start.Format(dateFormat)),
 		chromedp.SetValue(`#shrd_hecrd_mainForm #shrd_hecrd_srch_ah_filterEndDateInput_datepicker`, end.Format(dateFormat)),
-		/*
-			// Alternatively, a click to focus and type the option name to select also works:
-			chromedp.WaitReady(`#shrd_hecrd_mainForm #srch_ah_searchCriteriaInput`),
-			chromedp.Click(`#shrd_hecrd_mainForm #srch_ah_searchCriteriaInput`),
-			chromedp.Click(`#shrd_hecrd_mainForm #srch_ah_searchCriteriaInput`),
-			chromedp.KeyEvent("Start Date"),
-		*/
 
 		// start OFX / QFX download
 		chromedp.Click(`#btn_hec_submit`),
@@ -133,36 +125,5 @@ func (c *connectorUFCU) Statement(browser web.Browser, start, end time.Time, acc
 	case file := <-downloadedFiles:
 		resp, err := ofxgo.ParseResponse(bytes.NewReader(file))
 		return resp, errors.Wrap(err, "Failed to parse response")
-	}
-}
-
-func selectOption(
-	selector interface{},
-	shouldSelect func(ctx context.Context, id, content string) bool,
-	opts ...chromedp.QueryOption,
-) chromedp.Tasks {
-	var selectNodes []*cdp.Node
-	return []chromedp.Action{
-		chromedp.Nodes(selector, &selectNodes, opts...),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			var allOptionNodes []*cdp.Node
-			for _, selectNode := range selectNodes {
-				allOptionNodes = append(allOptionNodes, selectNode.Children...)
-			}
-			if len(allOptionNodes) == 0 {
-				return errors.Errorf("No options matched selector: %q", selector)
-			}
-
-			for _, option := range allOptionNodes {
-				if option.NodeName == "OPTION" && len(option.Children) >= 1 {
-					id := option.AttributeValue("value")
-					content := option.Children[0].NodeValue
-					if shouldSelect(ctx, id, content) {
-						return chromedp.SetValue(selector, id).Do(ctx)
-					}
-				}
-			}
-			return errors.New("No option selected")
-		}),
 	}
 }
