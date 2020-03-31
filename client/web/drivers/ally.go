@@ -170,11 +170,14 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 					return errs.ErrOrNil()
 				}),
 			)
-			if submitErr == nil || !strings.Contains(submitErr.Error(), "Please enter a start date that falls after your account open date.") {
+			if submitErr == nil || !isAccountOpenDateErr(submitErr) {
 				break
 			}
 		}
 		if submitErr != nil {
+			if isAccountOpenDateErr(submitErr) {
+				return nil, nil
+			}
 			return nil, errors.Wrap(submitErr, "Failed to submit history download request")
 		}
 	}
@@ -194,4 +197,8 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 		}
 		return resp, errors.Wrap(err, "Failed to parse response")
 	}
+}
+
+func isAccountOpenDateErr(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "Please enter a start date that falls after your account open date.")
 }
