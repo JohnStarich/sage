@@ -1,6 +1,8 @@
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/aclindsa/ofxgo v0.1.1-0.20190701101117-ebf7f5b757ed h1:Y0/eMf511Xk3PcQ1ru3lHoV9ZPs/iVilUBHHh3Q2Dsc=
 github.com/aclindsa/ofxgo v0.1.1-0.20190701101117-ebf7f5b757ed/go.mod h1:/26AoDGcjx7WpD0UnbgtVOIttL0z/o4L+zAhF4jozAI=
+github.com/aclindsa/ofxgo v0.1.1-0.20200330145010-677a09295a26 h1:vbQvrzLOJNyCj8JS0dospwLlOpuT6niW26Vqem2dhAw=
+github.com/aclindsa/ofxgo v0.1.1-0.20200330145010-677a09295a26/go.mod h1:P7pqIhTLQLXpDLSQzOGqEjQ5xshV9Qb9y0vIjYD+ti8=
 github.com/aclindsa/xml v0.0.0-20190701095008-453d2c6090c2 h1:ICeGSGrc6fd81VtQ3nZ2h7GEOKxWYwRxjW0v0d/mgu4=
 github.com/aclindsa/xml v0.0.0-20190701095008-453d2c6090c2/go.mod h1:GjqOUT8xlg5+T19lFv6yAGNrtMKkZ839Gt4e16mBXlY=
 github.com/alcortesm/tgz v0.0.0-20161220082320-9c5fe88206d7 h1:uSoVVbwJiQipAclBbw+8quDsfcvFjOpI5iCf4p/cqCs=
