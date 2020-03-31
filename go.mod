@@ -3,7 +3,7 @@ module github.com/johnstarich/sage
 go 1.12
 
 require (
-	github.com/aclindsa/ofxgo v0.1.1-0.20190701101117-ebf7f5b757ed
+	github.com/aclindsa/ofxgo v0.1.1-0.20200330145010-677a09295a26
 	github.com/aclindsa/xml v0.0.0-20190701095008-453d2c6090c2
 	github.com/chromedp/cdproto v0.0.0-20191009033829-c22f49c9ff0a
 	github.com/chromedp/chromedp v0.5.1
