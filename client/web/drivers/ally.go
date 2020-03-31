@@ -145,37 +145,13 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 		var submitErr error
 		for ; start.Unix() < end.Unix(); start = start.AddDate(0, 0, 1) {
 			// if there's an issue with the start date, try later dates
-			var errorNodes []*cdp.Node
-			submitErr = browser.Run(ctx,
-				chromedp.SetValue(`#downloadStartDate`, ""),
-				chromedp.SendKeys(`#downloadStartDate`, start.Format(dateFormat)),
-				chromedp.Click(`.transactions-history button[type="submit"]`),
-				chromedp.Sleep(100*time.Millisecond),
-				chromedp.Nodes(`.error-confirmation-list, .error-confirmation-list > *`, &errorNodes),
-				chromedp.ActionFunc(func(ctx context.Context) error {
-					if len(errorNodes) == 0 {
-						return errors.New("Could not detect history form errors")
-					}
-					var errs sErrors.Errors
-					for _, item := range errorNodes {
-						if len(item.Children) > 0 {
-							errs.ErrIf(
-								item.NodeName == "LI" &&
-									item.Children[0].NodeName == "#text" &&
-									item.Children[0].NodeValue != "",
-								item.Children[0].NodeValue,
-							)
-						}
-					}
-					return errs.ErrOrNil()
-				}),
-			)
-			if submitErr == nil || !isAccountOpenDateErr(submitErr) {
+			submitErr = allySubmitDownloadRequest(ctx, browser, start, end, dateFormat)
+			if submitErr == nil || !allyIsAccountOpenDateErr(submitErr) {
 				break
 			}
 		}
 		if submitErr != nil {
-			if isAccountOpenDateErr(submitErr) {
+			if allyIsAccountOpenDateErr(submitErr) {
 				return nil, nil
 			}
 			return nil, errors.Wrap(submitErr, "Failed to submit history download request")
@@ -199,6 +175,34 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 	}
 }
 
-func isAccountOpenDateErr(err error) bool {
+func allyIsAccountOpenDateErr(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "Please enter a start date that falls after your account open date.")
+}
+
+func allySubmitDownloadRequest(ctx context.Context, browser web.Browser, start, end time.Time, dateFormat string) error {
+	var errorNodes []*cdp.Node
+	return browser.Run(ctx,
+		chromedp.SetValue(`#downloadStartDate`, ""),
+		chromedp.SendKeys(`#downloadStartDate`, start.Format(dateFormat)),
+		chromedp.Click(`.transactions-history button[type="submit"]`),
+		chromedp.Sleep(100*time.Millisecond),
+		chromedp.Nodes(`.error-confirmation-list, .error-confirmation-list > *`, &errorNodes),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			if len(errorNodes) == 0 {
+				return errors.New("Could not detect history form errors")
+			}
+			var errs sErrors.Errors
+			for _, item := range errorNodes {
+				if len(item.Children) > 0 {
+					errs.ErrIf(
+						item.NodeName == "LI" &&
+							item.Children[0].NodeName == "#text" &&
+							item.Children[0].NodeValue != "",
+						item.Children[0].NodeValue,
+					)
+				}
+			}
+			return errs.ErrOrNil()
+		}),
+	)
 }
