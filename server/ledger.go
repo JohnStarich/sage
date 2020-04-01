@@ -29,14 +29,12 @@ const (
 
 func getLedgerSyncStatus(ldgStore *ledger.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var errs sErrors.Errors // used for its marshaler
 		syncing, err := ldgStore.SyncStatus()
-		var errStr string
-		if err != nil {
-			errStr = err.Error()
-		}
+		errs.AddErr(err)
 		c.JSON(http.StatusOK, map[string]interface{}{
 			"Syncing": syncing,
-			"Error":   errStr,
+			"Errors":  errs.ErrOrNil(),
 		})
 	}
 }

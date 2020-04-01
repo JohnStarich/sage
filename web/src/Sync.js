@@ -2,8 +2,10 @@ import API from './API';
 import React from 'react';
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
+import Card from 'react-bootstrap/Card';
 import FontAwesome from 'react-fontawesome';
 import Modal from 'react-bootstrap/Modal';
+import ListGroup from 'react-bootstrap/ListGroup';
 import Spinner from 'react-bootstrap/Spinner';
 
 import './Sync.css';
@@ -13,14 +15,14 @@ async function getStatus() {
     return (await API.get('/v1/getLedgerSyncStatus')).data
   } catch (e) {
     console.error(e)
-    return {Syncing: false, Error: e.message}
+    return { Syncing: false, Error: e.message }
   }
 }
 
 export default function Sync({ className, onSync }) {
   const [isSyncing, setSyncing] = React.useState(false)
-  const [error, setError] = React.useState(null)
-  const [showError, setShowError] = React.useState(false)
+  const [errors, setErrors] = React.useState(null)
+  const [showErrors, setShowErrors] = React.useState(false)
 
   React.useEffect(() => {
     const checkSync = async () => {
@@ -29,7 +31,7 @@ export default function Sync({ className, onSync }) {
         onSync()
       }
       setSyncing(status.Syncing)
-      setError(status.Error || null)
+      setErrors(status.Errors || null)
     }
 
     const interval = setInterval(() => checkSync(), 10000)
@@ -38,17 +40,17 @@ export default function Sync({ className, onSync }) {
   React.useEffect(() => {
     getStatus().then(status => {
       setSyncing(status.Syncing)
-      setError(status.Error || null)
+      setErrors(status.Errors || null)
     })
   }, [])
 
   const clickSync = () => {
     setSyncing(true)
-    setError(null)
+    setErrors(null)
     API.post('/v1/syncLedger')
       .catch(e => {
         setSyncing(false)
-        setError(e.message)
+        setErrors([{ Description: e.message }])
       })
   }
 
@@ -56,12 +58,12 @@ export default function Sync({ className, onSync }) {
   if (className) {
     classNames.push(className)
   }
-  if (error) {
+  if (errors) {
     classNames.push("sync-failed")
   }
 
   let buttonVariant = "dark"
-  if (error) {
+  if (errors) {
     buttonVariant = "danger"
   }
 
@@ -79,24 +81,65 @@ export default function Sync({ className, onSync }) {
             : 'Sync'
           }
         </Button>
-        {error ?
+        {errors !== null ?
           <Button
             variant={buttonVariant}
             className="sync-info"
-            onClick={() => setShowError(true)}
+            onClick={() => setShowErrors(true)}
           >
             <FontAwesome name="exclamation-triangle" />
           </Button>
           : null}
       </ButtonGroup>
-      <Modal show={showError} onHide={() => setShowError(false)}>
+      <Modal show={showErrors} onHide={() => setShowErrors(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Sync error</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <pre className="sync-error"><code>{error}</code></pre>
+          <SyncErrors errors={errors} />
         </Modal.Body>
       </Modal>
+    </div>
+  )
+}
+
+function SyncErrors({ errors }) {
+  if (!errors) {
+    return null
+  }
+
+  const groupedErrors = errors.reduce((acc, err) => {
+    const title = err.Accounts.join(", ")
+    if (!acc[title]) {
+      acc[title] = []
+    }
+    acc[title].push(err)
+    return acc
+  }, {})
+
+  return (
+    <div className="sync-errors">
+      {Object.entries(groupedErrors)
+        .map(([title, errs], i) => (
+          <Card key={i}>
+            <Card.Header>{title}</Card.Header>
+            <ListGroup variant="flush">
+              {errs.map((err, i) =>
+                <div key={i}>
+                  {err.Recordings ?
+                    err.Recordings.map((rec, i) =>
+                      <Card.Img key={i} variant="top" src={`data:${rec.ContentType};base64,${rec.Data}`} alt="Web Connect screen recording for error" />
+                    )
+                    : null}
+                  <ListGroup.Item>
+                    <pre className="sync-error"><code>{err.Description}</code></pre>
+                  </ListGroup.Item>
+                </div>
+              )}
+            </ListGroup>
+          </Card>
+        ))
+      }
     </div>
   )
 }

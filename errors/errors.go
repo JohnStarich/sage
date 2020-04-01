@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -51,4 +52,17 @@ func (e Errors) Error() string {
 		buf.WriteString(err.Error())
 	}
 	return buf.String()
+}
+
+func (e Errors) MarshalJSON() ([]byte, error) {
+	var errs []interface{}
+	for _, err := range e {
+		switch err := err.(type) {
+		case json.Marshaler:
+			errs = append(errs, err)
+		default:
+			errs = append(errs, map[string]interface{}{"Description": err.Error()})
+		}
+	}
+	return json.Marshal(errs)
 }
