@@ -64,12 +64,27 @@ func resetWindowOpen(ctx context.Context) error {
 	`, &x).Do(ctx)
 }
 
-func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, accountID string) (*ofxgo.Response, error) {
+func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, accountID string) (statementResp *ofxgo.Response, statementErr error) {
 	const maxStatementFetchTime = 2 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), maxStatementFetchTime)
 	defer cancel()
 	start = start.Local()
 	end = end.Local()
+
+	recorder := web.NewRecorder(2)
+	defer func() {
+		if statementErr == nil {
+			return
+		}
+		_ = recorder.Snapshot(ctx)
+		record, err := recorder.Encode()
+		if err != nil {
+			c.Logger.Warn("Failed to encode recording", zap.Error(err))
+			return
+		}
+		statementErr = web.WrapErrWithRecordings(statementErr, record)
+	}()
+	snap := chromedp.ActionFunc(recorder.Snapshot)
 
 	err := browser.Run(ctx,
 		network.ClearBrowserCookies(),
@@ -81,10 +96,13 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 			return err
 		}),
 		chromedp.WaitReady(`document`),
+		snap,
 		chromedp.Click(`#login-username`),
 		chromedp.SendKeys(`#login-username`, c.Username()),
 		chromedp.Click(`#login-password`),
-		chromedp.SendKeys(`#login-password`, string(c.Password())+kb.Enter),
+		chromedp.SendKeys(`#login-password`, string(c.Password())),
+		snap,
+		chromedp.SendKeys(`#login-password`, kb.Enter),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to log in")
@@ -107,9 +125,12 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 	var accountNodes []*cdp.Node
 	err = browser.Run(ctx,
 		chromedp.WaitReady(`document`),
+		snap,
 		chromedp.ActionFunc(resetWindowOpen),
 		chromedp.Click(`#accounts-menu-item`),
+		snap,
 		chromedp.WaitVisible(`.account-list .account-list-number .account-nickname`),
+		snap,
 		chromedp.Nodes(`.account-list .account-list-number`, &accountNodes),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			last4AccountID := accountID
@@ -132,6 +153,7 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 
 		chromedp.WaitReady(`document`),
 		chromedp.WaitVisible(`.transactions-history a[aria-label="Download"]`),
+		snap,
 		chromedp.Click(`.transactions-history a[aria-label="Download"]`),
 		chromedp.SendKeys(`#select-file-format`, "Quicken"),
 		chromedp.SendKeys(`#select-date-range`, "Custom Dates"),

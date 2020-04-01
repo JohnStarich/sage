@@ -14,3 +14,11 @@
   white-space: pre-wrap;
   word-wrap: break-word;
 }
+
+.sync-errors .card {
+  margin: 1em 0;
+}
+
+.sync-errors .card .list-group-item {
+  margin-bottom: 1em;
+}

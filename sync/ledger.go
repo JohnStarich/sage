@@ -1,6 +1,8 @@
 package sync
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/johnstarich/sage/client"
@@ -10,7 +12,6 @@ import (
 	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
 	"github.com/johnstarich/sage/rules"
-	"github.com/pkg/errors"
 )
 
 // Sync fetches transactions for each account and categorizes them based on rules, then writes them to disk
@@ -48,7 +49,7 @@ func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) 
 					}
 				}
 				txns, err := direct.Statement(connector, start, end, requestors, client.ParseOFX)
-				errs.AddErr(errors.Wrapf(err, "Failed downloading transactions: %s", descriptions))
+				errs.AddErr(wrapDownloadErr(err, descriptions))
 				allTxns = append(allTxns, txns...)
 			}
 			if connector, isConn := inst.(web.Connector); isConn {
@@ -59,7 +60,7 @@ func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) 
 					descriptions = append(descriptions, account.Description())
 				}
 				txns, err := web.Statement(connector, start, end, accountIDs, client.ParseOFX)
-				if !errs.AddErr(errors.Wrapf(err, "Failed downloading transactions: %s", descriptions)) {
+				if !errs.AddErr(wrapDownloadErr(err, descriptions)) {
 					// TODO remove break after beta
 					break // beta: fail immediately on web connector error
 				}
@@ -68,4 +69,41 @@ func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) 
 		}
 		return allTxns, errs.ErrOrNil()
 	}
+}
+
+type downloadErr struct {
+	error
+	accounts []string
+}
+
+func wrapDownloadErr(err error, accounts []string) error {
+	if err == nil {
+		// follow behavior of errors.Wrap
+		return nil
+	}
+	return &downloadErr{
+		error:    err,
+		accounts: accounts,
+	}
+}
+
+func (d *downloadErr) Error() string {
+	return fmt.Sprintf("Failed downloading transactions for account %q: %s", d.accounts, d.error.Error())
+}
+
+func (d *downloadErr) MarshalJSON() ([]byte, error) {
+	downloadErr := struct {
+		Description string
+		Accounts    []string
+		Recordings  []web.Record `json:",omitempty"`
+	}{
+		// context for such an error is implied, i.e. sync status APIs will only return download errors
+		Description: d.error.Error(),
+		Accounts:    d.accounts,
+	}
+
+	if err, ok := d.error.(web.ErrWithRecordings); ok {
+		downloadErr.Recordings = err.Recordings()
+	}
+	return json.Marshal(downloadErr)
 }

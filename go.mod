@@ -18,6 +18,7 @@ require (
 	go.uber.org/atomic v1.4.0
 	go.uber.org/zap v1.10.0
 	golang.org/x/exp v0.0.0-20190718202018-cfdd5522f6f6
+	golang.org/x/image v0.0.0-20190227222117-0694c2d4d067
 	golang.org/x/text v0.3.2
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	gopkg.in/src-d/go-git.v4 v4.13.1
