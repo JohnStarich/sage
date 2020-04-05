@@ -27,7 +27,7 @@ func init() {
 		logger, err := zap.NewProduction()
 		return &connectorAlly{
 			PasswordConnector: p,
-			Logger:            logger,
+			logger:            logger,
 		}, err
 	})
 }
@@ -35,7 +35,7 @@ func init() {
 type connectorAlly struct {
 	web.PasswordConnector
 
-	Logger *zap.Logger
+	logger *zap.Logger
 }
 
 func (c *connectorAlly) Description() string {
@@ -79,7 +79,7 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 		_ = recorder.Snapshot(ctx)
 		record, err := recorder.Encode()
 		if err != nil {
-			c.Logger.Warn("Failed to encode recording", zap.Error(err))
+			c.logger.Warn("Failed to encode recording", zap.Error(err))
 			return
 		}
 		statementErr = web.WrapErrWithRecordings(statementErr, record)
@@ -190,7 +190,7 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 		}
 		resp, err := ofxgo.ParseResponse(bytes.NewReader(file))
 		if err != nil && strings.HasPrefix(err.Error(), "Validation failed:") {
-			c.Logger.Warn("OFX response failed validation", zap.Error(err))
+			c.logger.Warn("OFX response failed validation", zap.Error(err))
 			err = nil
 		}
 		return resp, errors.Wrap(err, "Failed to parse response")
