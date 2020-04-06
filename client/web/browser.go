@@ -45,6 +45,7 @@ type browser struct {
 type BrowserConfig struct {
 	Debug      bool
 	NoHeadless bool
+	Record     bool
 	Device     chromedp.Device
 	Logger     *zap.Logger
 }
@@ -100,11 +101,15 @@ func NewBrowser(ctx context.Context, config BrowserConfig) (Browser, error) {
 		return nil, err
 	}
 
-	return &browser{
+	var b Browser = &browser{
 		Context:      ctx,
 		CancelFunc:   cancel,
 		downloadErrs: make(chan error, 1),
-	}, nil
+	}
+	if config.Record {
+		b = &browserRecorder{Browser: b}
+	}
+	return b, nil
 }
 
 func (b *browser) Run(ctx context.Context, actions ...Action) error {
@@ -120,6 +125,10 @@ func (b *browser) Run(ctx context.Context, actions ...Action) error {
 		}
 		err := action.Do(wrapperCtx)
 		if err != nil {
+			if recordAction, ok := action.(*actionRecorder); ok {
+				// unwrap a recorded action for better error %+v message
+				action = recordAction.Action
+			}
 			return errors.Wrapf(err, "Error running action %T with index #%d: %+v", action, i, action)
 		}
 	}

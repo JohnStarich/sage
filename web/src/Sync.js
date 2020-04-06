@@ -41,6 +41,9 @@ export default function Sync({ className, onSync }) {
     getStatus().then(status => {
       setSyncing(status.Syncing)
       setErrors(status.Errors || null)
+      if (! status.Errors) {
+        setShowErrors(false)
+      }
     })
   }, [])
 
@@ -126,8 +129,8 @@ function SyncErrors({ errors }) {
             <ListGroup variant="flush">
               {errs.map((err, i) =>
                 <div key={i}>
-                  {err.Recordings ?
-                    err.Recordings.map((rec, i) =>
+                  {err.Records ?
+                    err.Records.map((rec, i) =>
                       <Card.Img key={i} variant="top" src={`data:${rec.ContentType};base64,${rec.Data}`} alt="Web Connect screen recording for error" />
                     )
                     : null}

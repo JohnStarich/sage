@@ -97,7 +97,7 @@ func Validate(account Account) error {
 func Statement(connector Connector, start, end time.Time, accountIDs []string, parser model.TransactionParser) ([]ledger.Transaction, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
-	browser, err := NewBrowser(ctx, BrowserConfig{})
+	browser, err := NewBrowser(ctx, BrowserConfig{Record: true})
 	if err != nil {
 		return nil, err
 	}
