@@ -71,21 +71,6 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 	start = start.Local()
 	end = end.Local()
 
-	recorder := web.NewRecorder(2)
-	defer func() {
-		if statementErr == nil {
-			return
-		}
-		_ = recorder.Snapshot(ctx)
-		record, err := recorder.Encode()
-		if err != nil {
-			c.logger.Warn("Failed to encode recording", zap.Error(err))
-			return
-		}
-		statementErr = web.WrapErrWithRecordings(statementErr, record)
-	}()
-	snap := chromedp.ActionFunc(recorder.Snapshot)
-
 	err := browser.Run(ctx,
 		network.ClearBrowserCookies(),
 
@@ -96,16 +81,14 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 			return err
 		}),
 		chromedp.WaitReady(`document`),
-		snap,
 		chromedp.Click(`#login-username`),
 		chromedp.SendKeys(`#login-username`, c.Username()),
 		chromedp.Click(`#login-password`),
 		chromedp.SendKeys(`#login-password`, string(c.Password())),
-		snap,
 		chromedp.SendKeys(`#login-password`, kb.Enter),
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to log in")
+		return nil, err
 	}
 
 	downloadedFiles := make(chan []byte, 1)
@@ -125,12 +108,9 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 	var accountNodes []*cdp.Node
 	err = browser.Run(ctx,
 		chromedp.WaitReady(`document`),
-		snap,
 		chromedp.ActionFunc(resetWindowOpen),
 		chromedp.Click(`#accounts-menu-item`),
-		snap,
 		chromedp.WaitVisible(`.account-list .account-list-number .account-nickname`),
-		snap,
 		chromedp.Nodes(`.account-list .account-list-number`, &accountNodes),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			last4AccountID := accountID
@@ -153,14 +133,13 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 
 		chromedp.WaitReady(`document`),
 		chromedp.WaitVisible(`.transactions-history a[aria-label="Download"]`),
-		snap,
 		chromedp.Click(`.transactions-history a[aria-label="Download"]`),
 		chromedp.SendKeys(`#select-file-format`, "Quicken"),
 		chromedp.SendKeys(`#select-date-range`, "Custom Dates"),
 		chromedp.SendKeys(`#downloadEndDate`, end.Format(dateFormat)),
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to prepare statement download request")
+		return nil, err
 	}
 
 	{
@@ -176,7 +155,7 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 			if allyIsAccountOpenDateErr(submitErr) {
 				return nil, nil
 			}
-			return nil, errors.Wrap(submitErr, "Failed to submit history download request")
+			return nil, submitErr
 		}
 	}
 

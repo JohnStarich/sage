@@ -11,6 +11,7 @@ import (
 	"github.com/johnstarich/sage/client/web"
 	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
+	"github.com/johnstarich/sage/records"
 	"github.com/johnstarich/sage/rules"
 )
 
@@ -95,15 +96,15 @@ func (d *downloadErr) MarshalJSON() ([]byte, error) {
 	downloadErr := struct {
 		Description string
 		Accounts    []string
-		Recordings  []web.Record `json:",omitempty"`
+		Records     []records.Record `json:",omitempty"`
 	}{
 		// context for such an error is implied, i.e. sync status APIs will only return download errors
 		Description: d.error.Error(),
 		Accounts:    d.accounts,
 	}
 
-	if err, ok := d.error.(web.ErrWithRecordings); ok {
-		downloadErr.Recordings = err.Recordings()
+	if err, ok := d.error.(records.Error); ok {
+		downloadErr.Records = err.Records()
 	}
 	return json.Marshal(downloadErr)
 }
