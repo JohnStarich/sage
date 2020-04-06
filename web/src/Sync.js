@@ -7,6 +7,7 @@ import FontAwesome from 'react-fontawesome';
 import Modal from 'react-bootstrap/Modal';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Spinner from 'react-bootstrap/Spinner';
+import moment from 'moment';
 
 import './Sync.css';
 
@@ -131,7 +132,10 @@ function SyncErrors({ errors }) {
                 <div key={i}>
                   {err.Records ?
                     err.Records.map((rec, i) =>
-                      <Card.Img key={i} variant="top" src={`data:${rec.ContentType};base64,${rec.Data}`} alt="Web Connect screen recording for error" />
+                      <div key={i}>
+                        <div className="sync-record-time"><em>{moment(rec.CreatedTime).fromNow()}</em></div>
+                        <Card.Img src={`data:${rec.ContentType};base64,${rec.Data}`} alt="Web Connect screen recording for error" />
+                      </div>
                     )
                     : null}
                   <ListGroup.Item>

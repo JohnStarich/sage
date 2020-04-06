@@ -22,3 +22,15 @@
 .sync-errors .card .list-group-item {
   margin-bottom: 1em;
 }
+
+.sync-record-time {
+  position: absolute;
+  right: 0;
+  padding: 0.1em 0.5em;
+  margin: 0.5em;
+  border-radius: 0.5em;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #DDD;
+  background-color: rgba(20, 20, 20, 0.7);
+}
