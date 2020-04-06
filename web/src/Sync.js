@@ -33,6 +33,9 @@ export default function Sync({ className, onSync }) {
       }
       setSyncing(status.Syncing)
       setErrors(status.Errors || null)
+      if (!status.Errors && showErrors) {
+        setShowErrors(false)
+      }
     }
 
     const interval = setInterval(() => checkSync(), 10000)
@@ -42,9 +45,6 @@ export default function Sync({ className, onSync }) {
     getStatus().then(status => {
       setSyncing(status.Syncing)
       setErrors(status.Errors || null)
-      if (! status.Errors) {
-        setShowErrors(false)
-      }
     })
   }, [])
 
@@ -134,7 +134,7 @@ function SyncErrors({ errors }) {
                     err.Records.map((rec, i) =>
                       <div key={i}>
                         <div className="sync-record-time"><em>{moment(rec.CreatedTime).fromNow()}</em></div>
-                        <Card.Img src={`data:${rec.ContentType};base64,${rec.Data}`} alt="Web Connect screen recording for error" />
+                        <RecordCard record={rec} />
                       </div>
                     )
                     : null}
@@ -149,4 +149,18 @@ function SyncErrors({ errors }) {
       }
     </div>
   )
+}
+
+function RecordCard({ record }) {
+  const { ContentType, Data } = record
+  switch (ContentType) {
+    case "image/gif":
+      return <Card.Img src={`data:${ContentType};base64,${Data}`} alt="Web Connect screen recording for error" />
+    case "text/plain":
+      return <Card.Text>
+        <pre className="sync-error"><code>{window.atob(Data)}</code></pre>
+      </Card.Text>
+    default:
+      return <Card.Text>Unrecognized content type: {ContentType}</Card.Text>
+  }
 }
