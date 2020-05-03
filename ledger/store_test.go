@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/johnstarich/sage/prompter"
 	"github.com/johnstarich/sage/vcs"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ func starterStore(t *testing.T) *Store {
 		syncing:     atomic.NewBool(false),
 		lastSyncErr: atomic.NewError(nil),
 		syncFile:    func() error { return nil },
-		syncLedger: func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger) error {
+		syncLedger: func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger, prompt prompter.Prompter) error {
 			return nil
 		},
 	}
@@ -127,11 +128,11 @@ func TestSync(t *testing.T) {
 			inputStart, inputEnd := time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC), time.Date(2020, time.January, 2, 0, 0, 0, 0, time.UTC)
 			someTxns := []Transaction{{}, {}}
 			store := starterStore(t)
-			store.syncLedger = func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger) error {
+			store.syncLedger = func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger, prompt prompter.Prompter) error {
 				assert.Equal(t, inputStart, start)
 				assert.Equal(t, inputEnd, end)
 				// run funcs to assert they're the right ones
-				_, _ = download(start, end)
+				_, _ = download(start, end, prompt)
 				processTxns(someTxns)
 				return tc.syncLedgerErr
 			}
@@ -139,7 +140,7 @@ func TestSync(t *testing.T) {
 				return tc.syncFileErr
 			}
 			ranDownload := false
-			download := func(start, end time.Time) ([]Transaction, error) {
+			download := func(start, end time.Time, prompt prompter.Prompter) ([]Transaction, error) {
 				ranDownload = true
 				assert.Equal(t, inputStart, start)
 				assert.Equal(t, inputEnd, end)
@@ -159,7 +160,8 @@ func TestSync(t *testing.T) {
 				wait  = time.Second
 			)
 			for i := 0; i < int(wait/sleep); i++ {
-				syncing, syncErr = store.SyncStatus()
+				// TODO check prompt request
+				syncing, _, syncErr = store.SyncStatus()
 				if !syncing {
 					break
 				}
@@ -183,14 +185,14 @@ func TestSyncMutex(t *testing.T) {
 	syncCount := atomic.NewInt32(0)
 	wait := make(chan bool)
 	store := starterStore(t)
-	store.syncLedger = func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger) error {
+	store.syncLedger = func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger, prompt prompter.Prompter) error {
 		syncCount.Inc()
 		<-wait
 		return nil
 	}
 	var someTime time.Time
 	for i := 0; i < 100; i++ {
-		store.StartSync(someTime, someTime, func(start, end time.Time) ([]Transaction, error) { return nil, nil }, func([]Transaction) {})
+		store.StartSync(someTime, someTime, func(start, end time.Time, prompt prompter.Prompter) ([]Transaction, error) { return nil, nil }, func([]Transaction) {})
 	}
 	wait <- true
 	assert.EqualValues(t, 1, syncCount.Load())
@@ -333,7 +335,7 @@ func TestSyncLedger(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			logger := zaptest.NewLogger(t)
 			downloadIndex := 0
-			download := func(start, end time.Time) (txns []Transaction, err error) {
+			download := func(start, end time.Time, prompt prompter.Prompter) (txns []Transaction, err error) {
 				require.Less(t, downloadIndex*2+1, len(tc.downloadTimes), "Not enough start/end pairs in test case")
 				assert.Equal(t, tc.downloadTimes[downloadIndex*2], start, "Start date for download index %d should be %s", downloadIndex, tc.downloadTimes[downloadIndex*2])
 				assert.Equal(t, tc.downloadTimes[downloadIndex*2+1], end, "End date for download index %d should be %s", downloadIndex, tc.downloadTimes[downloadIndex*2+1])
@@ -354,7 +356,7 @@ func TestSyncLedger(t *testing.T) {
 			ldg, err := New(tc.initialTxns)
 			require.NoError(t, err)
 
-			err = syncLedger(tc.start, tc.end, download, processTxns, ldg, logger)
+			err = syncLedger(tc.start, tc.end, download, processTxns, ldg, logger, prompter.New())
 			assert.Equal(t, tc.expectTxns, ldg.transactions)
 			assert.Equal(t, tc.expectProcessTxns, ranProcessTxns, "Process txns did not match expectation")
 			if tc.expectErr != "" {
@@ -421,7 +423,7 @@ func TestSyncRecent(t *testing.T) {
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			var ranDownload, ranProcess atomic.Bool
-			download := func(start, end time.Time) ([]Transaction, error) {
+			download := func(start, end time.Time, prompt prompter.Prompter) ([]Transaction, error) {
 				ranDownload.Store(true)
 				return nil, nil
 			}
@@ -433,10 +435,10 @@ func TestSyncRecent(t *testing.T) {
 			wait := make(chan bool)
 			store := starterStore(t)
 			store.Ledger = ldg
-			store.syncLedger = func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger) error {
+			store.syncLedger = func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger, prompt prompter.Prompter) error {
 				assert.Equal(t, parseDate(t, tc.expectStart), start, "Start date is incorrect")
 				assert.Equal(t, parseDate(t, tc.expectEnd), end, "End date is incorrect")
-				_, _ = download(start, end)
+				_, _ = download(start, end, prompt)
 				processTxns(nil)
 				wait <- true
 				return nil
@@ -462,7 +464,7 @@ func TestResync(t *testing.T) {
 	}
 
 	var ranDownload, ranProcess atomic.Bool
-	download := func(start, end time.Time) ([]Transaction, error) {
+	download := func(start, end time.Time, prompt prompter.Prompter) ([]Transaction, error) {
 		ranDownload.Store(true)
 		return nil, nil
 	}
@@ -477,10 +479,10 @@ func TestResync(t *testing.T) {
 	wait := make(chan bool)
 	store := starterStore(t)
 	store.Ledger = ldg
-	store.syncLedger = func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger) error {
+	store.syncLedger = func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger, prompt prompter.Prompter) error {
 		assert.Equal(t, parseDate(t, "2020/01/01"), start, "Start date is incorrect")
 		assert.Equal(t, currentDate(), end, "End date is incorrect")
-		_, _ = download(start, end)
+		_, _ = download(start, end, prompt)
 		processTxns(nil)
 		wait <- true
 		return errors.New("stop early")

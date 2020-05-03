@@ -90,7 +90,7 @@ func Run(
 			case <-done:
 				return
 			case <-ticker.C:
-				_, err := ldgStore.SyncStatus()
+				_, _, err := ldgStore.SyncStatus()
 				if err == nil {
 					// only auto-sync if last sync succeeded
 					runSync()
@@ -125,6 +125,7 @@ func setupAPI(
 	rulesStore *rules.Store,
 ) {
 	router.GET("/getLedgerSyncStatus", getLedgerSyncStatus(ldgStore))
+	router.POST("/submitSyncPrompt", submitSyncPrompt(ldgStore))
 	router.POST("/syncLedger", syncLedger(ldgStore, accountStore, rulesStore))
 	router.POST("/importOFX", importOFXFile(ldgStore, accountStore, rulesStore))
 	router.POST("/renameLedgerAccount", renameLedgerAccount(ldgStore))

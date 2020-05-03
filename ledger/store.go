@@ -7,6 +7,7 @@ import (
 
 	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/pipe"
+	"github.com/johnstarich/sage/prompter"
 	"github.com/johnstarich/sage/vcs"
 	"github.com/pkg/errors"
 	"go.uber.org/atomic"
@@ -20,14 +21,16 @@ const (
 // Store enables ledger syncing both in memory and on disk
 type Store struct {
 	*Ledger
-	file   vcs.File
-	logger *zap.Logger
+	file     vcs.File
+	logger   *zap.Logger
+	prompter prompter.Prompter
 
-	syncing     *atomic.Bool
-	lastSyncErr *atomic.Error
+	syncPromptRequest *atomic.Value
+	syncing           *atomic.Bool
+	lastSyncErr       *atomic.Error
 
 	syncFile   func() error
-	syncLedger func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger) error
+	syncLedger func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger, prompter prompter.Prompter) error
 }
 
 // NewStore creates a Ledger Store from the given file
@@ -39,18 +42,26 @@ func NewStore(file vcs.File, logger *zap.Logger) (*Store, error) {
 	r := ioutil.NopCloser(bytes.NewBuffer(ledgerBytes))
 
 	ldg, err := NewFromReader(r)
-	return &Store{
-		Ledger:      ldg,
-		file:        file,
-		logger:      logger,
-		syncing:     atomic.NewBool(false),
-		lastSyncErr: atomic.NewError(nil),
-		syncFile:    syncLedgerFile(ldg, file),
-		syncLedger:  syncLedger,
-	}, err
+	if err != nil {
+		return nil, err
+	}
+
+	store := &Store{
+		Ledger:            ldg,
+		file:              file,
+		logger:            logger,
+		prompter:          prompter.New(),
+		syncPromptRequest: &atomic.Value{},
+		syncing:           atomic.NewBool(false),
+		lastSyncErr:       atomic.NewError(nil),
+		syncFile:          syncLedgerFile(ldg, file),
+		syncLedger:        syncLedger,
+	}
+	go store.listenPromptRequests()
+	return store, nil
 }
 
-type downloader func(start, end time.Time) ([]Transaction, error)
+type downloader func(start, end time.Time, prompter prompter.Prompter) ([]Transaction, error)
 
 type txnMutator func(txns []Transaction)
 
@@ -68,7 +79,7 @@ func (s *Store) StartSync(start, end time.Time, download downloader, processTxns
 }
 
 func (s *Store) sync(start, end time.Time, download downloader, processTxns txnMutator) error {
-	ledgerErr := s.syncLedger(start, end, download, processTxns, s.Ledger, s.logger)
+	ledgerErr := s.syncLedger(start, end, download, processTxns, s.Ledger, s.logger, s.prompter)
 	if _, ok := ledgerErr.(Error); ledgerErr != nil && !ok {
 		return ledgerErr
 	}
@@ -87,7 +98,7 @@ func syncLedgerFile(ldg *Ledger, file vcs.File) func() error {
 	}
 }
 
-func syncLedger(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger) error {
+func syncLedger(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger, prompter prompter.Prompter) error {
 	if err := ldg.Validate(); err != nil {
 		return errors.Wrap(err, "Existing ledger is not valid")
 	}
@@ -104,7 +115,7 @@ func syncLedger(start, end time.Time, download downloader, processTxns txnMutato
 	for downloadStart.Before(end) {
 		downloadEnd := min(end, downloadStart.Add(maxDownloadDuration))
 		logger.Info("Downloading txns...", zap.Time("start", downloadStart), zap.Time("end", downloadEnd))
-		txns, err := download(downloadStart, downloadEnd)
+		txns, err := download(downloadStart, downloadEnd, prompter)
 		errs.AddErr(err)
 		allTxns = append(allTxns, txns...)
 		downloadStart = downloadEnd
@@ -147,6 +158,7 @@ func (s *Store) startSync() (startedSync bool) {
 }
 
 func (s *Store) stopSync(err error) {
+	s.syncPromptRequest.Store((*prompter.Request)(nil))
 	s.syncing.Store(false)
 	s.lastSyncErr.Store(err)
 	if err != nil {
@@ -155,12 +167,30 @@ func (s *Store) stopSync(err error) {
 }
 
 // SyncStatus returns whether sync is running and the most recent sync error
-func (s *Store) SyncStatus() (syncing bool, lastSyncErr error) {
-	return s.syncing.Load(), s.lastSyncErr.Load()
+func (s *Store) SyncStatus() (syncing bool, prompt *prompter.Request, lastSyncErr error) {
+	var req *prompter.Request
+	if promptReq, ok := s.syncPromptRequest.Load().(*prompter.Request); ok {
+		req = promptReq
+	}
+	return s.syncing.Load(), req, s.lastSyncErr.Load()
 }
 
 func currentDate() time.Time {
 	return time.Now().UTC().Round(day)
+}
+
+func (s *Store) listenPromptRequests() {
+	for {
+		req, ok := <-s.prompter.Requests()
+		if !ok {
+			return
+		}
+		s.syncPromptRequest.Store(&req)
+	}
+}
+
+func (s *Store) SubmitSyncPrompt(response prompter.Response) {
+	s.prompter.Respond(response)
 }
 
 // SyncRecent runs Sync for any new transactions since the last sync. Currently assumes last the last txn's date should be the start date.

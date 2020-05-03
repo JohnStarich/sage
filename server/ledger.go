@@ -14,6 +14,7 @@ import (
 	"github.com/johnstarich/sage/client/model"
 	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
+	"github.com/johnstarich/sage/prompter"
 	"github.com/johnstarich/sage/rules"
 	"github.com/johnstarich/sage/sync"
 	"github.com/pkg/errors"
@@ -30,12 +31,25 @@ const (
 func getLedgerSyncStatus(ldgStore *ledger.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var errs sErrors.Errors // used for its marshaler
-		syncing, err := ldgStore.SyncStatus()
+		syncing, prompt, err := ldgStore.SyncStatus()
 		errs.AddErr(err)
 		c.JSON(http.StatusOK, map[string]interface{}{
 			"Syncing": syncing,
+			"Prompt":  prompt,
 			"Errors":  errs.ErrOrNil(),
 		})
+	}
+}
+
+func submitSyncPrompt(ldgStore *ledger.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var prompt prompter.Response
+		if err := c.BindJSON(&prompt); err != nil {
+			abortWithClientError(c, http.StatusBadRequest, err)
+			return
+		}
+		ldgStore.SubmitSyncPrompt(prompt)
+		c.Status(http.StatusAccepted)
 	}
 }
 

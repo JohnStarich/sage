@@ -3,12 +3,15 @@ package records
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 )
 
 // Record contains data that can be attached to errors for more context. i.e. screen recording gif
 type Record interface {
+	// ContentType returns the MIME type for this record's data. e.g. image/gif, text/plain
 	ContentType() string
+	// Data returns the record data in bytes
 	Data() []byte
 }
 
@@ -22,25 +25,37 @@ type record struct {
 	createdTime time.Time
 	contentType string
 	data        []byte
+
+	dataFn   func() (contentType string, data []byte)
+	dataOnce sync.Once
 }
 
 func (r *record) CreatedTime() time.Time {
 	return r.createdTime
 }
 
+func (r *record) ensureData() {
+	r.dataOnce.Do(func() {
+		r.contentType, r.data = r.dataFn()
+	})
+}
+
 func (r *record) ContentType() string {
+	r.ensureData()
 	return r.contentType
 }
 
 func (r *record) Data() []byte {
+	r.ensureData()
 	return r.data
 }
 
 func (r *record) MarshalJSON() ([]byte, error) {
+	r.ensureData()
 	return json.Marshal(struct {
 		CreatedTime time.Time `json:",omitempty"`
 		ContentType string
-		Data        []byte
+		Data        []byte `json:",omitempty"`
 	}{
 		CreatedTime: r.createdTime,
 		ContentType: r.contentType,
