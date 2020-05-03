@@ -9,6 +9,7 @@ import (
 	"github.com/johnstarich/sage/client/model"
 	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
+	"github.com/johnstarich/sage/prompter"
 	"github.com/johnstarich/sage/redactor"
 )
 
@@ -22,7 +23,7 @@ type Connector interface {
 // Requestor downloads statements from an institution's website
 type Requestor interface {
 	// Statement downloads transactions with browser between the start and end times
-	Statement(browser Browser, start, end time.Time, accountID string) (*ofxgo.Response, error)
+	Statement(start, end time.Time, accountID string, browser Browser, prompt prompter.Prompter) (*ofxgo.Response, error)
 }
 
 // CredConnector is used by a Driver to create a full Connector
@@ -94,10 +95,10 @@ func Validate(account Account) error {
 }
 
 // Statement downloads and returns transactions from a connector for the given time period
-func Statement(connector Connector, start, end time.Time, accountIDs []string, parser model.TransactionParser) ([]ledger.Transaction, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+func Statement(connector Connector, start, end time.Time, accountIDs []string, parser model.TransactionParser, prompt prompter.Prompter) ([]ledger.Transaction, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	browser, err := NewBrowser(ctx, BrowserConfig{Record: true})
+	browser, err := NewBrowser(ctx, BrowserConfig{Record: true, NoHeadless: true})
 	if err != nil {
 		return nil, err
 	}
@@ -106,6 +107,7 @@ func Statement(connector Connector, start, end time.Time, accountIDs []string, p
 		start, end,
 		accountIDs,
 		browser,
+		prompt,
 		parser,
 	)
 }
@@ -115,11 +117,12 @@ func fetchTransactions(
 	start, end time.Time,
 	accountIDs []string,
 	browser Browser,
+	prompt prompter.Prompter,
 	parser model.TransactionParser,
 ) ([]ledger.Transaction, error) {
 	var allTxns []ledger.Transaction
 	for _, account := range accountIDs {
-		resp, err := connector.Statement(browser, start, end, account)
+		resp, err := connector.Statement(start, end, account, browser, prompt)
 		if err != nil {
 			return allTxns, err
 		}

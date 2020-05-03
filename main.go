@@ -54,7 +54,8 @@ func start(
 	if !isServer {
 		sync.Sync(ldgStore, accountStore, rulesStore, false)
 		for {
-			syncing, err := ldgStore.SyncStatus()
+			// TODO add CLI prompt support
+			syncing, _, err := ldgStore.SyncStatus()
 			if !syncing {
 				return err
 			}

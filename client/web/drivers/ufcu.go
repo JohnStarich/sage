@@ -11,6 +11,7 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 	"github.com/johnstarich/sage/client/web"
+	"github.com/johnstarich/sage/prompter"
 	"github.com/pkg/errors"
 )
 
@@ -53,7 +54,7 @@ func ufcuShareFromAccountID(accountID string) (string, error) {
 	return accountID[hyphenIndex+1:], nil
 }
 
-func (c *connectorUFCU) Statement(browser web.Browser, start, end time.Time, accountID string) (*ofxgo.Response, error) {
+func (c *connectorUFCU) Statement(start, end time.Time, accountID string, browser web.Browser, _ prompter.Prompter) (*ofxgo.Response, error) {
 	share, err := ufcuShareFromAccountID(accountID)
 	if err != nil {
 		return nil, err

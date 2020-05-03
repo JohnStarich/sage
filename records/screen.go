@@ -17,8 +17,8 @@ import (
 
 // ScreenRecorder takes screenshots and encodes them as a gif
 type ScreenRecorder interface {
-	Snapshot(ctx context.Context) error
-	Encode() (Record, error)
+	Capture(ctx context.Context) error
+	Encode() Record
 }
 
 // NewScreenRecorder creates a new ScreenRecorder and stretches the gif frame delay by 'timeScale'
@@ -29,7 +29,7 @@ func NewScreenRecorder(timeScale float64) ScreenRecorder {
 }
 
 type screenRecorder struct {
-	frames    []screenFrame
+	frames    []screenFrame // NOTE: do not mutate frames after adding, shallow copy is used for efficient deferred encoding
 	timeScale float64
 }
 
@@ -38,7 +38,7 @@ type screenFrame struct {
 	data []byte
 }
 
-func (s *screenRecorder) Snapshot(ctx context.Context) error {
+func (s *screenRecorder) Capture(ctx context.Context) error {
 	now := time.Now()
 	buf, err := (&page.CaptureScreenshotParams{
 		Format:      page.CaptureScreenshotFormatPng,
@@ -52,17 +52,24 @@ func (s *screenRecorder) Snapshot(ctx context.Context) error {
 	return nil
 }
 
-func (s *screenRecorder) Encode() (Record, error) {
-	data, err := makeGifWithDecoder(s.timeScale, png.Decode, s.frames...)
+func (s *screenRecorder) Encode() Record {
 	var createdTime time.Time
 	if len(s.frames) > 0 {
 		createdTime = s.frames[0].time
 	}
+	snapshot := *s // freeze this screen recorder with the current frames
 	return &record{
 		createdTime: createdTime,
-		contentType: "image/gif",
-		data:        data,
-	}, err
+		dataFn:      snapshot.encode,
+	}
+}
+
+func (s *screenRecorder) encode() (string, []byte) {
+	data, err := makeGifWithDecoder(s.timeScale, png.Decode, s.frames...)
+	if err != nil {
+		return "text/plain", []byte(err.Error())
+	}
+	return "image/gif", data
 }
 
 func makeGifWithDecoder(timeScale float64, decoder func(io.Reader) (image.Image, error), frames ...screenFrame) ([]byte, error) {

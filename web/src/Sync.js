@@ -3,9 +3,13 @@ import React from 'react';
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Card from 'react-bootstrap/Card';
+import Col from 'react-bootstrap/Col';
+import Container from 'react-bootstrap/Container';
 import FontAwesome from 'react-fontawesome';
+import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import ListGroup from 'react-bootstrap/ListGroup';
+import Row from 'react-bootstrap/Row';
 import Spinner from 'react-bootstrap/Spinner';
 import moment from 'moment';
 
@@ -20,10 +24,15 @@ async function getStatus() {
   }
 }
 
+function submitCode(code) {
+  return API.post('/v1/submitSyncPrompt', { Text: code })
+}
+
 export default function Sync({ className, onSync }) {
   const [isSyncing, setSyncing] = React.useState(false)
-  const [errors, setErrors] = React.useState(null)
-  const [showErrors, setShowErrors] = React.useState(false)
+  const [errors, setErrors] = React.useState([])
+  const [showModal, setShowModal] = React.useState(false)
+  const [prompt, setPrompt] = React.useState(null)
 
   React.useEffect(() => {
     const checkSync = async () => {
@@ -32,9 +41,10 @@ export default function Sync({ className, onSync }) {
         onSync()
       }
       setSyncing(status.Syncing)
-      setErrors(status.Errors || null)
-      if (!status.Errors && showErrors) {
-        setShowErrors(false)
+      setErrors(status.Errors || [])
+      setPrompt(status.Prompt || null)
+      if (!status.Errors && !status.Prompt) {
+        setShowModal(false)
       }
     }
 
@@ -44,17 +54,19 @@ export default function Sync({ className, onSync }) {
   React.useEffect(() => {
     getStatus().then(status => {
       setSyncing(status.Syncing)
-      setErrors(status.Errors || null)
+      setErrors(status.Errors || [])
+      setPrompt(status.Prompt || null)
     })
   }, [])
 
   const clickSync = () => {
     setSyncing(true)
-    setErrors(null)
+    setErrors([])
     API.post('/v1/syncLedger')
       .catch(e => {
         setSyncing(false)
         setErrors([{ Description: e.message }])
+        setPrompt(null)
       })
   }
 
@@ -62,12 +74,12 @@ export default function Sync({ className, onSync }) {
   if (className) {
     classNames.push(className)
   }
-  if (errors) {
+  if (errors.length > 0) {
     classNames.push("sync-failed")
   }
 
   let buttonVariant = "dark"
-  if (errors) {
+  if (errors.length > 0) {
     buttonVariant = "danger"
   }
 
@@ -85,34 +97,40 @@ export default function Sync({ className, onSync }) {
             : 'Sync'
           }
         </Button>
-        {errors !== null ?
+        {errors.length > 0 || prompt !== null ?
           <Button
             variant={buttonVariant}
             className="sync-info"
-            onClick={() => setShowErrors(true)}
+            onClick={() => setShowModal(true)}
           >
             <FontAwesome name="exclamation-triangle" />
           </Button>
           : null}
       </ButtonGroup>
-      <Modal show={showErrors} onHide={() => setShowErrors(false)}>
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Sync error</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <SyncErrors errors={errors} />
+          <SyncErrors prompt={prompt} errors={errors} submitPrompt={val => {
+            submitCode(val)
+            setPrompt(null)
+            setShowModal(errors.length > 0)
+          }} />
         </Modal.Body>
       </Modal>
     </div>
   )
 }
 
-function SyncErrors({ errors }) {
-  if (!errors) {
+function SyncErrors({ prompt, submitPrompt, errors }) {
+  const [code, setCode] = React.useState("")
+
+  if (errors.length === 0 && !prompt) {
     return null
   }
 
-  const groupedErrors = errors.reduce((acc, err) => {
+  const groupedErrors = errors && errors.reduce((acc, err) => {
     const title = err.Accounts.join(", ")
     if (!acc[title]) {
       acc[title] = []
@@ -123,7 +141,33 @@ function SyncErrors({ errors }) {
 
   return (
     <div className="sync-errors">
-      {Object.entries(groupedErrors)
+      {prompt ?
+        <Card>
+          <ListGroup variant="flush">
+            <ListGroup.Item>
+              <Form onSubmit={e => {
+                e.preventDefault()
+                submitPrompt(code)
+              }}>
+                <Container>
+                  <Form.Group as={Row}>
+                    <Form.Label column sm="4">{prompt.Message || ""}</Form.Label>
+                    <Col>
+                      <Form.Control sm="8" type="text" value={code} onChange={e => {
+                        setCode(e.target.value)
+                      }} />
+                    </Col>
+                  </Form.Group>
+                  <Row>
+                    <Col><Button onClick={() => submitPrompt(code)}>Submit</Button></Col>
+                  </Row>
+                </Container>
+              </Form>
+            </ListGroup.Item>
+          </ListGroup>
+        </Card>
+        : null}
+      {groupedErrors ? Object.entries(groupedErrors)
         .map(([title, errs], i) => (
           <Card key={i}>
             <Card.Header>{title}</Card.Header>
@@ -146,7 +190,7 @@ function SyncErrors({ errors }) {
             </ListGroup>
           </Card>
         ))
-      }
+        : null}
     </div>
   )
 }

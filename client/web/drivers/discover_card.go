@@ -10,6 +10,7 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 	"github.com/johnstarich/sage/client/web"
+	"github.com/johnstarich/sage/prompter"
 	"github.com/pkg/errors"
 )
 
@@ -39,7 +40,7 @@ func (c *connectorDiscoverCard) Org() string {
 	return "Discover Card Account Center"
 }
 
-func (c *connectorDiscoverCard) Statement(browser web.Browser, start, end time.Time, accountID string) (*ofxgo.Response, error) {
+func (c *connectorDiscoverCard) Statement(start, end time.Time, accountID string, browser web.Browser, _ prompter.Prompter) (*ofxgo.Response, error) {
 	ctx := context.Background() // TODO add timeouts
 
 	err := browser.Run(ctx,

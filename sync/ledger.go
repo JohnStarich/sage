@@ -11,6 +11,7 @@ import (
 	"github.com/johnstarich/sage/client/web"
 	sErrors "github.com/johnstarich/sage/errors"
 	"github.com/johnstarich/sage/ledger"
+	"github.com/johnstarich/sage/prompter"
 	"github.com/johnstarich/sage/records"
 	"github.com/johnstarich/sage/rules"
 )
@@ -25,8 +26,8 @@ func Sync(ldgStore *ledger.Store, accountStore *client.AccountStore, rulesStore 
 	}
 }
 
-func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) ([]ledger.Transaction, error) {
-	return func(start, end time.Time) ([]ledger.Transaction, error) {
+func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time, prompter prompter.Prompter) ([]ledger.Transaction, error) {
+	return func(start, end time.Time, prompter prompter.Prompter) ([]ledger.Transaction, error) {
 		instMap := make(map[model.Institution][]model.Account)
 		var account model.Account
 		err := accountStore.Iter(&account, func(id string) bool {
@@ -60,7 +61,7 @@ func downloadTxns(accountStore *client.AccountStore) func(start, end time.Time) 
 					accountIDs = append(accountIDs, account.ID())
 					descriptions = append(descriptions, account.Description())
 				}
-				txns, err := web.Statement(connector, start, end, accountIDs, client.ParseOFX)
+				txns, err := web.Statement(connector, start, end, accountIDs, client.ParseOFX, prompter)
 				if !errs.AddErr(wrapDownloadErr(err, descriptions)) {
 					// TODO remove break after beta
 					break // beta: fail immediately on web connector error

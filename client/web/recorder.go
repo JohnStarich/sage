@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/johnstarich/sage/records"
 )
@@ -22,16 +21,7 @@ func (b *browserRecorder) Run(ctx context.Context, actions ...Action) error {
 	}
 
 	runErr := b.Browser.Run(ctx, actions...)
-	if runErr == nil {
-		return nil
-	}
-
-	record, err := b.recorder.Encode()
-	if err != nil {
-		encodeFailedRecord := records.New(fmt.Sprintf("Failed to encode recording: %s", err.Error()))
-		return records.WrapError(runErr, encodeFailedRecord)
-	}
-	return records.WrapError(runErr, record)
+	return records.WrapError(runErr, b.recorder.Encode())
 }
 
 type actionRecorder struct {
@@ -41,6 +31,6 @@ type actionRecorder struct {
 
 func (r *actionRecorder) Do(ctx context.Context) error {
 	err := r.Action.Do(ctx)
-	_ = r.recorder.Snapshot(ctx)
+	_ = r.recorder.Capture(ctx)
 	return err
 }

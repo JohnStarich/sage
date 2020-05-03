@@ -3,6 +3,7 @@ package drivers
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/chromedp/chromedp/kb"
 	"github.com/johnstarich/sage/client/web"
 	sErrors "github.com/johnstarich/sage/errors"
+	"github.com/johnstarich/sage/prompter"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -64,9 +66,10 @@ func resetWindowOpen(ctx context.Context) error {
 	`, &x).Do(ctx)
 }
 
-func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, accountID string) (statementResp *ofxgo.Response, statementErr error) {
+func (c *connectorAlly) Statement(start, end time.Time, accountID string, browser web.Browser, prompt prompter.Prompter) (statementResp *ofxgo.Response, statementErr error) {
+	const maxStatementTime = 1 * time.Minute
 	const maxStatementFetchTime = 2 * time.Minute
-	ctx, cancel := context.WithTimeout(context.Background(), maxStatementFetchTime)
+	ctx, cancel := context.WithTimeout(context.Background(), maxStatementTime)
 	defer cancel()
 	start = start.Local()
 	end = end.Local()
@@ -90,6 +93,63 @@ func (c *connectorAlly) Statement(browser web.Browser, start, end time.Time, acc
 	if err != nil {
 		return nil, err
 	}
+
+	{
+		noWait := chromedp.WaitFunc(func(ctx context.Context, frame *cdp.Frame, ids ...cdp.NodeID) (nodes []*cdp.Node, err error) {
+			frame.RLock()
+			defer frame.RUnlock()
+			for _, id := range ids {
+				if node, ok := frame.Nodes[id]; ok {
+					nodes = append(nodes, node)
+				}
+			}
+			return
+		})
+
+		var securityPromptButton []*cdp.Node
+		err = browser.Run(ctx,
+			chromedp.WaitReady(`document`),
+			chromedp.Sleep(5*time.Second),
+			chromedp.Nodes(`button[allytmfn="Send Security Code"]`, &securityPromptButton, noWait),
+			//filterNodes(&securityPromptButton, hasText("Send Security Code")),
+		)
+		if err != nil {
+			return nil, err
+		}
+		if len(securityPromptButton) > 0 {
+			c.logger.Info("Detected security prompt")
+			log := func(msg string) chromedp.ActionFunc {
+				return func(context.Context) error {
+					c.logger.Info(msg)
+					return nil
+				}
+			}
+			var securityInput string
+			err := browser.Run(ctx,
+				log("clicking send code button"),
+				chromedp.Click(`button[allytmfn="Send Security Code"]`),
+				log("clicked!!!!!!!"),
+				chromedp.WaitReady(`document`),
+				chromedp.ActionFunc(func(ctx context.Context) error {
+					var err error
+					securityInput, err = prompt.PromptText(ctx, "Enter the security code from Ally:")
+					return err
+				}),
+				chromedp.SetValue(`input[allytmfn="Security Code"]`, securityInput), // TODO this piece still doesn't work
+				chromedp.Click(`button[type="submit"]`),
+				chromedp.WaitReady(`document`),
+				chromedp.Click(`#register-device-yes`),
+				chromedp.SendKeys(`#register-device-yes`, kb.Enter),
+			)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// passed security prompt, shorten timeout
+	ctx, cancel = context.WithTimeout(context.Background(), maxStatementFetchTime)
+	defer cancel()
 
 	downloadedFiles := make(chan []byte, 1)
 	const downloadTimeout = 20 * time.Second
@@ -186,24 +246,85 @@ func allySubmitDownloadRequest(ctx context.Context, browser web.Browser, start, 
 		chromedp.SetValue(`#downloadStartDate`, ""),
 		chromedp.SendKeys(`#downloadStartDate`, start.Format(dateFormat)),
 		chromedp.Click(`.transactions-history button[type="submit"]`),
-		chromedp.Sleep(100*time.Millisecond),
-		chromedp.Nodes(`.error-confirmation-list, .error-confirmation-list > *`, &errorNodes),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			if len(errorNodes) == 0 {
-				return errors.New("Could not detect history form errors")
-			}
-			var errs sErrors.Errors
-			for _, item := range errorNodes {
-				if len(item.Children) > 0 {
-					errs.ErrIf(
-						item.NodeName == "LI" &&
-							item.Children[0].NodeName == "#text" &&
-							item.Children[0].NodeValue != "",
-						item.Children[0].NodeValue,
-					)
+		chromedp.Tasks{
+			// group these to reduce recorded screenshot count
+			chromedp.Sleep(100 * time.Millisecond),
+			chromedp.Nodes(`.error-confirmation-list, .error-confirmation-list > *`, &errorNodes),
+			chromedp.ActionFunc(func(ctx context.Context) error {
+				if len(errorNodes) == 0 {
+					return errors.New("Could not detect history form errors")
 				}
-			}
-			return errs.ErrOrNil()
-		}),
+				var errs sErrors.Errors
+				for _, item := range errorNodes {
+					if len(item.Children) > 0 {
+						errs.ErrIf(
+							item.NodeName == "LI" &&
+								item.Children[0].NodeName == "#text" &&
+								item.Children[0].NodeValue != "",
+							item.Children[0].NodeValue,
+						)
+					}
+				}
+				return errs.ErrOrNil()
+			}),
+		},
 	)
+}
+
+func walkNodes(node *cdp.Node, visit func(node *cdp.Node) (keepGoing bool)) (keepGoing bool) {
+	if node == nil {
+		return true
+	}
+
+	if !visit(node) {
+		return false
+	}
+	for _, child := range node.Children {
+		if !walkNodes(child, visit) {
+			return false
+		}
+	}
+	return true
+}
+
+func findNode(root *cdp.Node, matcher func(node *cdp.Node) (matches bool)) (node *cdp.Node, found bool) {
+	walkNodes(node, func(n *cdp.Node) (keepGoing bool) {
+		if matcher(node) {
+			node = n
+			found = true
+			return false
+		}
+		return true
+	})
+	return
+}
+
+func hasText(text string) func(*cdp.Node) bool {
+	return func(node *cdp.Node) bool {
+		_, found := findNode(node, func(n *cdp.Node) bool {
+			b := n.NodeName == "#text" && n.NodeValue == text
+			fmt.Printf("%v node %s=%q\n", n.PartialXPath(), n.NodeName, n.NodeValue)
+			return b
+		})
+		return found
+	}
+}
+
+func filterNodes(nodes *[]*cdp.Node, matches func(*cdp.Node) bool) chromedp.ActionFunc {
+	return func(context.Context) error {
+		filteredNodes := make([]*cdp.Node, 0, len(*nodes))
+		for _, node := range *nodes {
+			if matches(node) {
+				fmt.Printf("MATCH: %s=%q\n", node.NodeName, node.NodeValue)
+				filteredNodes = append(filteredNodes, node)
+			} else {
+				walkNodes(node, func(node *cdp.Node) bool {
+					fmt.Printf("no match: %s=%q attrs=%v %v value=%q\n", node.NodeName, node.NodeValue, node.Attributes, node.Children, node.Value)
+					return true
+				})
+			}
+		}
+		*nodes = filteredNodes
+		return nil
+	}
 }
