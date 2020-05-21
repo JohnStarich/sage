@@ -3,7 +3,6 @@ package drivers
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -263,62 +262,4 @@ func allySubmitDownloadRequest(ctx context.Context, browser web.Browser, start, 
 			}),
 		},
 	)
-}
-
-func walkNodes(node *cdp.Node, visit func(node *cdp.Node) (keepGoing bool)) (keepGoing bool) {
-	if node == nil {
-		return true
-	}
-
-	if !visit(node) {
-		return false
-	}
-	for _, child := range node.Children {
-		if !walkNodes(child, visit) {
-			return false
-		}
-	}
-	return true
-}
-
-func findNode(root *cdp.Node, matcher func(node *cdp.Node) (matches bool)) (node *cdp.Node, found bool) {
-	walkNodes(node, func(n *cdp.Node) (keepGoing bool) {
-		if matcher(node) {
-			node = n
-			found = true
-			return false
-		}
-		return true
-	})
-	return
-}
-
-func hasText(text string) func(*cdp.Node) bool {
-	return func(node *cdp.Node) bool {
-		_, found := findNode(node, func(n *cdp.Node) bool {
-			b := n.NodeName == "#text" && n.NodeValue == text
-			fmt.Printf("%v node %s=%q\n", n.PartialXPath(), n.NodeName, n.NodeValue)
-			return b
-		})
-		return found
-	}
-}
-
-func filterNodes(nodes *[]*cdp.Node, matches func(*cdp.Node) bool) chromedp.ActionFunc {
-	return func(context.Context) error {
-		filteredNodes := make([]*cdp.Node, 0, len(*nodes))
-		for _, node := range *nodes {
-			if matches(node) {
-				fmt.Printf("MATCH: %s=%q\n", node.NodeName, node.NodeValue)
-				filteredNodes = append(filteredNodes, node)
-			} else {
-				walkNodes(node, func(node *cdp.Node) bool {
-					fmt.Printf("no match: %s=%q attrs=%v %v value=%q\n", node.NodeName, node.NodeValue, node.Attributes, node.Children, node.Value)
-					return true
-				})
-			}
-		}
-		*nodes = filteredNodes
-		return nil
-	}
 }
