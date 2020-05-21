@@ -20,11 +20,12 @@ func starterStore(t *testing.T) *Store {
 	ldg, err := New(nil)
 	require.NoError(t, err)
 	return &Store{
-		Ledger:      ldg,
-		logger:      zaptest.NewLogger(t),
-		syncing:     atomic.NewBool(false),
-		lastSyncErr: atomic.NewError(nil),
-		syncFile:    func() error { return nil },
+		Ledger:            ldg,
+		logger:            zaptest.NewLogger(t),
+		syncPromptRequest: &atomic.Value{},
+		syncing:           atomic.NewBool(false),
+		lastSyncErr:       atomic.NewError(nil),
+		syncFile:          func() error { return nil },
 		syncLedger: func(start, end time.Time, download downloader, processTxns txnMutator, ldg *Ledger, logger *zap.Logger, prompt prompter.Prompter) error {
 			return nil
 		},
