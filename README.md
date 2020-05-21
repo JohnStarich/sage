@@ -1,4 +1,4 @@
-# Sage [![Build Status](https://travis-ci.com/JohnStarich/sage.svg?branch=master)](https://travis-ci.com/JohnStarich/sage) [![Coverage Status](https://coveralls.io/repos/github/JohnStarich/sage/badge.svg?branch=master)](https://coveralls.io/github/JohnStarich/sage?branch=master)
+# Sage [![Build Status](https://travis-ci.com/JohnStarich/sage.svg?branch=master)](https://travis-ci.com/JohnStarich/sage) [![Coverage Status](https://coveralls.io/repos/github/JohnStarich/sage/badge.svg?branch=master)](https://coveralls.io/github/JohnStarich/sage?branch=master) ![Sage Downloads Count](https://img.shields.io/github/downloads/JohnStarich/sage/total)
 
 Be your own accountant, without the stress.
 
