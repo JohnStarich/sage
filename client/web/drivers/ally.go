@@ -74,77 +74,9 @@ func (c *connectorAlly) Statement(start, end time.Time, accountID string, browse
 	start = start.Local()
 	end = end.Local()
 
-	err := browser.Run(ctx,
-		network.ClearBrowserCookies(),
-
-		// login
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			// regular chromedp.Navigate fails if a main script has an uncaught exception
-			_, _, _, err := page.Navigate("https://secure.ally.com").Do(ctx)
-			return err
-		}),
-		chromedp.WaitReady(`document`),
-		chromedp.Click(`#login-username`),
-		chromedp.SendKeys(`#login-username`, c.Username()),
-		chromedp.Click(`#login-password`),
-		chromedp.SendKeys(`#login-password`, string(c.Password())),
-		chromedp.SendKeys(`#login-password`, kb.Enter),
-	)
+	err := c.signIn(ctx, browser, prompt)
 	if err != nil {
 		return nil, err
-	}
-
-	{
-		noWait := chromedp.WaitFunc(func(ctx context.Context, frame *cdp.Frame, ids ...cdp.NodeID) (nodes []*cdp.Node, err error) {
-			frame.RLock()
-			defer frame.RUnlock()
-			for _, id := range ids {
-				if node, ok := frame.Nodes[id]; ok {
-					nodes = append(nodes, node)
-				}
-			}
-			return
-		})
-
-		var securityPromptButton []*cdp.Node
-		err = browser.Run(ctx,
-			chromedp.WaitReady(`document`),
-			chromedp.Sleep(5*time.Second),
-			chromedp.Nodes(`button[allytmfn="Send Security Code"]`, &securityPromptButton, noWait),
-			//filterNodes(&securityPromptButton, hasText("Send Security Code")),
-		)
-		if err != nil {
-			return nil, err
-		}
-		if len(securityPromptButton) > 0 {
-			c.logger.Info("Detected security prompt")
-			log := func(msg string) chromedp.ActionFunc {
-				return func(context.Context) error {
-					c.logger.Info(msg)
-					return nil
-				}
-			}
-			var securityInput string
-			err := browser.Run(ctx,
-				log("clicking send code button"),
-				chromedp.Click(`button[allytmfn="Send Security Code"]`),
-				log("clicked!!!!!!!"),
-				chromedp.WaitReady(`document`),
-				chromedp.ActionFunc(func(ctx context.Context) error {
-					var err error
-					securityInput, err = prompt.PromptText(ctx, "Enter the security code from Ally:")
-					return err
-				}),
-				chromedp.SetValue(`input[allytmfn="Security Code"]`, securityInput), // TODO this piece still doesn't work
-				chromedp.Click(`button[type="submit"]`),
-				chromedp.WaitReady(`document`),
-				chromedp.Click(`#register-device-yes`),
-				chromedp.SendKeys(`#register-device-yes`, kb.Enter),
-			)
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
 
 	// passed security prompt, shorten timeout
@@ -234,6 +166,68 @@ func (c *connectorAlly) Statement(start, end time.Time, accountID string, browse
 		}
 		return resp, errors.Wrap(err, "Failed to parse response")
 	}
+}
+
+func (c *connectorAlly) signIn(ctx context.Context, browser web.Browser, prompt prompter.Prompter) error {
+	err := browser.Run(ctx,
+		network.ClearBrowserCookies(),
+
+		// login
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			// regular chromedp.Navigate fails if a main script has an uncaught exception
+			_, _, _, err := page.Navigate("https://secure.ally.com").Do(ctx)
+			return err
+		}),
+		chromedp.WaitReady(`document`),
+		chromedp.Click(`#login-username`),
+		chromedp.SendKeys(`#login-username`, c.Username()),
+		chromedp.Click(`#login-password`),
+		chromedp.SendKeys(`#login-password`, string(c.Password())),
+		chromedp.SendKeys(`#login-password`, kb.Enter),
+	)
+	if err != nil {
+		return err
+	}
+
+	noWait := chromedp.WaitFunc(func(ctx context.Context, frame *cdp.Frame, ids ...cdp.NodeID) (nodes []*cdp.Node, err error) {
+		frame.RLock()
+		defer frame.RUnlock()
+		for _, id := range ids {
+			if node, ok := frame.Nodes[id]; ok {
+				nodes = append(nodes, node)
+			}
+		}
+		return
+	})
+
+	var securityPromptButton []*cdp.Node
+	err = browser.Run(ctx,
+		chromedp.WaitReady(`document`),
+		chromedp.Sleep(5*time.Second),
+		chromedp.Nodes(`button[allytmfn="Send Security Code"]`, &securityPromptButton, noWait),
+	)
+	if err != nil {
+		return err
+	}
+	if len(securityPromptButton) == 0 {
+		return nil
+	}
+	c.logger.Info("Detected security prompt")
+	var securityInput string
+	return browser.Run(ctx,
+		chromedp.Click(`button[allytmfn="Send Security Code"]`),
+		chromedp.WaitReady(`document`),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			var err error
+			securityInput, err = prompt.PromptText(ctx, "Enter the security code from Ally:")
+			return err
+		}),
+		chromedp.SetValue(`input[allytmfn="Security Code"]`, securityInput), // TODO this piece still doesn't work
+		chromedp.Click(`button[type="submit"]`),
+		chromedp.WaitReady(`document`),
+		chromedp.Click(`#register-device-yes`),
+		chromedp.SendKeys(`#register-device-yes`, kb.Enter),
+	)
 }
 
 func allyIsAccountOpenDateErr(err error) bool {
