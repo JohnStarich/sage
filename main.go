@@ -183,7 +183,7 @@ func main() {
 		}
 	}()
 	usageErr, err := handleErrors(&db)
-	if err != nil {
+	if err != nil && err != flag.ErrHelp {
 		fmt.Fprintln(os.Stderr, err)
 		if usageErr {
 			sync.Shutdown(db, 2)
