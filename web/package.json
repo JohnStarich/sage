@@ -82,7 +82,7 @@
     "@electron-forge/maker-deb": "6.0.0-beta.49",
     "@electron-forge/maker-dmg": "6.0.0-beta.49",
     "@electron-forge/maker-squirrel": "6.0.0-beta.49",
-    "axios": "^0.19.0",
+    "axios": "^0.21.1",
     "bootstrap": "^4.4.1",
     "customize-cra": "^0.9.1",
     "customize-cra-react-refresh": "^1.0.1",
