@@ -147,9 +147,6 @@ release-mac:
 		exit 1; \
 	fi
 	$(MAKE) darwin/amd64
-	F=web/node_modules/electron-packager/src/mac.js && \
-	NEW_F=$$(sed '/if (!notarizeOpts.appleId) {/ { N;N;N;N;N;N;N;N;N; d; }' "$$F") && \
-	  cat <<<"$$NEW_F" > "$$F"  # Temporary hack to enable API key notarization
 	source .github/ci/utils.sh && \
 		retry npm run --prefix=web mac
 	mv -f web/out/make/Sage-1.0.0.dmg out/Sage-for-Mac.dmg
