@@ -20,11 +20,7 @@ module.exports = function(buildPath, electronVersion, platform, arch, callback) 
         destination += ".exe"
     }
 
-    fs.copyFileSync(source, destination, function(err) {
-        if (err) {
-            throw Error(`An error occurred while copying the binary: ${err}`)
-        }
-    })
+    fs.copyFileSync(source, destination)
 
     callback();
 }
