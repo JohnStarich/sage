@@ -72,7 +72,7 @@ func handleOFXRequest(resp http.ResponseWriter, req *http.Request) {
 		handleError(resp, err)
 		return
 	}
-	ofxRequest := strings.Replace(string(ofxRequestBytes), "\r\n", "\n", -1)
+	ofxRequest := strings.ReplaceAll(string(ofxRequestBytes), "\r\n", "\n")
 
 	var demoAccount AccountGenerator
 	var version string

@@ -92,9 +92,10 @@ func TestClose(t *testing.T) {
 	require.NoError(t, err)
 
 	closed := 0
-	db.(*mockDatabase).close(func(b *bucket) {
+	err = db.(*mockDatabase).close(func(b *bucket) {
 		closed++
 	})
+	require.NoError(t, err)
 	assert.Equal(t, 2, closed)
 
 	assert.NoError(t, db.Close())

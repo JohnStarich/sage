@@ -36,6 +36,6 @@ func (f *file) Read() ([]byte, error) {
 
 func diskWriter(path string, b []byte) func() error {
 	return func() error {
-		return ioutil.WriteFile(path, b, 0750)
+		return ioutil.WriteFile(path, b, 0750) // nolint:gosec // File should be written and rewritten by Sage, then easily read by other programs for custom tools.
 	}
 }

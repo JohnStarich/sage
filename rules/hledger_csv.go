@@ -82,7 +82,7 @@ func (c csvRule) Apply(txn *ledger.Transaction) {
 		txn.Postings[1].Account = c.Account2
 	}
 	if c.comment != "" {
-		comment := strings.Replace(c.comment, "%comment", txn.Postings[0].Comment, -1)
+		comment := strings.ReplaceAll(c.comment, "%comment", txn.Postings[0].Comment)
 		txn.Postings[0].Comment = comment
 	}
 }

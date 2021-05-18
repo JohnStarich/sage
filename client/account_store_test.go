@@ -261,7 +261,7 @@ func TestAccountStoreUpgradeV0(t *testing.T) {
 			require.NoError(t, err, "Error type: %T", err)
 			store := &AccountStore{Bucket: bucket}
 
-			expected := strings.Replace(strings.TrimSpace(tc.v2), "\t", "    ", -1)
+			expected := strings.ReplaceAll(strings.TrimSpace(tc.v2), "\t", "    ")
 			output := strings.TrimSpace(db.Dump(store.Bucket))
 			assert.Equal(t, expected, output)
 		})
@@ -373,7 +373,7 @@ func TestAccountStoreUpgradeV1(t *testing.T) {
 			require.NoError(t, err, "Error type: %T", err)
 			store := &AccountStore{Bucket: bucket}
 
-			expected := strings.Replace(strings.TrimSpace(tc.v2), "\t", "    ", -1)
+			expected := strings.ReplaceAll(strings.TrimSpace(tc.v2), "\t", "    ")
 			output := strings.TrimSpace(db.Dump(store.Bucket))
 			assert.Equal(t, expected, output)
 		})
