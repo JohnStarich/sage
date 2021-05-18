@@ -16,7 +16,7 @@ import { Link } from "react-router-dom";
 const labelWidth = 4
 const inputWidth = 12 - labelWidth
 
-export default function({ driver, created }) {
+export default function ExpressDirectConnect({ driver, created }) {
   const [validated, setValidated] = React.useState(false)
   const [accounts, setAccounts] = React.useState(null)
   const [findFeedback, setFindFeedback] = React.useState(null)

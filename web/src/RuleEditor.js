@@ -54,7 +54,7 @@ const choiceRevenues = 'Revenues'
 const choiceExact = 'Exact'
 const choiceFuzzy = 'Fuzzy'
 
-export default function ({ transaction, onClose, rule, setRule, removeRule }) {
+export default function RuleEditor({ transaction, onClose, rule, setRule, removeRule }) {
   if (!onClose) {
     throw Error("onClose is required")
   }

@@ -13,7 +13,7 @@ function addMonths(date, months) {
   return dateCopy
 }
 
-export default function ({ budgets: rawBudgets, date, setMonth }) {
+export default function BudgetsHistory({ budgets: rawBudgets, date, setMonth }) {
   if (!date) {
     throw Error("date is required")
   }

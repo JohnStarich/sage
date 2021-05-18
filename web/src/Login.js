@@ -19,7 +19,7 @@ function loggedIn() {
   window.location.reload()
 }
 
-export default function() {
+export default function Login() {
   const [validated, setValidated] = React.useState(false)
   const [feedback, setFeedback] = React.useState(null)
 

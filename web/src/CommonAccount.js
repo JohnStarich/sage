@@ -10,7 +10,7 @@ import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 
 
-export default function({ created }) {
+export default function CommonAccount({ created }) {
   const [name, setName] = React.useState("")
   const [driver, setDriver] = React.useState(null)
   const [suggestions, setSuggestions] = React.useState([])

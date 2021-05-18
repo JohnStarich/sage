@@ -11,7 +11,7 @@ import { Breadcrumbs, Crumb } from './Breadcrumb';
 import { Link, NavLink, Route, Switch } from "react-router-dom";
 
 
-export default function ({ match }) {
+export default function Settings({ match }) {
   return (
     <Breadcrumbs as={Breadcrumb} skip={1} render={({ title, match }) =>
       <NavLink className="breadcrumb-item" to={match.url} exact>{title}</NavLink>
