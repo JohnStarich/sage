@@ -54,7 +54,7 @@ func run(ofxhomePath, outputPath string) error {
 	}
 	var writer io.Writer = os.Stdout
 	if outputPath != "" {
-		writer, err = os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY, 0750)
+		writer, err = os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0750)
 		if err != nil {
 			return err
 		}
