@@ -139,7 +139,7 @@ var ofxDrivers =`)
 	}
 	driverSlice := fmt.Sprintf("%#v\n", d)
 	driverSlice = newLineLocations.ReplaceAllString(driverSlice, "$0\n")
-	driverSlice = strings.Replace(driverSlice, "drivers.", "", -1)
+	driverSlice = strings.ReplaceAll(driverSlice, "drivers.", "")
 	_, err = s.WriteString(driverSlice)
 	if err != nil {
 		return nil, err

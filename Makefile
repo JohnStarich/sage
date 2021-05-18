@@ -9,7 +9,7 @@ VERSION ?= ${TRAVIS_TAG}
 endif
 VERSION ?= $(shell git rev-parse --verify HEAD)
 VERSION_FLAGS := -ldflags='-s -w -X github.com/johnstarich/sage/consts.Version=${VERSION}'
-LINT_VERSION=1.23.3
+LINT_VERSION=1.40.1
 
 # Ensure there's at least an empty bindata file when executing a target
 ENSURE_STUB := $(shell [[ -f ./server/bindata.go ]] || { mkdir -p web/build && GO111MODULE=on go generate ./server; })

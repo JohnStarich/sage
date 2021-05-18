@@ -17,7 +17,9 @@ func importTransactions(
 	resp ofxgo.Response,
 	parseTransaction transactionParser,
 ) (skeletonAccounts []model.Account, allTxns []ledger.Transaction, importErr error) {
-	messages := append(resp.Bank, resp.CreditCard...)
+	var messages []ofxgo.Message
+	messages = append(messages, resp.Bank...)
+	messages = append(messages, resp.CreditCard...)
 	if len(messages) == 0 {
 		return nil, nil, errors.New("No messages received")
 	}
@@ -106,8 +108,8 @@ func MakeUniqueTxnID(fid, accountID string) func(txnID string) string {
 		id := idPrefix + txnID
 		// clean ID for use as an hledger tag
 		// TODO move tag (de)serialization into ledger package
-		id = strings.Replace(id, ",", "", -1)
-		id = strings.Replace(id, ":", "", -1)
+		id = strings.ReplaceAll(id, ",", "")
+		id = strings.ReplaceAll(id, ":", "")
 		return id
 	}
 }

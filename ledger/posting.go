@@ -68,7 +68,7 @@ func parseAmount(amount string) (decimal.Decimal, error) {
 	amount = strings.TrimPrefix(amount, usd)
 	amount = strings.TrimSpace(amount)
 	// TODO support thousands delimiter other than ','
-	amount = strings.Replace(amount, ",", "", -1)
+	amount = strings.ReplaceAll(amount, ",", "")
 	return decimal.NewFromString(amount)
 }
 

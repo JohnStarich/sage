@@ -24,7 +24,7 @@ func TestOpen(t *testing.T) {
 	defer cleanupTestDB(t)
 	err := os.MkdirAll(testDBPath, 0750)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(testDBPath, "bucket.json"), []byte(`{}`), 0750)
+	err = ioutil.WriteFile(filepath.Join(testDBPath, "bucket.json"), []byte(`{}`), 0600)
 	require.NoError(t, err)
 
 	repoInt, err := Open(testDBPath)
@@ -58,7 +58,7 @@ func TestOpenMkdirErr(t *testing.T) {
 	cleanupTestDB(t)
 	defer cleanupTestDB(t)
 
-	err := ioutil.WriteFile(testDBPath, []byte(`I'm not a database!`), 0750)
+	err := ioutil.WriteFile(testDBPath, []byte(`I'm not a database!`), 0600)
 	require.NoError(t, err)
 	_, err = Open(testDBPath)
 	require.Error(t, err)
@@ -81,7 +81,7 @@ func TestCommitFiles(t *testing.T) {
 
 	// modify and commit files a few times
 	err = repo.CommitFiles(func() error {
-		return ioutil.WriteFile(filepath.Join(testDBPath, "some file.txt"), []byte("hello world"), 0750)
+		return ioutil.WriteFile(filepath.Join(testDBPath, "some file.txt"), []byte("hello world"), 0600)
 	}, "add some file", filepath.Join(testDBPath, "some file.txt"))
 	require.NoError(t, err)
 
@@ -100,7 +100,7 @@ func TestCommitFiles(t *testing.T) {
 	assert.Equal(t, 1, getCount())
 
 	err = repo.CommitFiles(func() error {
-		return ioutil.WriteFile(filepath.Join(testDBPath, "some other file.txt"), []byte("hello world"), 0750)
+		return ioutil.WriteFile(filepath.Join(testDBPath, "some other file.txt"), []byte("hello world"), 0600)
 	}, "add some other file", filepath.Join(testDBPath, "some other file.txt"))
 	require.NoError(t, err)
 	assert.Equal(t, 2, getCount())
@@ -116,7 +116,7 @@ func TestCommitNoChanges(t *testing.T) {
 	repo := repoInt.(*syncRepo)
 
 	err = repo.CommitFiles(func() error {
-		return ioutil.WriteFile(filepath.Join(testDBPath, "some file.txt"), []byte("hello world"), 0750)
+		return ioutil.WriteFile(filepath.Join(testDBPath, "some file.txt"), []byte("hello world"), 0600)
 	}, "add some file", filepath.Join(testDBPath, "some file.txt"))
 	require.NoError(t, err)
 

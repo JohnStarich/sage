@@ -136,7 +136,7 @@ func Statement(connector Connector, start, end time.Time, requestors []Requestor
 		start, end,
 		requestors,
 		// TODO it seems the ledger balance is nearly always the current balance, rather than the statement close. Restore this when a true closing balance can be found
-		//balanceTransactions,
+		// balanceTransactions,
 		client.Request,
 		parser,
 	)

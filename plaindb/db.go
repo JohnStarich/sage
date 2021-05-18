@@ -30,8 +30,8 @@ type Upgrader interface {
 // LegacyUpgrader upgrades data from a legacy, unversioned format
 type LegacyUpgrader interface {
 	Upgrader
-	// ParseLegacy parses the original JSON data as a whole
-	// Deprecated in favor of Parse using the version format
+	// ParseLegacy parses the original JSON data as a whole.
+	// Deprecated: Use Parse with the version format instead.
 	ParseLegacy(legacyData json.RawMessage) (version string, data map[string]json.RawMessage, err error)
 }
 
