@@ -8,7 +8,7 @@ import { Crumb } from './Breadcrumb';
 const githubFeedback = "https://github.com/JohnStarich/sage/issues/new"
 const privateFeedback = "https://forms.gle/iCXiTP9Th5zumbPg9"
 
-export default function ({ match }) {
+export default function Help({ match }) {
   return (
     <div>
       <Crumb title="Help" match={match} />

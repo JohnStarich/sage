@@ -16,7 +16,7 @@ import { Link } from 'react-router-dom';
 const labelWidth = 4
 const inputWidth = 8
 
-export default function ({ match }) {
+export default function AdvancedOptions({ match }) {
   return (
     <>
       <Crumb title="Advanced Options" match={match} />

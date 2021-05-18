@@ -14,7 +14,7 @@ import API from './API';
 import { Redirect } from 'react-router-dom';
 
 
-export default function(props) {
+export default function DirectConnect(props) {
   const { account, editable, updated } = props
   const [isBank, setIsBank] = React.useState(null)
   const [validated, setValidated] = React.useState(false)

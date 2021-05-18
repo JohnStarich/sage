@@ -22,7 +22,7 @@ function getDriverNames() {
   return driverNames
 }
 
-export default function ({ account, editable, updated }) {
+export default function WebConnect({ account, editable, updated }) {
   const [validated, setValidated] = React.useState(false)
   const [redirect, setRedirect] = React.useState(null)
   const [feedback, setFeedback] = React.useState(null)

@@ -2,7 +2,7 @@ import React from 'react';
 import './Amount.css';
 import Form from 'react-bootstrap/Form';
 
-export default function (props) {
+export default function Amount(props) {
   const {
     amount,
     className,
@@ -13,6 +13,10 @@ export default function (props) {
     tagName,
     ...remainingProps
   } = props
+  const [currentAmount, setCurrentAmount] = React.useState(amount)
+  React.useEffect(() => {
+    setCurrentAmount(amount)
+  }, [amount])
 
   const TagName = tagName || 'span';
   if (typeof amount !== 'number') {
@@ -29,15 +33,10 @@ export default function (props) {
     fullClassName += " " + className
   }
 
-
   if (editable) {
     if (!onChange) {
       throw Error("Editable amounts must have an onChange prop")
     }
-    const [currentAmount, setCurrentAmount] = React.useState(amount)
-    React.useEffect(() => {
-      setCurrentAmount(amount)
-    }, [amount])
 
     const parseAmountStr = amountStr => {
       if (prefix && prefix.length > 0 && amountStr.startsWith(prefix)) {

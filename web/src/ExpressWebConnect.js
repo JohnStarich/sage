@@ -12,7 +12,7 @@ import Row from 'react-bootstrap/Row';
 import { Redirect } from 'react-router-dom';
 
 
-export default function ({ driver, created }) {
+export default function ExpressWebConnect({ driver, created }) {
   const [validated, setValidated] = React.useState(false)
   const [redirect, setRedirect] = React.useState(null)
   const [feedback, setFeedback] = React.useState(null)
