@@ -40,22 +40,22 @@ export default function ExpressDirectConnect({ driver, created }) {
     setFindFeedback(null)
     setFindResult(null)
     const password = valueFromID("password")
-    const res = await API.post('/v1/direct/fetchAccounts', {
-      InstDescription: driver.Description,
-      InstFID: driver.FID,
-      InstOrg: driver.Org,
-      ConnectorURL: driver.URL,
-      ConnectorUsername: valueFromID("username"),
-      ConnectorPassword: password,
-      ConnectorConfig: {
-        ClientID: valueFromID("clientID"),
-        AppID: valueFromID("appID"),
-        AppVersion: valueFromID("appVersion"),
-        OFXVersion: valueFromID("ofxVersion"),
-      },
-    })
-
     try {
+      const res = await API.post('/v1/direct/fetchAccounts', {
+        InstDescription: driver.Description,
+        InstFID: driver.FID,
+        InstOrg: driver.Org,
+        ConnectorURL: driver.URL,
+        ConnectorUsername: valueFromID("username"),
+        ConnectorPassword: password,
+        ConnectorConfig: {
+          ClientID: valueFromID("clientID"),
+          AppID: valueFromID("appID"),
+          AppVersion: valueFromID("appVersion"),
+          OFXVersion: valueFromID("ofxVersion"),
+        },
+      })
+
       if (! res.data || res.data.length === 0) {
         setFindFeedback("No accounts found")
         return
